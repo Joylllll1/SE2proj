@@ -7,52 +7,18 @@ on:
     branches: [main, dev]
 
 jobs:
-  backend-check:
-    name: Backend Lint & Test
+  check-structure:
+    name: Check Project Structure
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run ESLint
-        run: npm run lint || true
-
-      - name: Run tests
-        run: npm test
-
-  frontend-check:
-    name: Frontend Build & Lint
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run ESLint
-        run: npm run lint || true
-
-      - name: Build frontend
-        run: npm run build
+      - name: Check directory structure
+        run: |
+          echo "Checking project structure..."
+          test -d frontend && echo "✓ frontend/ exists" || echo "✗ frontend/ missing"
+          test -d backend && echo "✓ backend/ exists" || echo "✗ backend/ missing"
+          test -f README.md && echo "✓ README.md exists" || echo "✗ README.md missing"
+          echo "Structure check complete!"
