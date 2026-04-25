@@ -391,6 +391,71 @@ h1, h2, h3, p {
   @apply inline-block mb-1.5 text-blue text-[11px] font-bold tracking-widest uppercase;
 }
 
+/* Color utility classes for fortune component */
+.bg-green-soft {
+  @apply bg-[#e8f5e9];
+}
+
+.bg-green-soft\/50 {
+  background-color: rgba(232, 245, 233, 0.5);
+}
+
+.bg-green-soft\/60 {
+  background-color: rgba(232, 245, 233, 0.6);
+}
+
+.border-green-soft\/60 {
+  border-color: rgba(232, 245, 233, 0.6);
+}
+
+.text-green-600 {
+  @apply text-[#43a047];
+}
+
+.text-green-700 {
+  @apply text-[#2e7d32];
+}
+
+.text-green-800 {
+  @apply text-[#1b5e20];
+}
+
+.bg-green-100\/80 {
+  background-color: rgba(200, 230, 201, 0.8);
+}
+
+.bg-red-soft {
+  @apply bg-[#ffebee];
+}
+
+.bg-red-soft\/50 {
+  background-color: rgba(255, 235, 238, 0.5);
+}
+
+.bg-red-soft\/60 {
+  background-color: rgba(255, 235, 238, 0.6);
+}
+
+.border-red-soft\/60 {
+  border-color: rgba(255, 235, 238, 0.6);
+}
+
+.text-red-600 {
+  @apply text-[#e53935];
+}
+
+.text-red-700 {
+  @apply text-[#c62828];
+}
+
+.text-red-800 {
+  @apply text-[#b71c1c];
+}
+
+.bg-red-100\/80 {
+  background-color: rgba(255, 205, 210, 0.8);
+}
+
 /* AI slide panel */
 .ai-slide-panel.open {
   @apply pointer-events-auto;

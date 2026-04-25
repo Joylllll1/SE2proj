@@ -3,9 +3,10 @@ import Icon from './Icon';
 import HeroCarousel from './HeroCarousel';
 import PostCard from './PostCard';
 import EmptyState from './EmptyState';
-import { DailyLuck, TrendingTopics } from './DailyLuck';
+import DailyFortune from './DailyFortune';
+import { TrendingTopics } from './DailyLuck';
 
-function HomePage({ posts: visiblePosts, query, onOpenPost, onNavigate, likedPosts, bookmarks, onLike, onBookmark, onReport, carouselItems = [], onCarouselItemClick }) {
+function HomePage({ posts: visiblePosts, query, onOpenPost, onNavigate, likedPosts, bookmarks, onLike, onBookmark, onReport, carouselItems = [], onCarouselItemClick, showToast, userId }) {
   const [sort, setSort] = useState('latest');
 
   const sorted = [...visiblePosts].sort((a, b) => {
@@ -81,7 +82,7 @@ function HomePage({ posts: visiblePosts, query, onOpenPost, onNavigate, likedPos
         </div>
       </section>
       <aside className="right-rail sticky top-[80px] grid self-start gap-4 max-lg:static max-lg:grid-cols-3 max-sm:grid-cols-1">
-        <DailyLuck />
+        <DailyFortune userId={userId} showToast={showToast} />
         <TrendingTopics />
       </aside>
     </div>

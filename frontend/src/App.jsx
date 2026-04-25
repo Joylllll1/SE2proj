@@ -409,6 +409,8 @@ function App() {
               onReport={handleReport}
               carouselItems={carouselItems}
               onCarouselItemClick={openEventFromCarousel}
+              showToast={showToast}
+              userId={CURRENT_USER_ID}
             />
           )}
           {activePage === 'trending' && <TrendingPage onOpenPost={openPost} />}
