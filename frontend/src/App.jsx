@@ -320,6 +320,7 @@ function App() {
       source: '举报人: 用户' + CURRENT_USER_ID.slice(-4),
       time: '刚刚',
       risk: 'medium',
+      postId: postId, // Store postId directly for easier access
       content: `帖子 ${postId} 被举报，原因：${reason}`,
     };
     setReports((prev) => [newReport, ...prev]);
@@ -421,6 +422,7 @@ function App() {
               onBookmark={() => toggleBookmark(selectedPost.id)}
               onComment={(content) => addComment(selectedPost.id, content)}
               onNavigate={setActivePage}
+              onReport={handleReport}
             />
           )}
           {activePage === 'compose' && <ComposePage onPublish={addPost} />}

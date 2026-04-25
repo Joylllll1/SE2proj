@@ -102,7 +102,7 @@ function ComposePage({ onPublish }) {
                 {tags.map((t) => (
                   <span className="editor-tag inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-soft text-blue text-sm font-semibold" key={t}>
                     #{t}
-                    <button onClick={() => removeTag(t)} type="button" className="grid w-4 h-4 place-items-center px-0 py-0 border-0 rounded-full bg-transparent text-blue text-base cursor-pointer opacity-60 transition-opacity duration-150 hover:opacity-100">&times;</button>
+                    <button onClick={() => removeTag(t)} type="button" className="editor-tag-close grid w-4 h-4 place-items-center px-0 py-0 border-0 rounded-full bg-transparent text-blue text-base cursor-pointer opacity-60 transition-opacity duration-150 hover:opacity-100">&times;</button>
                   </span>
                 ))}
               </div>

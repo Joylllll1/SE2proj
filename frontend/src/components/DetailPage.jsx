@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import PostCard from './PostCard';
 import Comment from './Comment';
 import { getDisplayName } from '../utils';
 
-function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onComment, onNavigate }) {
+function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onComment, onNavigate, onReport }) {
   const [commentText, setCommentText] = useState('');
   const [commentSort, setCommentSort] = useState('time');
   const [replyingTo, setReplyingTo] = useState(null);
@@ -98,6 +98,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
           bookmarked={bookmarked}
           onLike={onLike}
           onBookmark={onBookmark}
+          onReport={onReport}
         />
         <div className="owner-tools flex items-center gap-3 mt-4 p-3 rounded-md bg-surface-tint">
           <Icon name="shield_person" />
@@ -181,7 +182,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
         </div>
         <div className="comment-list grid gap-3.5 mt-4">
           {sortedComments.map((comment) => (
-            <Comment key={comment.id} comment={comment} postId={post.id} onReply={() => setReplyingTo(getDisplayName(comment.userId, post.id))} />
+            <Comment key={comment.id} comment={comment} postId={post.id} onReply={() => setReplyingTo(getDisplayName(comment.userId, post.id))} onReport={onReport} />
           ))}
         </div>
       </section>

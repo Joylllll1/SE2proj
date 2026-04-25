@@ -1,9 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
 
 function TopBar({ query, onQueryChange, onNavigate, onAIOpen, notifs, onMarkAllRead }) {
   const [showNotifs, setShowNotifs] = useState(false);
+  const notifDropdownRef = useRef(null);
   const unreadCount = notifs.filter((n) => !n.read).length;
+
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifs && notifDropdownRef.current && !notifDropdownRef.current.contains(event.target)) {
+        setShowNotifs(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifs]);
 
   return (
     <header className="topbar sticky top-0 z-20 flex items-center justify-between gap-5 h-[60px] px-7 border-b border-line bg-white/82 backdrop-blur-xs">
@@ -27,10 +42,13 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen, notifs, onMarkAllR
             <Icon name="notifications" />
           </button>
           {showNotifs && (
-            <div className="notif-dropdown absolute top-[calc(100%+8px)] right-0 w-[340px] max-h-[400px] overflow-y-auto border border-line rounded-md bg-white shadow-md z-[100] animate-notif-in">
-              <div className="notif-header flex items-center justify-between px-4 py-[14px] border-b border-line-soft bg-[#fafbfc]">
+            <div ref={notifDropdownRef} className="notif-dropdown absolute top-[calc(100%+8px)] right-0 w-[340px] max-h-[400px] overflow-y-auto border border-line rounded-xl bg-surface backdrop-blur-md shadow-glass z-[100] animate-notif-in">
+              <div className="notif-header flex items-center justify-between px-4 py-[14px] border-b border-line-soft bg-surface-soft">
                 <strong className="text-[15px]">通知</strong>
-                {unreadCount > 0 && <button type="button" className="notif-mark-read px-[10px] py-1 border-0 rounded-full bg-blue-soft text-blue text-xs font-semibold" onClick={onMarkAllRead}>全部已读</button>}
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && <button type="button" className="notif-mark-read px-[10px] py-1 border-0 rounded-full bg-blue-soft text-blue text-xs font-semibold" onClick={onMarkAllRead}>全部已读</button>}
+                  <button type="button" className="notif-close-btn grid w-7 h-7 place-items-center border border-line rounded-full bg-white text-text-3 text-sm cursor-pointer transition-colors duration-150 hover:text-text hover:border-text-3" onClick={() => setShowNotifs(false)} aria-label="关闭通知">×</button>
+                </div>
               </div>
               {notifs.length === 0 ? (
                 <div className="notif-empty py-8 px-4 text-center text-text-3">暂无通知</div>

@@ -5,9 +5,9 @@ import Progress from './Progress';
 import EmptyState from './EmptyState';
 
 const SEED_REPORTS = [
-  { id: '#R10283', type: '辱骂/攻击', source: '举报人: 用户1922', time: '3分钟前', risk: 'high', content: '这学期的期末考也太离谱了吧，出题完全不考虑学生实际复习节奏。' },
-  { id: '#R10279', type: '敏感内容', source: '系统自动拦截', time: '12分钟前', risk: 'high', content: '[该内容包含高敏词，已由 AI 初筛隐藏，请管理员人工复核。]' },
-  { id: '#R10275', type: '垃圾广告', source: '举报人: 用户0032', time: '45分钟前', risk: 'low', content: '诚招打字员，时间自由，日入过百，加群了解。' },
+  { id: '#R10283', type: '辱骂/攻击', source: '举报人: 用户1922', time: '3分钟前', risk: 'high', postId: 'P-4921', content: '这学期的期末考也太离谱了吧，出题完全不考虑学生实际复习节奏。' },
+  { id: '#R10279', type: '敏感内容', source: '系统自动拦截', time: '12分钟前', risk: 'high', postId: 'P-8820', content: '[该内容包含高敏词，已由 AI 初筛隐藏，请管理员人工复核。]' },
+  { id: '#R10275', type: '垃圾广告', source: '举报人: 用户0032', time: '45分钟前', risk: 'low', postId: 'P-2105', content: '诚招打字员，时间自由，日入过百，加群了解。' },
 ];
 
 const REJECTION_REASONS = [
@@ -127,9 +127,10 @@ function PostDetailModal({ post, onClose }) {
   if (!post) return null;
 
   return (
-    <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/40 animate-modal-fade-in" onClick={onClose}>
-      <div className="modal-content w-[min(600px,90vw)] max-h-[85vh] overflow-y-auto rounded-lg bg-white shadow-md animate-modal-scale-in" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm animate-modal-fade-in" onClick={onClose}>
+      <div className="modal-content w-[min(640px,90vw)] max-h-[85vh] overflow-y-auto rounded-2xl bg-surface backdrop-blur-md shadow-glass animate-modal-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
+          {/* Header with mood and title */}
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1">
               <span className={`mood mood-${post.moodType} inline-flex items-center gap-[5px] w-fit rounded-full px-3 py-2 text-xs font-semibold leading-none border border-transparent`}>{post.mood}</span>
@@ -140,20 +141,39 @@ function PostDetailModal({ post, onClose }) {
                 <span>{post.campus}</span>
               </div>
             </div>
-            <span className="text-text-3 text-xs font-mono">{post.id}</span>
+            <div className="flex flex-col items-end gap-2">
+              <span className="text-text-3 text-xs font-mono">{post.id}</span>
+              <span className="text-text-3 text-xs">匿名用户</span>
+            </div>
           </div>
-          <p className="m-0 mb-4 text-[15px] leading-relaxed text-[#344054]">{post.content}</p>
-          {post.image && <img className="w-full max-h-80 mt-3.5 rounded-md object-cover" alt={post.title} src={post.image} />}
-          <div className="flex flex-wrap gap-2.5 mt-4 text-text-3 text-xs font-semibold">
-            {post.tags.map((tag) => (
-              <span key={tag} className="text-blue">#{tag}</span>
-            ))}
+
+          {/* Content */}
+          <div className="mb-4 p-4 bg-surface-soft rounded-xl">
+            <p className="m-0 text-[15px] leading-relaxed text-text">{post.content}</p>
           </div>
+
+          {/* Image */}
+          {post.image && (
+            <div className="mb-4 rounded-xl overflow-hidden border border-line">
+              <img className="w-full max-h-80 object-cover" alt={post.title} src={post.image} />
+            </div>
+          )}
+
+          {/* Tags */}
+          {post.tags && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2.5 mb-4 text-text-3 text-xs font-semibold">
+              {post.tags.map((tag) => (
+                <span key={tag} className="text-blue">#{tag}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Footer with stats and close button */}
           <div className="flex items-center justify-between gap-4 pt-4 mt-4 border-t border-line-soft">
             <div className="flex gap-4 text-text-3 text-xs font-semibold">
-              <span className="flex items-center gap-1"><Icon name="favorite" /> {post.likes}</span>
-              <span className="flex items-center gap-1"><Icon name="chat_bubble" /> {post.comments}</span>
-              <span className="flex items-center gap-1"><Icon name="bookmark" /> {post.saves}</span>
+              <span className="flex items-center gap-1"><Icon name="favorite" /> {post.likes || 0}</span>
+              <span className="flex items-center gap-1"><Icon name="chat_bubble" /> {post.comments || 0}</span>
+              <span className="flex items-center gap-1"><Icon name="bookmark" /> {post.saves || 0}</span>
             </div>
             <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2" onClick={onClose} type="button">关闭</button>
           </div>
@@ -187,7 +207,11 @@ function AdminPage({ reports, onDismiss, pendingEvents, onApproveEvent, onReject
   };
 
   const getPostFromReport = (report) => {
-    // Extract post ID from report content if available
+    // First try to use postId field directly (for new reports)
+    if (report.postId) {
+      return posts.find((p) => p.id === report.postId);
+    }
+    // Fallback to extracting from content (for old reports)
     const match = report.content.match(/帖子\s+([P-]\w+)/);
     if (match) {
       return posts.find((p) => p.id === match[1]);
@@ -264,14 +288,14 @@ function AdminPage({ reports, onDismiss, pendingEvents, onApproveEvent, onReject
 
           {/* Report Queue */}
           {activeTab === 'reports' && (
-            <div className="queue-panel">
+            <div className="queue-panel space-y-4">
               {reports.length === 0 ? (
                 <EmptyState title="举报队列已清空" description="暂无待处理的举报内容" />
               ) : (
-                <div className="space-y-3">
+                <>
                   {reports.map((report) => (
-                    <article key={report.id} className={`report-card p-5 border rounded-lg bg-white shadow-sm ${report.risk === 'high' ? 'border-l-4 border-l-red' : 'border-line-soft'}`}>
-                      <header className="flex items-start justify-between gap-4 mb-3">
+                    <article key={report.id} className={`report-card p-5 border rounded-xl bg-surface backdrop-blur-sm shadow-sm ${report.risk === 'high' ? 'border-l-4 border-l-red' : 'border-line-soft'}`}>
+                      <div className="flex items-start justify-between gap-4 mb-3">
                         <div className="flex items-center gap-3">
                           <span className="text-text-3 text-xs font-mono">{report.id}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${report.risk === 'high' ? 'bg-red-soft text-red' : 'bg-orange-soft text-orange'}`}>
@@ -280,9 +304,9 @@ function AdminPage({ reports, onDismiss, pendingEvents, onApproveEvent, onReject
                           {report.risk === 'high' && <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red text-white">高优先级</span>}
                         </div>
                         <span className="text-text-3 text-xs">{report.time}</span>
-                      </header>
+                      </div>
                       <p className="m-0 mb-4 p-3 bg-surface-soft rounded text-text leading-relaxed">{report.content}</p>
-                      <footer className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-4">
                         <span className="text-text-3 text-xs">{report.source}</span>
                         <div className="flex gap-2">
                           {getPostFromReport(report) && (
@@ -291,10 +315,10 @@ function AdminPage({ reports, onDismiss, pendingEvents, onApproveEvent, onReject
                           <button className="px-3 py-2 text-xs font-semibold border border-line rounded-full bg-white text-text-2 hover:bg-surface-soft transition-colors duration-150" onClick={() => onDismiss(report.id)} type="button">驳回举报</button>
                           <button className="px-3 py-2 text-xs font-semibold border-0 rounded-full bg-red text-white hover:bg-red-2 transition-colors duration-150" onClick={() => onDismiss(report.id)} type="button">删除内容</button>
                         </div>
-                      </footer>
+                      </div>
                     </article>
                   ))}
-                </div>
+                </>
               )}
             </div>
           )}
