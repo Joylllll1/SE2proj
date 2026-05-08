@@ -49,7 +49,17 @@ mongod.lock
 # Temporary files
 *.tmp
 *.temp
+*.bak
 .cache/
 
 # Testing
 .nyc_output/
+
+# Course project deliverables
+已完成/
+
+# Redundant tool config
+.codex/
+
+# Development screenshots
+**/截屏*.png
