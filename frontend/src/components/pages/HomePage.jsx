@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import Icon from './Icon';
-import HeroCarousel from './HeroCarousel';
-import PostCard from './PostCard';
-import EmptyState from './EmptyState';
-import DailyFortune from './DailyFortune';
-import { TrendingTopics } from './DailyLuck';
+import Icon from '../common/Icon';
+import HeroCarousel from '../features/HeroCarousel';
+import PostCard from '../common/PostCard';
+import EmptyState from '../common/EmptyState';
+import DailyFortune from '../features/DailyFortune';
+import { TrendingTopics } from '../features/DailyLuck';
 
 function HomePage({ posts: visiblePosts, query, onOpenPost, onNavigate, likedPosts, bookmarks, onLike, onBookmark, onReport, carouselItems = [], onCarouselItemClick, showToast, userId }) {
   const [sort, setSort] = useState('latest');

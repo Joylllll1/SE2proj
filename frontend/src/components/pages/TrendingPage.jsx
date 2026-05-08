@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 function TrendingPage({ onOpenPost }) {
   const [category, setCategory] = useState('全部');

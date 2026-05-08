@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 function ReportModal({ targetId, targetType, onClose, onSubmit }) {
   const [selectedReason, setSelectedReason] = useState('');

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import Icon from './Icon';
-import StatCard from './StatCard';
-import Progress from './Progress';
-import EmptyState from './EmptyState';
+import Icon from '../common/Icon';
+import StatCard from '../common/StatCard';
+import Progress from '../common/Progress';
+import EmptyState from '../common/EmptyState';
 
 const SEED_REPORTS = [
   { id: '#R10283', type: '辱骂/攻击', source: '举报人: 用户1922', time: '3分钟前', risk: 'high', postId: 'P-4921', content: '这学期的期末考也太离谱了吧，出题完全不考虑学生实际复习节奏。' },

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
-import ReportModal from './ReportModal';
-import { getDisplayName } from '../utils';
+import ReportModal from '../features/ReportModal';
+import { getDisplayName } from '../../utils';
 
 function Comment({ comment, postId, onReply, onReport }) {
   const [liked, setLiked] = useState(false);

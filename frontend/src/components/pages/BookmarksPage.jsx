@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Icon from './Icon';
-import PostCard from './PostCard';
-import EmptyState from './EmptyState';
+import Icon from '../common/Icon';
+import PostCard from '../common/PostCard';
+import EmptyState from '../common/EmptyState';
 
 function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
   const [activeFolder, setActiveFolder] = useState('all');

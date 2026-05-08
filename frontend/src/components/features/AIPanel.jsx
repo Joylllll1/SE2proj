@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 function AIPanel({ open, onClose }) {
   const [messages, setMessages] = useState([

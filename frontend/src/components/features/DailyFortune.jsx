@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 // 运势等级配置 - 温暖色调
 const FORTUNE_LEVELS = [

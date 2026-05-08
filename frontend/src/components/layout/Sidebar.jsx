@@ -1,5 +1,5 @@
 import React from 'react';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 const navItems = [
   { id: 'home', label: '动态首页', icon: 'dynamic_feed' },

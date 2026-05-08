@@ -1,5 +1,5 @@
 import React from 'react';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 const topics = [
   ['今年毕业生就业去向', '1.2w 讨论', 86],

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
-import ReportModal from './ReportModal';
-import { getDisplayName, formatCount } from '../utils';
+import ReportModal from '../features/ReportModal';
+import { getDisplayName, formatCount } from '../../utils';
 
 function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, onBookmark, onReport }) {
   const [showReportModal, setShowReportModal] = useState(false);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Icon from './Icon';
-import { loadJSON, saveJSON } from '../utils';
+import Icon from '../common/Icon';
+import { loadJSON, saveJSON } from '../../utils';
 
 function SettingsPage() {
   const [settings, setSettings] = useState(() =>

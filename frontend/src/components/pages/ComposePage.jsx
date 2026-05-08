@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 function ComposePage({ onPublish }) {
   const [title, setTitle] = useState('');

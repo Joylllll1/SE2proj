@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import Icon from './Icon';
-import PostCard from './PostCard';
-import Comment from './Comment';
-import { getDisplayName } from '../utils';
+import Icon from '../common/Icon';
+import PostCard from '../common/PostCard';
+import Comment from '../common/Comment';
+import { getDisplayName } from '../../utils';
 
 function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onComment, onNavigate, onReport }) {
   const [commentText, setCommentText] = useState('');

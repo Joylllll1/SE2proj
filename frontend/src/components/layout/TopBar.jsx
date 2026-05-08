@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Icon from './Icon';
+import Icon from '../common/Icon';
 
 function TopBar({ query, onQueryChange, onNavigate, onAIOpen, notifs, onMarkAllRead }) {
   const [showNotifs, setShowNotifs] = useState(false);

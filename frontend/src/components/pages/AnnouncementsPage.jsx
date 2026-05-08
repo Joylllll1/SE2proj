@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Icon from './Icon';
-import { formatEventTime } from '../utils';
+import Icon from '../common/Icon';
+import { formatEventTime } from '../../utils';
 
 const SEED_ANNOUNCEMENTS = [
   {
