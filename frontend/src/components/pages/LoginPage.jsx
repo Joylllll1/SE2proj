@@ -89,6 +89,17 @@ export default function LoginPage({ onNavigate }) {
             />
           </div>
 
+          {/* Forgot password */}
+          <div className="flex justify-end -mt-2 mb-2">
+            <button
+              type="button"
+              className="text-xs text-text-3 hover:text-text-2 transition-colors"
+              onClick={() => onNavigate('forgot-password')}
+            >
+              忘记密码？
+            </button>
+          </div>
+
           {/* Submit */}
           <button
             type="submit"

@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import VerificationCode from '../models/VerificationCode.js';
 import AppError from '../utils/AppError.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 
@@ -22,8 +23,17 @@ export const register = async (email, password) => {
     throw new AppError('该邮箱已被注册', 409, 'EMAIL_EXISTS');
   }
 
+  // Verify email code
+  const verifiedCode = await VerificationCode.findOne({ email, type: 'register', verified: true });
+  if (!verifiedCode) {
+    throw new AppError('请先完成邮箱验证', 400, 'CODE_NOT_VERIFIED');
+  }
+
   // Create user
   const user = await User.create({ email, password });
+
+  // Clean up used verification code
+  await VerificationCode.deleteMany({ email, type: 'register' });
 
   // Generate tokens
   const accessToken = signAccessToken(user.id);

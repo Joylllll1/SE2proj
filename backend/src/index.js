@@ -4,6 +4,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import verifyRoutes from './routes/verifyRoutes.js';
+import passwordRoutes from './routes/passwordRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 dotenv.config();
@@ -17,6 +19,8 @@ app.use(express.json());
 
 // ─── Routes ───
 app.use('/api/auth', authRoutes);
+app.use('/api/verify', verifyRoutes);
+app.use('/api/password', passwordRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

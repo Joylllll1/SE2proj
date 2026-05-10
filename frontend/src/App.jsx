@@ -16,6 +16,7 @@ import TodoPage from './components/pages/TodoPage';
 import LandingPage from './components/pages/LandingPage';
 import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
+import ForgetPasswordPage from './components/pages/ForgetPasswordPage';
 import useAuth from './hooks/useAuth';
 import { getUserId } from './utils';
 
@@ -43,6 +44,21 @@ function App() {
   React.useEffect(() => {
     restoreSession();
   }, [restoreSession]);
+
+  // ── SPA History: 浏览器前进/后退 ──
+  React.useEffect(() => {
+    const onPop = () => useUiStore.getState().handlePopState();
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
+  const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
+  React.useEffect(() => {
+    if (isAuthenticated && AUTH_PAGES.includes(activePage)) {
+      navigate('home');
+    }
+  }, [isAuthenticated, activePage, navigate]);
 
   // ── Stores ──
   const posts = usePostStore((s) => s.posts);
@@ -123,13 +139,16 @@ function App() {
     if (activePage === 'register') {
       return <RegisterPage onNavigate={navigate} />;
     }
+    if (activePage === 'forgot-password') {
+      return <ForgetPasswordPage onNavigate={navigate} />;
+    }
     return (
       <LandingPage
         onGetStarted={() => {
           if (!localStorage.getItem('nju_user_id')) {
             getUserId();
           }
-          navigate('register');
+          navigate('login');
         }}
         onLogin={() => navigate('login')}
         onRegister={() => navigate('register')}

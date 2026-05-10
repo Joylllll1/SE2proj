@@ -1,6 +1,7 @@
 import React from 'react';
 import useAuthStore from '../../store/authStore';
 import Icon from '../common/Icon';
+import { sendVerifyCode, checkVerifyCode } from '../../services/verifyService';
 
 const DOMAINS = [
   { label: '@nju.edu.cn', value: '@nju.edu.cn' },
@@ -15,12 +16,19 @@ export default function RegisterPage({ onNavigate }) {
   const [domain, setDomain] = React.useState(DOMAINS[0].value);
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [verifyCode, setVerifyCode] = React.useState('');
+  const [codeSent, setCodeSent] = React.useState(false);
+  const [countdown, setCountdown] = React.useState(0);
   const [errors, setErrors] = React.useState({});
+  const [codeLoading, setCodeLoading] = React.useState(false);
 
   const validate = () => {
     const e = {};
     if (!prefix || !/^[a-zA-Z0-9._%+-]+$/.test(prefix)) {
       e.email = '请输入有效的邮箱前缀';
+    }
+    if (!verifyCode || verifyCode.length !== 6) {
+      e.verifyCode = '请输入 6 位验证码';
     }
     if (!password || password.length < 8) {
       e.password = '密码至少 8 位';
@@ -34,15 +42,42 @@ export default function RegisterPage({ onNavigate }) {
     return Object.keys(e).length === 0;
   };
 
+  const handleSendCode = async () => {
+    if (!prefix) {
+      setErrors((prev) => ({ ...prev, email: '请先输入邮箱' }));
+      return;
+    }
+    setCodeLoading(true);
+    try {
+      await sendVerifyCode(prefix + domain, 'register');
+      setCodeSent(true);
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown((c) => {
+          if (c <= 1) { clearInterval(timer); return 0; }
+          return c - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, email: err.message }));
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     try {
+      // Verify code then register
+      await checkVerifyCode(prefix + domain, verifyCode, 'register');
       await register(prefix + domain, password);
       onNavigate('home');
     } catch (err) {
       const msg = err.message || '';
-      if (msg.includes('邮箱')) {
+      if (msg.includes('验证码')) {
+        setErrors((prev) => ({ ...prev, verifyCode: msg }));
+      } else if (msg.includes('邮箱')) {
         setErrors((prev) => ({ ...prev, email: msg }));
       } else if (msg.includes('密码')) {
         setErrors((prev) => ({ ...prev, password: msg }));
@@ -84,6 +119,41 @@ export default function RegisterPage({ onNavigate }) {
               </select>
             </div>
             {errors.email && <p className="auth-error-text">{errors.email}</p>}
+          </div>
+
+          {/* Verification Code */}
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="reg-code">邮箱验证码</label>
+            <div className="flex gap-2">
+              <input
+                id="reg-code"
+                type="text"
+                className={`auth-input flex-1 ${errors.verifyCode ? 'auth-input-error' : ''}`}
+                placeholder="6 位验证码"
+                maxLength={6}
+                value={verifyCode}
+                onChange={(e) => { setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setErrors((prev) => ({ ...prev, verifyCode: '' })); }}
+                disabled={loading}
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                className={`auth-code-btn ${countdown > 0 ? 'auth-code-btn-disabled' : ''}`}
+                onClick={handleSendCode}
+                disabled={codeLoading || countdown > 0}
+              >
+                {codeLoading ? (
+                  <Icon name="loop" />
+                ) : countdown > 0 ? (
+                  `${countdown}s`
+                ) : codeSent ? (
+                  '重新发送'
+                ) : (
+                  '发送验证码'
+                )}
+              </button>
+            </div>
+            {errors.verifyCode && <p className="auth-error-text">{errors.verifyCode}</p>}
           </div>
 
           {/* Password */}

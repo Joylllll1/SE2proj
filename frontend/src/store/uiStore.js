@@ -1,6 +1,30 @@
 import { create } from 'zustand';
 import { loadJSON, saveJSON } from '../utils';
 
+// ─── URL 映射表 ───
+export const PAGE_URLS = {
+  home: '/',
+  login: '/login',
+  register: '/register',
+  'forgot-password': '/forgot-password',
+  'reset-password': '/reset-password',
+};
+
+// 反向映射：URL → page name
+function urlToPage(url) {
+  const path = url.replace(/\/+$/, '') || '/';
+  for (const [page, p] of Object.entries(PAGE_URLS)) {
+    if (p === path) return page;
+  }
+  return null;
+}
+
+// 从当前 URL 恢复 activePage
+function getInitialPage() {
+  if (typeof window === 'undefined') return 'home';
+  return urlToPage(window.location.pathname) || 'home';
+}
+
 const SEED_NOTIFS = [
   { id: 'N-1', text: '你的帖子「杜厦图书馆五楼的夕阳」获得了 10 个新赞', time: '2分钟前', read: false },
   { id: 'N-2', text: '温柔的小蓝鲸 回复了你的评论', time: '15分钟前', read: false },
@@ -15,7 +39,7 @@ const useUiStore = create((set, get) => ({
   // Notifications
   notifs: loadJSON('nju_notifs', SEED_NOTIFS),
   // Routing
-  activePage: 'home',
+  activePage: getInitialPage(),
   // Search
   query: '',
   // Carousel navigation
@@ -45,7 +69,17 @@ const useUiStore = create((set, get) => ({
   },
 
   // Routing
-  navigate: (page) => set({ activePage: page }),
+  navigate: (page, params) => {
+    const url = PAGE_URLS[page];
+    if (url) {
+      window.history.pushState({ page, params }, '', url);
+    }
+    set({ activePage: page, ...params });
+  },
+  handlePopState: () => {
+    const page = urlToPage(window.location.pathname) || 'home';
+    set({ activePage: page });
+  },
 
   // Search
   setQuery: (q) => set({ query: q }),
