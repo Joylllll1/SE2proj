@@ -1,5 +1,6 @@
 import React from 'react';
 import Icon from '../common/Icon';
+import useAuthStore from '../../store/authStore';
 
 const navItems = [
   { id: 'home', label: '动态首页', icon: 'dynamic_feed' },
@@ -11,6 +12,13 @@ const navItems = [
 ];
 
 function Sidebar({ activePage, onNavigate }) {
+  const logout = useAuthStore((s) => s.logout);
+
+  const handleLogout = () => {
+    logout();
+    onNavigate('login');
+  };
+
   return (
     <aside className="sidebar sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-[#f5f5f7] z-30 max-md:hidden">
       <div className="pt-5 px-[14px]">
@@ -52,6 +60,14 @@ function Sidebar({ activePage, onNavigate }) {
             <p className="m-0 mt-[3px] text-text-3 text-[11px] leading-normal">同帖稳定 · 跨帖不可关联</p>
           </div>
         </section>
+        <button
+          className="flex items-center gap-2 w-full mt-2 px-3 py-2 border-0 rounded-lg text-text-3 bg-transparent text-xs font-semibold transition-colors duration-150 hover:text-red-500 hover:bg-red-50"
+          onClick={handleLogout}
+          type="button"
+        >
+          <Icon name="logout" />
+          <span>退出登录</span>
+        </button>
       </div>
     </aside>
   );

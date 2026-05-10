@@ -46,6 +46,7 @@ const Icon = ({ name, filled = false }) => {
     loop: 'M12 4a8 8 0 0 1 8 8M20 12l-3-3m3 3-3 3M4 12l3-3m-3 3 3 3',
     error_outline: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-1-13v5m0 4h.1',
     construction: 'M17.5 11.5l-5-5M4.5 19.5l5-5 2 2-5 5Zm8-8 5 5-2 2-5-5 2-2Z',
+    logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 12 4-4-4-4m-8 4h12',
   };
 
   return (
