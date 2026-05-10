@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { loadJSON, saveJSON } from '../utils';
 
 // ─── URL 映射表 ───
-export const PAGE_URLS = {
+const PAGE_URLS = {
   home: '/',
   login: '/login',
   register: '/register',
@@ -19,10 +19,15 @@ function urlToPage(url) {
   return null;
 }
 
-// 从当前 URL 恢复 activePage
+// 从当前 URL 恢复 activePage（独立函数，不依赖 PAGE_URLS，避免模块初始化顺序问题）
 function getInitialPage() {
   if (typeof window === 'undefined') return 'home';
-  return urlToPage(window.location.pathname) || 'home';
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (path === '/login') return 'login';
+  if (path === '/register') return 'register';
+  if (path === '/forgot-password') return 'forgot-password';
+  if (path === '/reset-password') return 'reset-password';
+  return 'home';
 }
 
 const SEED_NOTIFS = [
