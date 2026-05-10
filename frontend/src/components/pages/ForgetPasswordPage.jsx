@@ -144,27 +144,43 @@ export default function ForgetPasswordPage({ onNavigate }) {
         )}
 
         <form onSubmit={handleReset} noValidate>
-          {/* Email + Send code */}
+          {/* Email */}
           <div className="auth-field">
             <label className="auth-label" htmlFor="fp-email">学校邮箱</label>
+            <div className={`auth-email-group ${error.includes('邮箱') || error.includes('nju') ? 'auth-input-error' : ''}`}>
+              <input
+                id="fp-email"
+                type="text"
+                className="auth-email-input"
+                placeholder="学号"
+                value={prefix}
+                onChange={(e) => { setPrefix(e.target.value); setError(''); }}
+                disabled={loading}
+                autoComplete="off"
+              />
+              <select className="auth-email-select" value={domain} onChange={(e) => setDomain(e.target.value)} disabled={loading}>
+                {DOMAINS.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Code + Send */}
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="fp-code">验证码</label>
             <div className="flex gap-2">
-              <div className={`auth-email-group flex-1 ${error.includes('邮箱') || error.includes('nju') ? 'auth-input-error' : ''}`}>
-                <input
-                  id="fp-email"
-                  type="text"
-                  className="auth-email-input"
-                  placeholder="学号"
-                  value={prefix}
-                  onChange={(e) => { setPrefix(e.target.value); setError(''); }}
-                  disabled={loading}
-                  autoComplete="off"
-                />
-                <select className="auth-email-select" value={domain} onChange={(e) => setDomain(e.target.value)} disabled={loading}>
-                  {DOMAINS.map((d) => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
-                  ))}
-                </select>
-              </div>
+              <input
+                id="fp-code"
+                type="text"
+                className={`auth-input flex-1 ${fieldErrors.verifyCode ? 'auth-input-error' : ''}`}
+                placeholder="6 位验证码"
+                maxLength={6}
+                value={verifyCode}
+                onChange={(e) => { setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setFieldErrors((prev) => ({ ...prev, verifyCode: '' })); }}
+                disabled={loading}
+                autoComplete="off"
+              />
               <button
                 type="button"
                 className={`auth-code-btn ${countdown > 0 ? 'auth-code-btn-disabled' : ''}`}
@@ -183,22 +199,6 @@ export default function ForgetPasswordPage({ onNavigate }) {
                 )}
               </button>
             </div>
-          </div>
-
-          {/* Code */}
-          <div className="auth-field">
-            <label className="auth-label" htmlFor="fp-code">验证码</label>
-            <input
-              id="fp-code"
-              type="text"
-              className={`auth-input ${fieldErrors.verifyCode ? 'auth-input-error' : ''}`}
-              placeholder="6 位验证码"
-              maxLength={6}
-              value={verifyCode}
-              onChange={(e) => { setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setFieldErrors((prev) => ({ ...prev, verifyCode: '' })); }}
-              disabled={loading}
-              autoComplete="off"
-            />
             {fieldErrors.verifyCode && <p className="auth-error-text">{fieldErrors.verifyCode}</p>}
           </div>
 
