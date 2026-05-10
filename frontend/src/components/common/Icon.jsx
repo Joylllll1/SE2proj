@@ -43,6 +43,9 @@ const Icon = ({ name, filled = false }) => {
     arrow_back: 'M5 12h14M5 12l5-5M5 12l5 5',
     delete: 'M6 7h12M6 7l1 12h10l1-12M9 7V5h6v2m-4 4v5m2-5v5',
     check: 'M5 12l5 5L20 7',
+    loop: 'M12 4a8 8 0 0 1 8 8M20 12l-3-3m3 3-3 3M4 12l3-3m-3 3 3 3',
+    error_outline: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-1-13v5m0 4h.1',
+    construction: 'M17.5 11.5l-5-5M4.5 19.5l5-5 2 2-5 5Zm8-8 5 5-2 2-5-5 2-2Z',
   };
 
   return (

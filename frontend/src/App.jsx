@@ -12,6 +12,11 @@ import AnnouncementsPage from './components/pages/AnnouncementsPage';
 import TrendingPage from './components/pages/TrendingPage';
 import SettingsPage from './components/pages/SettingsPage';
 import AdminPage from './components/pages/AdminPage';
+import TodoPage from './components/pages/TodoPage';
+import LandingPage from './components/pages/LandingPage';
+import LoginPage from './components/pages/LoginPage';
+import RegisterPage from './components/pages/RegisterPage';
+import useAuth from './hooks/useAuth';
 import { getUserId } from './utils';
 
 // ─── Stores ───
@@ -32,6 +37,13 @@ import { getReports, createReport, dismissReport } from './services/reportServic
 /* ─── App Root ─── */
 
 function App() {
+  // ── Auth ──
+  const { isAuthenticated, loading: authLoading, restoreSession } = useAuth();
+
+  React.useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
   // ── Stores ──
   const posts = usePostStore((s) => s.posts);
   const likedPosts = usePostStore((s) => s.likedPosts);
@@ -101,6 +113,30 @@ function App() {
 
   const CURRENT_USER_ID = getUserId();
 
+  // ── Landing page / Auth gate ──
+  if (authLoading) return null;
+
+  if (!isAuthenticated) {
+    if (activePage === 'login') {
+      return <LoginPage onNavigate={navigate} />;
+    }
+    if (activePage === 'register') {
+      return <RegisterPage onNavigate={navigate} />;
+    }
+    return (
+      <LandingPage
+        onGetStarted={() => {
+          if (!localStorage.getItem('nju_user_id')) {
+            getUserId();
+          }
+          navigate('register');
+        }}
+        onLogin={() => navigate('login')}
+        onRegister={() => navigate('register')}
+      />
+    );
+  }
+
   // ── Handlers ──
   const addComment = (postId, content, official = false) => {
     addCommentStore(postId, content, official);
@@ -138,23 +174,7 @@ function App() {
           onMarkAllRead={markAllNotifsRead}
         />
         <main className="p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
-          {activePage === 'home' && (
-            <HomePage
-              posts={filteredPosts}
-              query={query}
-              onOpenPost={openPost}
-              onNavigate={navigate}
-              likedPosts={likedPosts}
-              bookmarks={bookmarks}
-              onLike={handleLike}
-              onBookmark={handleBookmark}
-              onReport={handleReport}
-              carouselItems={carouselItems}
-              onCarouselItemClick={openEventFromCarousel}
-              showToast={showToast}
-              userId={CURRENT_USER_ID}
-            />
-          )}
+          {activePage === 'home' && <TodoPage />}
           {activePage === 'trending' && (
             <TrendingPage onOpenPost={openPost} />
           )}

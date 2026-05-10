@@ -61,5 +61,8 @@ mongod.lock
 # Redundant tool config
 .codex/
 
+# Temporary attachments
+.attachments/
+
 # Development screenshots
 **/截屏*.png
