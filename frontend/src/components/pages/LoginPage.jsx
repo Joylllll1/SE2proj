@@ -87,6 +87,7 @@ export default function LoginPage({ onNavigate }) {
               autoComplete="current-password"
               disabled={loading}
             />
+            {error && <p className="auth-error-text">{error}</p>}
           </div>
 
           {/* Forgot password */}

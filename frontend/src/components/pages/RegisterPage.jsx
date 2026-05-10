@@ -20,6 +20,7 @@ export default function RegisterPage({ onNavigate }) {
   const [codeSent, setCodeSent] = React.useState(false);
   const [countdown, setCountdown] = React.useState(0);
   const [errors, setErrors] = React.useState({});
+  const [generalError, setGeneralError] = React.useState('');
   const [codeLoading, setCodeLoading] = React.useState(false);
 
   const validate = () => {
@@ -67,6 +68,7 @@ export default function RegisterPage({ onNavigate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setGeneralError('');
     if (!validate()) return;
     try {
       // Verify code then register
@@ -74,13 +76,15 @@ export default function RegisterPage({ onNavigate }) {
       await register(prefix + domain, password);
       onNavigate('home');
     } catch (err) {
-      const msg = err.message || '';
+      const msg = err.message || '注册失败，请重试';
       if (msg.includes('验证码')) {
         setErrors((prev) => ({ ...prev, verifyCode: msg }));
       } else if (msg.includes('邮箱')) {
         setErrors((prev) => ({ ...prev, email: msg }));
       } else if (msg.includes('密码')) {
         setErrors((prev) => ({ ...prev, password: msg }));
+      } else {
+        setGeneralError(msg);
       }
     }
   };
@@ -143,8 +147,11 @@ export default function RegisterPage({ onNavigate }) {
                 disabled={codeLoading || countdown > 0}
               >
                 {codeLoading ? (
+                <span className="flex items-center gap-1.5">
                   <Icon name="loop" />
-                ) : countdown > 0 ? (
+                  <span>发送中</span>
+                </span>
+              ) : countdown > 0 ? (
                   `${countdown}s`
                 ) : codeSent ? (
                   '重新发送'
@@ -187,6 +194,14 @@ export default function RegisterPage({ onNavigate }) {
             />
             {errors.confirmPassword && <p className="auth-error-text">{errors.confirmPassword}</p>}
           </div>
+
+          {/* General error */}
+          {generalError && (
+            <div className="auth-general-error">
+              <Icon name="error_outline" />
+              <span>{generalError}</span>
+            </div>
+          )}
 
           {/* Submit */}
           <button

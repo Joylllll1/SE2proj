@@ -4,17 +4,28 @@ import { sendVerifyCode, checkVerifyCode } from '../../services/verifyService';
 
 const API_BASE = '';
 
+const DOMAINS = [
+  { label: '@nju.edu.cn', value: '@nju.edu.cn' },
+  { label: '@smail.nju.edu.cn', value: '@smail.nju.edu.cn' },
+];
+
 export default function ForgetPasswordPage({ onNavigate }) {
   const [step, setStep] = React.useState('email'); // email → code → done
-  const [email, setEmail] = React.useState('');
+  const [prefix, setPrefix] = React.useState('');
+  const [domain, setDomain] = React.useState(DOMAINS[0].value);
   const [verifyCode, setVerifyCode] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [countdown, setCountdown] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
 
+  const email = prefix + domain;
+
   const handleSendCode = async () => {
-    if (!email) { setError('请输入邮箱地址'); return; }
+    if (!prefix || !/^[a-zA-Z0-9._%+-]+$/.test(prefix)) {
+      setError('请输入有效的邮箱前缀');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -118,24 +129,34 @@ export default function ForgetPasswordPage({ onNavigate }) {
           <div className="auth-field">
             <label className="auth-label" htmlFor="fp-email">学校邮箱</label>
             <div className="flex gap-2">
-              <input
-                id="fp-email"
-                type="text"
-                className="auth-input flex-1"
-                placeholder="学号@nju.edu.cn"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                disabled={loading}
-                autoComplete="off"
-              />
+              <div className={`auth-email-group flex-1 ${error.includes('邮箱') || error.includes('nju') ? 'auth-input-error' : ''}`}>
+                <input
+                  id="fp-email"
+                  type="text"
+                  className="auth-email-input"
+                  placeholder="学号"
+                  value={prefix}
+                  onChange={(e) => { setPrefix(e.target.value); setError(''); }}
+                  disabled={loading}
+                  autoComplete="off"
+                />
+                <select className="auth-email-select" value={domain} onChange={(e) => setDomain(e.target.value)} disabled={loading}>
+                  {DOMAINS.map((d) => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="button"
                 className={`auth-code-btn ${countdown > 0 ? 'auth-code-btn-disabled' : ''}`}
                 onClick={handleSendCode}
                 disabled={loading || countdown > 0}
               >
-                {loading ? (
-                  <Icon name="loop" />
+              {loading ? (
+                  <span className="flex items-center gap-1.5">
+                    <Icon name="loop" />
+                    <span>发送中</span>
+                  </span>
                 ) : countdown > 0 ? (
                   `${countdown}s`
                 ) : (
