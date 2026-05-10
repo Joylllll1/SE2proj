@@ -18,6 +18,7 @@ import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
 import ForgetPasswordPage from './components/pages/ForgetPasswordPage';
 import useAuth from './hooks/useAuth';
+import useAuthStore from './store/authStore';
 import { getUserId } from './utils';
 
 // ─── Stores ───
@@ -39,7 +40,8 @@ import { getReports, createReport, dismissReport } from './services/reportServic
 
 function App() {
   // ── Auth ──
-  const { isAuthenticated, loading: authLoading, restoreSession } = useAuth();
+  const { isAuthenticated, restoreSession } = useAuth();
+  const initialized = useAuthStore((s) => s.initialized);
 
   React.useEffect(() => {
     restoreSession();
@@ -131,7 +133,7 @@ function App() {
   const CURRENT_USER_ID = getUserId();
 
   // ── Landing page / Auth gate ──
-  if (authLoading) return null;
+  if (!initialized) return null;
 
   if (!isAuthenticated) {
     if (activePage === 'login') {

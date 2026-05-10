@@ -5,7 +5,8 @@ const useAuthStore = create((set, get) => ({
   user: null,
   accessToken: null,
   isAuthenticated: false,
-  loading: true, // starts as true — checking stored token on mount
+  loading: false,
+  initialized: false, // ← NEW: session restore complete (separate from API loading)
   error: null,
 
   clearError: () => set({ error: null }),
@@ -66,7 +67,7 @@ const useAuthStore = create((set, get) => ({
   restoreSession: async () => {
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      set({ loading: false, isAuthenticated: false });
+      set({ loading: false, isAuthenticated: false, initialized: true });
       return;
     }
 
@@ -78,6 +79,7 @@ const useAuthStore = create((set, get) => ({
         accessToken: token,
         isAuthenticated: true,
         loading: false,
+        initialized: true,
       });
     } catch (err) {
       // Access token expired — try refresh
@@ -94,6 +96,7 @@ const useAuthStore = create((set, get) => ({
             accessToken: refreshData.accessToken,
             isAuthenticated: true,
             loading: false,
+            initialized: true,
           });
           return;
         } catch {
@@ -110,6 +113,7 @@ const useAuthStore = create((set, get) => ({
         accessToken: null,
         isAuthenticated: false,
         loading: false,
+        initialized: true,
       });
     }
   },
