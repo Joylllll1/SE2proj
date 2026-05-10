@@ -44,10 +44,11 @@ export default function RegisterPage({ onNavigate }) {
   };
 
   const handleSendCode = async () => {
-    if (!prefix) {
-      setErrors((prev) => ({ ...prev, email: '请先输入邮箱' }));
+    if (!prefix || !/^[a-zA-Z0-9._%+-]+$/.test(prefix)) {
+      setErrors((prev) => ({ ...prev, email: '请输入有效的邮箱前缀' }));
       return;
     }
+    setGeneralError('');
     setCodeLoading(true);
     try {
       await sendVerifyCode(prefix + domain, 'register');

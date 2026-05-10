@@ -15,9 +15,11 @@ export default function ForgetPasswordPage({ onNavigate }) {
   const [domain, setDomain] = React.useState(DOMAINS[0].value);
   const [verifyCode, setVerifyCode] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
   const [countdown, setCountdown] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [fieldErrors, setFieldErrors] = React.useState({});
 
   const email = prefix + domain;
 
@@ -46,15 +48,25 @@ export default function ForgetPasswordPage({ onNavigate }) {
 
   const handleReset = async (e) => {
     e.preventDefault();
-    if (!verifyCode) { setError('请输入验证码'); return; }
-    if (!newPassword || newPassword.length < 8) { setError('密码至少 8 位'); return; }
-    if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      setError('密码需包含字母和数字');
+    setError('');
+    setFieldErrors({});
+
+    const fe = {};
+    if (!verifyCode) fe.verifyCode = '请输入验证码';
+    if (!newPassword || newPassword.length < 8) {
+      fe.password = '密码至少 8 位';
+    } else if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      fe.password = '密码需包含字母和数字';
+    }
+    if (newPassword !== confirmPassword) {
+      fe.confirmPassword = '两次密码输入不一致';
+    }
+    if (Object.keys(fe).length > 0) {
+      setFieldErrors(fe);
       return;
     }
 
     setLoading(true);
-    setError('');
     try {
       // Verify code first
       await checkVerifyCode(email, verifyCode, 'reset_password');
@@ -68,7 +80,14 @@ export default function ForgetPasswordPage({ onNavigate }) {
       if (!res.ok) throw new Error(data?.error || '重置失败');
       setStep('done');
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || '重置失败，请重试';
+      if (msg.includes('验证码') || msg.includes('code')) {
+        setFieldErrors((prev) => ({ ...prev, verifyCode: msg }));
+      } else if (msg.includes('密码') || msg.includes('password')) {
+        setFieldErrors((prev) => ({ ...prev, password: msg }));
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -172,14 +191,15 @@ export default function ForgetPasswordPage({ onNavigate }) {
             <input
               id="fp-code"
               type="text"
-              className="auth-input"
+              className={`auth-input ${fieldErrors.verifyCode ? 'auth-input-error' : ''}`}
               placeholder="6 位验证码"
               maxLength={6}
               value={verifyCode}
-              onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onChange={(e) => { setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setFieldErrors((prev) => ({ ...prev, verifyCode: '' })); }}
               disabled={loading}
               autoComplete="off"
             />
+            {fieldErrors.verifyCode && <p className="auth-error-text">{fieldErrors.verifyCode}</p>}
           </div>
 
           {/* New Password */}
@@ -188,13 +208,30 @@ export default function ForgetPasswordPage({ onNavigate }) {
             <input
               id="fp-password"
               type="password"
-              className="auth-input"
+              className={`auth-input ${fieldErrors.password ? 'auth-input-error' : ''}`}
               placeholder="至少 8 位，包含字母和数字"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(e) => { setNewPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: '' })); }}
               disabled={loading}
               autoComplete="new-password"
             />
+            {fieldErrors.password && <p className="auth-error-text">{fieldErrors.password}</p>}
+          </div>
+
+          {/* Confirm Password */}
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="fp-confirm">确认新密码</label>
+            <input
+              id="fp-confirm"
+              type="password"
+              className={`auth-input ${fieldErrors.confirmPassword ? 'auth-input-error' : ''}`}
+              placeholder="再次输入新密码"
+              value={confirmPassword}
+              onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: '' })); }}
+              disabled={loading}
+              autoComplete="new-password"
+            />
+            {fieldErrors.confirmPassword && <p className="auth-error-text">{fieldErrors.confirmPassword}</p>}
           </div>
 
           <button type="submit" className="auth-submit" disabled={loading}>
