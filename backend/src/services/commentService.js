@@ -1,0 +1,109 @@
+import Comment from '../models/Comment.js';
+import Post from '../models/Post.js';
+import AppError from '../utils/AppError.js';
+
+export const createComment = async (userId, postId, content, official = false) => {
+  const comment = await Comment.create({
+    postId,
+    ownerUserId: userId,
+    content,
+    official,
+  });
+
+  await Post.findByIdAndUpdate(postId, { $inc: { comments: 1 } });
+
+  return comment.toObject();
+};
+
+export const addReply = async (userId, commentId, content, official = false) => {
+  const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+
+  const reply = { ownerUserId: userId, content, official, likes: 0, likedBy: [] };
+  comment.replies.push(reply);
+  await comment.save();
+
+  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: 1 } });
+
+  return reply;
+};
+
+export const getComments = async (postId, userId) => {
+  const comments = await Comment.find({ postId, isDeleted: false })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return comments.map((c) => ({
+    ...c,
+    id: c._id.toString(),
+    time: formatRelativeTime(c.createdAt),
+    replies: (c.replies || []).map((r) => ({
+      ...r,
+      id: r._id.toString(),
+      time: formatRelativeTime(r.createdAt),
+    })),
+    isLiked: userId ? c.likedBy?.some((id) => id.toString() === userId) : false,
+  }));
+};
+
+export const deleteComment = async (userId, commentId) => {
+  const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+  if (comment.ownerUserId.toString() !== userId) {
+    throw new AppError('无权删除此评论', 403, 'FORBIDDEN');
+  }
+
+  comment.isDeleted = true;
+  await comment.save();
+
+  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -1 } });
+};
+
+export const deleteReply = async (userId, commentId, replyId) => {
+  const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+
+  const reply = comment.replies.id(replyId);
+  if (!reply) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
+  if (reply.ownerUserId.toString() !== userId) {
+    throw new AppError('无权删除此回复', 403, 'FORBIDDEN');
+  }
+
+  reply.deleteOne();
+  await comment.save();
+
+  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -1 } });
+};
+
+export const toggleLike = async (userId, commentId) => {
+  const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+
+  const idx = comment.likedBy.findIndex((id) => id.toString() === userId);
+  if (idx > -1) {
+    comment.likedBy.splice(idx, 1);
+    comment.likes = Math.max(0, comment.likes - 1);
+  } else {
+    comment.likedBy.push(userId);
+    comment.likes += 1;
+  }
+  await comment.save();
+  return { liked: idx === -1, likes: comment.likes };
+};
+
+// ─── Helpers ───
+
+function formatRelativeTime(date) {
+  if (!date) return '';
+  const now = Date.now();
+  const diff = now - new Date(date).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return '刚刚';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}天前`;
+  return new Date(date).toLocaleDateString('zh-CN');
+}

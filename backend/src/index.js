@@ -7,6 +7,7 @@ import authRoutes from './routes/authRoutes.js';
 import verifyRoutes from './routes/verifyRoutes.js';
 import passwordRoutes from './routes/passwordRoutes.js';
 import postRoutes from './routes/postRoutes.js';
+import commentRoutes from './routes/commentRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/verify', verifyRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/posts', postRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

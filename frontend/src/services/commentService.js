@@ -1,38 +1,42 @@
-import { storageService } from './storageService';
-import { CURRENT_USER_ID } from '../utils';
-import { updateCommentCount } from './postService';
+const API_BASE = '';
 
-const STORAGE_KEY = 'nju_comments';
-
-export async function getCommentsMap() {
-  return storageService.load(STORAGE_KEY, {});
+async function request(path, options = {}) {
+  const token = localStorage.getItem('accessToken');
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const error = new Error(data?.error || '请求失败');
+    error.status = res.status;
+    error.data = data;
+    throw error;
+  }
+  return data;
 }
 
-export async function persistCommentsMap(commentsMap) {
-  return storageService.save(STORAGE_KEY, commentsMap);
-}
-
-export async function addComment(postId, content, official = false) {
-  const commentsMap = await getCommentsMap();
-  const newComment = {
-    id: Date.now(),
-    userId: official ? 'U-OFFICIAL' : CURRENT_USER_ID,
-    content,
-    time: '刚刚',
-    likes: 0,
-    official,
-    replies: [],
-  };
-  const updated = {
-    ...commentsMap,
-    [postId]: [...(commentsMap[postId] || []), newComment],
-  };
-  await persistCommentsMap(updated);
-  await updateCommentCount(postId, 1);
-  return newComment;
+export async function createComment(postId, content, official = false) {
+  return request('/api/comments', {
+    method: 'POST',
+    body: JSON.stringify({ postId, content, official }),
+  });
 }
 
 export async function getComments(postId) {
-  const commentsMap = await getCommentsMap();
-  return commentsMap[postId] || [];
+  return request(`/api/comments/${postId}`);
+}
+
+export async function deleteComment(commentId) {
+  return request(`/api/comments/${commentId}`, { method: 'DELETE' });
+}
+
+export async function toggleLike(commentId) {
+  return request(`/api/comments/${commentId}/like`, { method: 'POST' });
+}
+
+export async function addReply(commentId, content, official = false) {
+  return request(`/api/comments/${commentId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ content, official }),
+  });
 }

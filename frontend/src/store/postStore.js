@@ -23,8 +23,9 @@ const usePostStore = create((set, get) => ({
 
   addPost: async (post) => {
     const newPost = await postService.createPost(post);
-    set((state) => ({ posts: [newPost, ...state.posts] }));
-    return newPost;
+    const normalized = { ...newPost, id: newPost.id || newPost._id?.toString() };
+    set((state) => ({ posts: [normalized, ...state.posts] }));
+    return normalized;
   },
 
   toggleLike: async (postId) => {

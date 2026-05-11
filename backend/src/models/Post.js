@@ -16,7 +16,7 @@ const postSchema = new mongoose.Schema(
     saves: { type: Number, default: 0 },
     isDeleted: { type: Boolean, default: false, index: true },
   },
-  { timestamps: true },
+  { timestamps: true, toJSON: { virtuals: true } },
 );
 
 postSchema.index({ title: 'text', content: 'text' });

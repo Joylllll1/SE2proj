@@ -9,6 +9,9 @@ import LandingPage from './components/pages/LandingPage';
 import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
 import ForgetPasswordPage from './components/pages/ForgetPasswordPage';
+import BookmarksPage from './components/pages/BookmarksPage';
+import DetailPage from './components/pages/DetailPage';
+import ComposePage from './components/pages/ComposePage';
 import UnderConstruction from './components/common/UnderConstruction';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
@@ -16,10 +19,13 @@ import { getUserId } from './utils';
 
 // ─── Stores ───
 import useBookmarkStore from './store/bookmarkStore';
+import useCommentStore from './store/commentStore';
+import usePostStore from './store/postStore';
 import useUiStore from './store/uiStore';
 
 // ─── Hooks ───
 import useLikeBookmark from './hooks/useLikeBookmark';
+import usePostActions from './hooks/usePostActions';
 
 /* ─── App Root ─── */
 
@@ -47,6 +53,7 @@ function App() {
 
   const toast = useUiStore((s) => s.toast);
   const clearToast = useUiStore((s) => s.clearToast);
+  const showToast = useUiStore((s) => s.showToast);
   const aiOpen = useUiStore((s) => s.aiOpen);
   const closeAi = useUiStore((s) => s.closeAi);
   const notifs = useUiStore((s) => s.notifs);
@@ -65,8 +72,23 @@ function App() {
   const query = useUiStore((s) => s.query);
   const setQuery = useUiStore((s) => s.setQuery);
 
+  // ── Detail Page ──
+  const selectedPost = usePostStore((s) => s.selectedPost);
+  const likedPosts = usePostStore((s) => s.likedPosts);
+  const bookmarks = useBookmarkStore((s) => s.bookmarks);
+  const comments = useCommentStore((s) => s.commentsMap[selectedPost?.id] || []);
+  const fetchComments = useCommentStore((s) => s.fetchComments);
+  const addComment = useCommentStore((s) => s.addComment);
+
   // ── Hooks ──
-  const { selectFolder: handleSelectFolder } = useLikeBookmark();
+  const { toggleLike, toggleBookmark, selectFolder: handleSelectFolder } = useLikeBookmark();
+  const { openPost } = usePostActions();
+
+  // ── Bookmarks page needs ──
+  const posts = usePostStore((s) => s.posts);
+  const bookmarkFolders = useBookmarkStore((s) => s.bookmarkFolders);
+  const updateFolders = useBookmarkStore((s) => s.updateFolders);
+  const updateBookmarkFolders = useBookmarkStore((s) => s.updateBookmarkFolders);
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
@@ -100,6 +122,37 @@ function App() {
     useUiStore.getState().toggleAi();
   };
 
+  const handlePublish = async (postData) => {
+    try {
+      const { image, ...rest } = postData;
+      await usePostStore.getState().addPost({ ...rest, images: image ? [image] : [] });
+      navigate('home');
+    } catch (err) {
+      showToast(err.message || '发布失败');
+    }
+  };
+
+  // ── Load comments when entering detail page ──
+  React.useEffect(() => {
+    if (activePage === 'detail' && selectedPost?.id) {
+      fetchComments(selectedPost.id);
+    }
+  }, [activePage, selectedPost?.id, fetchComments]);
+
+  const handleComment = async (content) => {
+    if (!selectedPost) return;
+    try {
+      await addComment(selectedPost.id, content);
+      usePostStore.getState().updateCommentCount(selectedPost.id, 1);
+    } catch (err) {
+      showToast(err.message || '评论失败');
+    }
+  };
+
+  const handleReport = () => {
+    showToast('举报功能即将上线');
+  };
+
   // ── Render ──
   return (
     <div className="flex min-h-screen">
@@ -116,9 +169,39 @@ function App() {
         <main className="p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
           {activePage === 'home' && <HomePage />}
           {activePage === 'trending' && <UnderConstruction feature="热门" />}
-          {activePage === 'detail' && <UnderConstruction feature="帖子详情" />}
-          {activePage === 'compose' && <UnderConstruction feature="发帖" />}
-          {activePage === 'bookmarks' && <UnderConstruction feature="收藏" />}
+          {activePage === 'detail' && (
+            selectedPost ? (
+              <DetailPage
+                post={selectedPost}
+                comments={comments}
+                liked={likedPosts.includes(selectedPost.id)}
+                bookmarked={bookmarks.includes(selectedPost.id)}
+                onLike={() => toggleLike(selectedPost.id)}
+                onBookmark={() => toggleBookmark(selectedPost.id)}
+                onComment={handleComment}
+                onNavigate={navigate}
+                onReport={handleReport}
+              />
+            ) : (
+              <UnderConstruction feature="帖子详情" />
+            )
+          )}
+          {activePage === 'compose' && <ComposePage onPublish={handlePublish} />}
+          {activePage === 'bookmarks' && (
+            <BookmarksPage
+              posts={posts}
+              bookmarks={bookmarks}
+              likedPosts={likedPosts}
+              onOpenPost={openPost}
+              onLike={toggleLike}
+              onBookmark={toggleBookmark}
+              onReport={handleReport}
+              collectionFolders={collectionFolders}
+              bookmarkFolders={bookmarkFolders}
+              onUpdateFolders={updateFolders}
+              onUpdateBookmarkFolders={updateBookmarkFolders}
+            />
+          )}
           {activePage === 'announcements' && <UnderConstruction feature="公告活动" />}
           {activePage === 'admin' && <UnderConstruction feature="管理后台" />}
           {activePage === 'settings' && <SettingsPage />}

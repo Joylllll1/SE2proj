@@ -43,6 +43,7 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
           <h3 className={`m-0 mb-2 leading-snug tracking-tight ${compact ? 'text-[19px]' : 'text-xl'}`}>{post.title}</h3>
           <p className="m-0 text-[15px] leading-relaxed text-[#344054]">{post.content}</p>
           {post.image && <img className="w-full max-h-80 mt-3.5 rounded-md object-cover" alt={post.title} src={post.image} />}
+          {(post.images?.length > 0) && <img className="w-full max-h-80 mt-3.5 rounded-md object-cover" alt={post.title} src={post.images[0]} />}
         </div>
         <div className="post-footer flex items-center justify-between gap-3.5 px-5 py-[10px_20px_14px] border-t border-line-soft bg-[#fafbfc]">
           <div className="tag-row flex flex-wrap gap-2.5 text-text-3 text-xs font-semibold">

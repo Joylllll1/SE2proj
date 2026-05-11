@@ -21,6 +21,7 @@ export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => 
   const postsWithLikeStatus = posts.map((p) => ({
     ...p,
     id: p._id.toString(),
+    time: formatRelativeTime(p.createdAt),
     isLiked: userId ? p.likedBy?.some((id) => id.toString() === userId) : false,
   }));
 
@@ -39,6 +40,7 @@ export const getPostById = async (postId, userId) => {
   return {
     ...post,
     id: post._id.toString(),
+    time: formatRelativeTime(post.createdAt),
     isLiked: userId ? post.likedBy?.some((id) => id.toString() === userId) : false,
   };
 };
@@ -68,3 +70,20 @@ export const toggleLike = async (userId, postId) => {
   await post.save();
   return { liked: idx === -1, likes: post.likes };
 };
+
+// ─── Helpers ───
+
+function formatRelativeTime(date) {
+  if (!date) return '';
+  const now = Date.now();
+  const diff = now - new Date(date).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return '刚刚';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}天前`;
+  return new Date(date).toLocaleDateString('zh-CN');
+}

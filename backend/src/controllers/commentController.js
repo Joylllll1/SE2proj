@@ -1,0 +1,34 @@
+import * as commentService from '../services/commentService.js';
+
+export const create = async (req, res) => {
+  const { postId, content, official } = req.body;
+  const comment = await commentService.createComment(req.user._id.toString(), postId, content, official);
+  res.status(201).json(comment);
+};
+
+export const reply = async (req, res) => {
+  const { content, official } = req.body;
+  const reply = await commentService.addReply(req.user._id.toString(), req.params.commentId, content, official);
+  res.status(201).json(reply);
+};
+
+export const list = async (req, res) => {
+  const userId = req.user?._id?.toString();
+  const comments = await commentService.getComments(req.params.postId, userId);
+  res.json(comments);
+};
+
+export const remove = async (req, res) => {
+  await commentService.deleteComment(req.user._id.toString(), req.params.commentId);
+  res.json({ message: '已删除' });
+};
+
+export const removeReply = async (req, res) => {
+  await commentService.deleteReply(req.user._id.toString(), req.params.commentId, req.params.replyId);
+  res.json({ message: '已删除' });
+};
+
+export const like = async (req, res) => {
+  const result = await commentService.toggleLike(req.user._id.toString(), req.params.commentId);
+  res.json(result);
+};

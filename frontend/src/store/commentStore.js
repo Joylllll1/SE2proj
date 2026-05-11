@@ -1,43 +1,64 @@
 import { create } from 'zustand';
-import { saveJSON } from '../utils';
-
-function syncLoadComments() {
-  try {
-    const raw = localStorage.getItem('nju_comments');
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
+import * as commentService from '../services/commentService';
 
 const useCommentStore = create((set, get) => ({
-  commentsMap: syncLoadComments(),
+  commentsMap: {},
 
-  addComment: (postId, content, official = false) => {
-    const { commentsMap } = get();
-    const currentUserId = (() => {
-      let uid = localStorage.getItem('nju_user_id');
-      if (!uid) {
-        uid = 'U-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-        localStorage.setItem('nju_user_id', uid);
+  fetchComments: async (postId) => {
+    try {
+      const comments = await commentService.getComments(postId);
+      set((state) => ({
+        commentsMap: { ...state.commentsMap, [postId]: comments },
+      }));
+    } catch {
+      // Silently fail — UI handles empty state
+    }
+  },
+
+  addComment: async (postId, content, official = false) => {
+    const comment = await commentService.createComment(postId, content, official);
+    set((state) => {
+      const existing = state.commentsMap[postId] || [];
+      return {
+        commentsMap: { ...state.commentsMap, [postId]: [...existing, comment] },
+      };
+    });
+    return comment;
+  },
+
+  toggleLike: async (commentId) => {
+    const result = await commentService.toggleLike(commentId);
+    set((state) => {
+      const updated = { ...state.commentsMap };
+      for (const postId of Object.keys(updated)) {
+        updated[postId] = updated[postId].map((c) =>
+          c.id === commentId || c._id === commentId
+            ? { ...c, likes: result.likes, isLiked: result.liked }
+            : c,
+        );
       }
-      return uid;
-    })();
+      return { commentsMap: updated };
+    });
+  },
 
-    const newComment = {
-      id: Date.now(),
-      userId: official ? 'U-OFFICIAL' : currentUserId,
-      content,
-      time: '刚刚',
-      likes: 0,
-      official,
-      replies: [],
-    };
-    const updated = {
-      ...commentsMap,
-      [postId]: [...(commentsMap[postId] || []), newComment],
-    };
-    set({ commentsMap: updated });
-    saveJSON('nju_comments', updated);
-    return newComment;
+  addReply: async (commentId, content, official = false) => {
+    const reply = await commentService.addReply(commentId, content, official);
+    set((state) => {
+      const updated = { ...state.commentsMap };
+      for (const postId of Object.keys(updated)) {
+        updated[postId] = updated[postId].map((c) =>
+          c.id === commentId || c._id === commentId
+            ? { ...c, replies: [...(c.replies || []), reply] }
+            : c,
+        );
+      }
+      return { commentsMap: updated };
+    });
+    return reply;
+  },
+
+  getCommentsByPostId: (postId) => {
+    return get().commentsMap[postId] || [];
   },
 }));
 
