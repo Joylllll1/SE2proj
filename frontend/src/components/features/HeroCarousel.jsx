@@ -6,7 +6,7 @@ const WELCOME_SLIDES = [
     title: '欢迎来到南大树洞',
     subtitle: '一个属于南大人的匿名交流空间',
     desc: '在这里，你可以畅所欲言，分享校园生活的点点滴滴，同帖身份稳定，跨帖无痕。',
-    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c7f1?auto=format&fit=crop&w=1200&q=80',
+    image: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=1200&q=80',
     action: 'compose',
   },
   {
@@ -14,7 +14,7 @@ const WELCOME_SLIDES = [
     title: '自由表达，无虑身份',
     subtitle: '不用在乎「我是谁」，只需要在意「我想说什么」',
     desc: '同一帖子内身份保持一致，不同帖子间不可追溯。减少熟人压力，保留讨论连续性。',
-    image: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80',
+    image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80',
     action: 'compose',
   },
 ];
