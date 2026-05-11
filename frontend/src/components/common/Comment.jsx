@@ -60,7 +60,6 @@ function Comment({ comment, postId, onReply, onReport }) {
                 const isDifferentAuthor = String(reply.ownerUserId) !== String(comment.ownerUserId);
                 return (
                   <div className="reply mb-3 last:mb-0" key={reply.id || reply._id}>
-                    <span className="comment-id text-xs font-semibold text-text-3 block">#{reply.id || String(reply._id)}</span>
                     <strong className="text-sm">
                       {replyName}
                       {isDifferentAuthor && (
