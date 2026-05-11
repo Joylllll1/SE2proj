@@ -76,7 +76,8 @@ function App() {
   const selectedPost = usePostStore((s) => s.selectedPost);
   const likedPosts = usePostStore((s) => s.likedPosts);
   const bookmarks = useBookmarkStore((s) => s.bookmarks);
-  const comments = useCommentStore((s) => s.commentsMap[selectedPost?.id] || []);
+  const commentsMap = useCommentStore((s) => s.commentsMap);
+  const comments = commentsMap[selectedPost?.id] || [];
   const fetchComments = useCommentStore((s) => s.fetchComments);
   const addComment = useCommentStore((s) => s.addComment);
 
