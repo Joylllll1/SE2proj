@@ -3,7 +3,12 @@ import AppError from '../utils/AppError.js';
 
 export const createPost = async (userId, data) => {
   const post = await Post.create({ ownerUserId: userId, ...data });
-  return post;
+  return {
+    ...post.toObject(),
+    id: post._id.toString(),
+    time: formatRelativeTime(post.createdAt),
+    isLiked: false,
+  };
 };
 
 export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => {
