@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
+import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import DailyFortune from '../features/DailyFortune';
@@ -50,7 +51,8 @@ export default function HomePage() {
   return (
     <div className="home-grid grid grid-cols-[minmax(0,1fr)_320px] gap-5 max-w-[1380px] mx-auto max-lg:grid-cols-1">
       <section className="min-w-0">
-        <div className="overview-strip grid grid-cols-3 gap-3.5 max-lg:grid-cols-1">
+        <HeroCarousel onNavigate={navigate} />
+        <div className="overview-strip grid grid-cols-3 gap-3.5 mt-[18px] max-lg:grid-cols-1">
           <article className="overview-card p-4 rounded-md border border-line bg-white/80 shadow-xs">
             <span className="overview-label inline-block mb-1.5 text-blue text-[11px] font-bold tracking-widest uppercase">匿名表达</span>
             <strong className="block text-[17px] tracking-tight">同帖稳定身份</strong>

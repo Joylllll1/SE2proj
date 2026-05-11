@@ -1,27 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
 
-const HERO_SLIDES = [
+const WELCOME_SLIDES = [
   {
-    tag: '校园活动',
-    title: '2026 南大草地音乐节：星空下的合唱',
-    desc: '本周五晚 19:00，仙林校区大草坪。带上野餐垫，让校园里的好心情慢慢发生。',
-    image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
-    action: 'announcements',
+    tag: 'NJU 树洞',
+    title: '欢迎来到南大树洞',
+    desc: '一个属于南大人的匿名交流空间。在这里，你可以畅所欲言，分享校园生活的点点滴滴。',
+    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c7f1?auto=format&fit=crop&w=1200&q=80',
+    action: 'compose',
   },
   {
-    tag: '学术讲座',
-    title: '人工智能如何重塑人文学科研究',
-    desc: '5月6日 14:00，邵逸夫楼 B102。AI 与人文的跨界对话。',
-    image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80',
-    action: 'announcements',
-  },
-  {
-    tag: '校招资讯',
-    title: '春季大型双选会即将开启',
-    desc: '4月28日 09:00，方肇周体育馆。500+ 优质岗位等你来。',
-    image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=80',
-    action: 'announcements',
+    tag: '匿名表达',
+    title: '同帖稳定匿名身份',
+    desc: '同一帖子内身份保持一致，不同帖子间不可追溯。减少熟人压力，同时保留讨论的连续性。',
+    image: 'https://images.unsplash.com/photo-1579547945413-497e1b99dac0?auto=format&fit=crop&w=1200&q=80',
+    action: 'compose',
   },
 ];
 
@@ -39,7 +32,7 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
     eventId: item.id,
   }));
 
-  const slides = carouselSlides.length > 0 ? carouselSlides : HERO_SLIDES;
+  const slides = carouselSlides.length > 0 ? carouselSlides : WELCOME_SLIDES;
 
   const handleSlideClick = () => {
     const currentSlide = slides[active];
@@ -81,10 +74,7 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
         <p className="max-w-[560px] m-0 text-white/72 text-[15px] leading-relaxed">{slide.desc}</p>
         <div className="hero-actions flex flex-wrap gap-2.5 mt-6">
           <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2" onClick={handleSlideClick} type="button">
-            查看活动
-          </button>
-          <button className="ghost-button inline-flex items-center justify-center gap-[7px] rounded-full px-4 py-[10px] border border-white/28 text-white bg-white/12 font-bold transition-all duration-150" onClick={() => onNavigate('compose')} type="button">
-            分享此刻
+            开始分享
           </button>
         </div>
       </div>
@@ -101,4 +91,3 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
 }
 
 export default HeroCarousel;
-export { HERO_SLIDES };
