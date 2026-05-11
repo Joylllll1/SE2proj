@@ -10,7 +10,7 @@ const selectToggleLike = (s) => s.toggleLike;
 function Comment({ comment, postId, onReply, onReport }) {
   const toggleLike = useCommentStore(selectToggleLike);
   const [showReportModal, setShowReportModal] = useState(false);
-  const displayName = comment.official ? '官方小助手' : getDisplayName(comment.userId, postId);
+  const displayName = comment.official ? '官方小助手' : getDisplayName(comment.ownerUserId, postId);
 
   const handleLike = () => {
     toggleLike(comment.id || comment._id);
@@ -56,19 +56,19 @@ function Comment({ comment, postId, onReply, onReport }) {
           {comment.replies.length > 0 && (
             <div className="reply-list mt-[14px] pl-[14px] border-l-2 border-line">
               {comment.replies.map((reply) => {
-                const replyName = getDisplayName(reply.userId, postId);
-                const isDifferentAuthor = reply.userId !== comment.userId;
+                const replyName = getDisplayName(reply.ownerUserId, postId);
+                const isDifferentAuthor = String(reply.ownerUserId) !== String(comment.ownerUserId);
                 return (
-                  <div className="reply mb-3 last:mb-0" key={reply.id}>
-                    <span className="comment-id text-xs font-semibold text-text-3 block">#{reply.id}</span>
+                  <div className="reply mb-3 last:mb-0" key={reply.id || reply._id}>
+                    <span className="comment-id text-xs font-semibold text-text-3 block">#{reply.id || String(reply._id)}</span>
                     <strong className="text-sm">
                       {replyName}
                       {isDifferentAuthor && (
-                        <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {getDisplayName(comment.userId, postId)}</span>
+                        <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {getDisplayName(comment.ownerUserId, postId)}</span>
                       )}
                     </strong>
                     <p className="my-[6px]">{reply.content}</p>
-                    <span className="text-[13px] text-text-2">{reply.time} · {reply.likes} 赞</span>
+                    <span className="text-[13px] text-text-2">{reply.time || ''} · {reply.likes} 赞</span>
                   </div>
                 );
               })}

@@ -70,7 +70,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
   };
 
   // build mention suggestions from comment authors in this thread
-  const mentionSuggestions = [...new Set(comments.map((c) => getDisplayName(c.userId, post.id)))];
+  const mentionSuggestions = [...new Set(comments.map((c) => getDisplayName(c.ownerUserId, post.id)))];
 
   const EMOJI_LIST = ['😊', '😂', '🥺', '😭', '❤️', '👍', '🎉', '🤔', '💪', '✨', '🙏', '😅', '🥰', '😢', '😤', '🤝', '💯', '🔥', '👀', '💕'];
 
@@ -183,7 +183,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
         </div>
         <div className="comment-list grid gap-3.5 mt-4">
           {sortedComments.map((comment) => (
-            <Comment key={comment.id} comment={comment} postId={post.id} onReply={() => setReplyingTo(getDisplayName(comment.userId, post.id))} onReport={onReport} />
+            <Comment key={comment.id} comment={comment} postId={post.id} onReply={() => setReplyingTo(getDisplayName(comment.ownerUserId, post.id))} onReport={onReport} />
           ))}
         </div>
       </section>

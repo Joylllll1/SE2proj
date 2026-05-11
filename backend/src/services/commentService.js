@@ -12,7 +12,11 @@ export const createComment = async (userId, postId, content, official = false) =
 
   await Post.findByIdAndUpdate(postId, { $inc: { comments: 1 } });
 
-  return comment.toObject();
+  return {
+    ...comment.toObject(),
+    id: comment._id.toString(),
+    time: formatRelativeTime(comment.createdAt),
+  };
 };
 
 export const addReply = async (userId, commentId, content, official = false) => {
@@ -25,7 +29,12 @@ export const addReply = async (userId, commentId, content, official = false) => 
 
   await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: 1 } });
 
-  return reply;
+  const savedReply = comment.replies[comment.replies.length - 1];
+  return {
+    ...savedReply.toObject(),
+    id: savedReply._id.toString(),
+    time: formatRelativeTime(savedReply.createdAt),
+  };
 };
 
 export const getComments = async (postId, userId) => {
