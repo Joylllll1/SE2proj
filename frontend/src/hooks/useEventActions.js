@@ -2,13 +2,21 @@ import { useCallback } from 'react';
 import useEventStore from '../store/eventStore';
 import useUiStore from '../store/uiStore';
 
+// ─── Stable store selectors ───
+const selectApproveEvent = (s) => s.approveEvent;
+const selectRejectEvent = (s) => s.rejectEvent;
+const selectArchiveEvent = (s) => s.archiveEvent;
+const selectSubmitEvent = (s) => s.submitEvent;
+const selectShowToast = (s) => s.showToast;
+const selectAddNotif = (s) => s.addNotif;
+
 export default function useEventActions() {
-  const approveEvent = useEventStore((s) => s.approveEvent);
-  const rejectEvent = useEventStore((s) => s.rejectEvent);
-  const archiveEvent = useEventStore((s) => s.archiveEvent);
-  const submitEvent = useEventStore((s) => s.submitEvent);
-  const showToast = useUiStore((s) => s.showToast);
-  const addNotif = useUiStore((s) => s.addNotif);
+  const approveEvent = useEventStore(selectApproveEvent);
+  const rejectEvent = useEventStore(selectRejectEvent);
+  const archiveEvent = useEventStore(selectArchiveEvent);
+  const submitEvent = useEventStore(selectSubmitEvent);
+  const showToast = useUiStore(selectShowToast);
+  const addNotif = useUiStore(selectAddNotif);
 
   const handleApproveEvent = useCallback((event) => {
     const approved = approveEvent(event);

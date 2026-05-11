@@ -11,20 +11,32 @@ import useAuthStore from '../../store/authStore';
 import usePostActions from '../../hooks/usePostActions';
 import useLikeBookmark from '../../hooks/useLikeBookmark';
 
+// ─── Stable store selectors ───
+const selectPosts = (s) => s.posts;
+const selectLikedPosts = (s) => s.likedPosts;
+const selectLoading = (s) => s.loading;
+const selectFetchPosts = (s) => s.fetchPosts;
+const selectGetFilteredPosts = (s) => s.getFilteredPosts;
+const selectQuery = (s) => s.query;
+const selectNavigate = (s) => s.navigate;
+const selectShowToast = (s) => s.showToast;
+const selectBookmarks = (s) => s.bookmarks;
+const selectUser = (s) => s.user;
+
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
 
   // ── Stores ──
-  const posts = usePostStore((s) => s.posts);
-  const likedPosts = usePostStore((s) => s.likedPosts);
-  const loading = usePostStore((s) => s.loading);
-  const fetchPosts = usePostStore((s) => s.fetchPosts);
-  const getFilteredPosts = usePostStore((s) => s.getFilteredPosts);
-  const query = useUiStore((s) => s.query);
-  const navigate = useUiStore((s) => s.navigate);
-  const showToast = useUiStore((s) => s.showToast);
-  const bookmarks = useBookmarkStore((s) => s.bookmarks);
-  const user = useAuthStore((s) => s.user);
+  const posts = usePostStore(selectPosts);
+  const likedPosts = usePostStore(selectLikedPosts);
+  const loading = usePostStore(selectLoading);
+  const fetchPosts = usePostStore(selectFetchPosts);
+  const getFilteredPosts = usePostStore(selectGetFilteredPosts);
+  const query = useUiStore(selectQuery);
+  const navigate = useUiStore(selectNavigate);
+  const showToast = useUiStore(selectShowToast);
+  const bookmarks = useBookmarkStore(selectBookmarks);
+  const user = useAuthStore(selectUser);
 
   // ── Hooks ──
   const { openPost } = usePostActions();

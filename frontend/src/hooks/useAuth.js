@@ -1,15 +1,26 @@
 import useAuthStore from '../store/authStore';
 
+// ─── Stable store selectors (prevents zustand getSnapshot churn) ───
+const selectUser = (s) => s.user;
+const selectIsAuthenticated = (s) => s.isAuthenticated;
+const selectLoading = (s) => s.loading;
+const selectError = (s) => s.error;
+const selectLogin = (s) => s.login;
+const selectRegister = (s) => s.register;
+const selectLogout = (s) => s.logout;
+const selectRestoreSession = (s) => s.restoreSession;
+const selectClearError = (s) => s.clearError;
+
 export default function useAuth() {
-  const user = useAuthStore((s) => s.user);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const loading = useAuthStore((s) => s.loading);
-  const error = useAuthStore((s) => s.error);
-  const login = useAuthStore((s) => s.login);
-  const register = useAuthStore((s) => s.register);
-  const logout = useAuthStore((s) => s.logout);
-  const restoreSession = useAuthStore((s) => s.restoreSession);
-  const clearError = useAuthStore((s) => s.clearError);
+  const user = useAuthStore(selectUser);
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const loading = useAuthStore(selectLoading);
+  const error = useAuthStore(selectError);
+  const login = useAuthStore(selectLogin);
+  const register = useAuthStore(selectRegister);
+  const logout = useAuthStore(selectLogout);
+  const restoreSession = useAuthStore(selectRestoreSession);
+  const clearError = useAuthStore(selectClearError);
 
   return {
     user,

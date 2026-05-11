@@ -3,12 +3,19 @@ import usePostStore from '../store/postStore';
 import useBookmarkStore from '../store/bookmarkStore';
 import useUiStore from '../store/uiStore';
 
+// ─── Stable store selectors ───
+const selectToggleLike = (s) => s.toggleLike;
+const selectUpdateSaves = (s) => s.updateSaves;
+const selectToggleBookmark = (s) => s.toggleBookmark;
+const selectSelectFolder = (s) => s.selectFolder;
+const selectShowToast = (s) => s.showToast;
+
 export default function useLikeBookmark() {
-  const toggleLike = usePostStore((s) => s.toggleLike);
-  const updateSaves = usePostStore((s) => s.updateSaves);
-  const toggleBookmark = useBookmarkStore((s) => s.toggleBookmark);
-  const selectFolder = useBookmarkStore((s) => s.selectFolder);
-  const showToast = useUiStore((s) => s.showToast);
+  const toggleLike = usePostStore(selectToggleLike);
+  const updateSaves = usePostStore(selectUpdateSaves);
+  const toggleBookmark = useBookmarkStore(selectToggleBookmark);
+  const selectFolder = useBookmarkStore(selectSelectFolder);
+  const showToast = useUiStore(selectShowToast);
 
   const handleToggleLike = useCallback((postId) => {
     toggleLike(postId);

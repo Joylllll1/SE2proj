@@ -7,9 +7,13 @@ const DOMAINS = [
   { label: '@smail.nju.edu.cn', value: '@smail.nju.edu.cn' },
 ];
 
+// ─── Stable store selectors ───
+const selectLogin = (s) => s.login;
+const selectLoading = (s) => s.loading;
+
 export default function LoginPage({ onNavigate }) {
-  const login = useAuthStore((s) => s.login);
-  const loading = useAuthStore((s) => s.loading);
+  const login = useAuthStore(selectLogin);
+  const loading = useAuthStore(selectLoading);
 
   const [prefix, setPrefix] = React.useState('');
   const [domain, setDomain] = React.useState(DOMAINS[0].value);

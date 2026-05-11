@@ -8,9 +8,13 @@ const DOMAINS = [
   { label: '@smail.nju.edu.cn', value: '@smail.nju.edu.cn' },
 ];
 
+// ─── Stable store selectors ───
+const selectRegister = (s) => s.register;
+const selectLoading = (s) => s.loading;
+
 export default function RegisterPage({ onNavigate }) {
-  const register = useAuthStore((s) => s.register);
-  const loading = useAuthStore((s) => s.loading);
+  const register = useAuthStore(selectRegister);
+  const loading = useAuthStore(selectLoading);
 
   const [prefix, setPrefix] = React.useState('');
   const [domain, setDomain] = React.useState(DOMAINS[0].value);

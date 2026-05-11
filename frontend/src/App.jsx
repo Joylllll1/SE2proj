@@ -27,12 +27,40 @@ import useUiStore from './store/uiStore';
 import useLikeBookmark from './hooks/useLikeBookmark';
 import usePostActions from './hooks/usePostActions';
 
+// ─── Stable store selectors (prevents zustand getSnapshot churn) ───
+const selectInitialized = (s) => s.initialized;
+const selectFolderSelectorOpen = (s) => s.folderSelectorOpen;
+const selectCloseFolderSelector = (s) => s.closeFolderSelector;
+const selectCollectionFolders = (s) => s.collectionFolders;
+const selectSelectFolder = (s) => s.selectFolder;
+const selectToast = (s) => s.toast;
+const selectClearToast = (s) => s.clearToast;
+const selectShowToast = (s) => s.showToast;
+const selectAiOpen = (s) => s.aiOpen;
+const selectCloseAi = (s) => s.closeAi;
+const selectNotifs = (s) => s.notifs;
+const selectMarkAllNotifsRead = (s) => s.markAllNotifsRead;
+const selectActivePage = (s) => s.activePage;
+const selectNavigate = (s) => s.navigate;
+const selectQuery = (s) => s.query;
+const selectSetQuery = (s) => s.setQuery;
+const selectSelectedPost = (s) => s.selectedPost;
+const selectLikedPosts = (s) => s.likedPosts;
+const selectBookmarks = (s) => s.bookmarks;
+const selectCommentsMap = (s) => s.commentsMap;
+const selectFetchComments = (s) => s.fetchComments;
+const selectAddComment = (s) => s.addComment;
+const selectPosts = (s) => s.posts;
+const selectBookmarkFolders = (s) => s.bookmarkFolders;
+const selectUpdateFolders = (s) => s.updateFolders;
+const selectUpdateBookmarkFolders = (s) => s.updateBookmarkFolders;
+
 /* ─── App Root ─── */
 
 function App() {
   // ── Auth ──
   const { isAuthenticated, restoreSession } = useAuth();
-  const initialized = useAuthStore((s) => s.initialized);
+  const initialized = useAuthStore(selectInitialized);
 
   React.useEffect(() => {
     restoreSession();
@@ -46,20 +74,20 @@ function App() {
   }, []);
 
   // ── Stores ──
-  const folderSelectorOpen = useBookmarkStore((s) => s.folderSelectorOpen);
-  const closeFolderSelector = useBookmarkStore((s) => s.closeFolderSelector);
-  const collectionFolders = useBookmarkStore((s) => s.collectionFolders);
-  const selectFolder = useBookmarkStore((s) => s.selectFolder);
+  const folderSelectorOpen = useBookmarkStore(selectFolderSelectorOpen);
+  const closeFolderSelector = useBookmarkStore(selectCloseFolderSelector);
+  const collectionFolders = useBookmarkStore(selectCollectionFolders);
+  const selectFolder = useBookmarkStore(selectSelectFolder);
 
-  const toast = useUiStore((s) => s.toast);
-  const clearToast = useUiStore((s) => s.clearToast);
-  const showToast = useUiStore((s) => s.showToast);
-  const aiOpen = useUiStore((s) => s.aiOpen);
-  const closeAi = useUiStore((s) => s.closeAi);
-  const notifs = useUiStore((s) => s.notifs);
-  const markAllNotifsRead = useUiStore((s) => s.markAllNotifsRead);
-  const activePage = useUiStore((s) => s.activePage);
-  const navigate = useUiStore((s) => s.navigate);
+  const toast = useUiStore(selectToast);
+  const clearToast = useUiStore(selectClearToast);
+  const showToast = useUiStore(selectShowToast);
+  const aiOpen = useUiStore(selectAiOpen);
+  const closeAi = useUiStore(selectCloseAi);
+  const notifs = useUiStore(selectNotifs);
+  const markAllNotifsRead = useUiStore(selectMarkAllNotifsRead);
+  const activePage = useUiStore(selectActivePage);
+  const navigate = useUiStore(selectNavigate);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
   const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
@@ -69,27 +97,27 @@ function App() {
     }
   }, [isAuthenticated, activePage, navigate]);
 
-  const query = useUiStore((s) => s.query);
-  const setQuery = useUiStore((s) => s.setQuery);
+  const query = useUiStore(selectQuery);
+  const setQuery = useUiStore(selectSetQuery);
 
   // ── Detail Page ──
-  const selectedPost = usePostStore((s) => s.selectedPost);
-  const likedPosts = usePostStore((s) => s.likedPosts);
-  const bookmarks = useBookmarkStore((s) => s.bookmarks);
-  const commentsMap = useCommentStore((s) => s.commentsMap);
+  const selectedPost = usePostStore(selectSelectedPost);
+  const likedPosts = usePostStore(selectLikedPosts);
+  const bookmarks = useBookmarkStore(selectBookmarks);
+  const commentsMap = useCommentStore(selectCommentsMap);
   const comments = commentsMap[selectedPost?.id] || [];
-  const fetchComments = useCommentStore((s) => s.fetchComments);
-  const addComment = useCommentStore((s) => s.addComment);
+  const fetchComments = useCommentStore(selectFetchComments);
+  const addComment = useCommentStore(selectAddComment);
 
   // ── Hooks ──
   const { toggleLike, toggleBookmark, selectFolder: handleSelectFolder } = useLikeBookmark();
   const { openPost } = usePostActions();
 
   // ── Bookmarks page needs ──
-  const posts = usePostStore((s) => s.posts);
-  const bookmarkFolders = useBookmarkStore((s) => s.bookmarkFolders);
-  const updateFolders = useBookmarkStore((s) => s.updateFolders);
-  const updateBookmarkFolders = useBookmarkStore((s) => s.updateBookmarkFolders);
+  const posts = usePostStore(selectPosts);
+  const bookmarkFolders = useBookmarkStore(selectBookmarkFolders);
+  const updateFolders = useBookmarkStore(selectUpdateFolders);
+  const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;

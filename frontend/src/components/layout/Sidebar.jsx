@@ -11,8 +11,10 @@ const navItems = [
   { id: 'settings', label: '个人设置', icon: 'person' },
 ];
 
+const selectLogout = (s) => s.logout;
+
 function Sidebar({ activePage, onNavigate }) {
-  const logout = useAuthStore((s) => s.logout);
+  const logout = useAuthStore(selectLogout);
 
   const handleLogout = () => {
     logout();
