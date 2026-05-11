@@ -69,12 +69,12 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
   const slide = slides[active];
 
   return (
-    <section className="relative grid min-h-[280px] grid-cols-[1fr_0.88fr] gap-6 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-gradient-to-br from-[#fdf4f0] via-[#f8e8e8] to-[#f0e0e4] p-7 shadow-sm max-md:grid-cols-1 max-md:p-5">
-      {/* Decorative blob */}
+    <section className="relative grid min-h-[280px] grid-cols-[1fr_0.88fr] gap-6 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[#fffcfb] p-7 shadow-[0_2px_16px_rgba(180,160,150,0.1),0_0_0_1px_rgba(230,210,200,0.3)] max-md:grid-cols-1 max-md:p-5">
+      {/* Decorative rose gradient accent */}
       <div
-        className="pointer-events-none absolute -right-[10%] -top-[40%] h-[400px] w-[400px] rounded-full opacity-25"
+        className="pointer-events-none absolute -left-[8%] -top-[30%] h-[360px] w-[360px] rounded-full opacity-[0.18]"
         style={{
-          background: 'radial-gradient(circle, var(--color-rose) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--color-rose) 0%, var(--color-lavender) 50%, transparent 70%)',
         }}
       />
       <div
@@ -105,7 +105,7 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
         </div>
       </div>
       <div
-        className={`relative z-[1] min-h-[220px] overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white/40 shadow-sm transition-all duration-300 ${
+        className={`relative z-[1] min-h-[220px] overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white/60 shadow-[inset_0_1px_3px_rgba(180,160,150,0.06)] transition-all duration-300 ${
           isTransitioning ? 'scale-[1.02] opacity-0' : ''
         }`}
       >
