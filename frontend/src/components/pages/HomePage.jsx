@@ -1,23 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
 import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import DailyFortune from '../features/DailyFortune';
 import { TrendingTopics } from '../features/DailyLuck';
+import usePostStore from '../../store/postStore';
+import useBookmarkStore from '../../store/bookmarkStore';
+import useUiStore from '../../store/uiStore';
+import useAuthStore from '../../store/authStore';
+import usePostActions from '../../hooks/usePostActions';
+import useLikeBookmark from '../../hooks/useLikeBookmark';
 
-function HomePage({ posts: visiblePosts, query, onOpenPost, onNavigate, likedPosts, bookmarks, onLike, onBookmark, onReport, carouselItems = [], onCarouselItemClick, showToast, userId }) {
+export default function HomePage() {
   const [sort, setSort] = useState('latest');
+
+  // ── Stores ──
+  const posts = usePostStore((s) => s.posts);
+  const likedPosts = usePostStore((s) => s.likedPosts);
+  const loading = usePostStore((s) => s.loading);
+  const fetchPosts = usePostStore((s) => s.fetchPosts);
+  const getFilteredPosts = usePostStore((s) => s.getFilteredPosts);
+  const query = useUiStore((s) => s.query);
+  const navigate = useUiStore((s) => s.navigate);
+  const showToast = useUiStore((s) => s.showToast);
+  const bookmarks = useBookmarkStore((s) => s.bookmarks);
+  const user = useAuthStore((s) => s.user);
+
+  // ── Hooks ──
+  const { openPost } = usePostActions();
+  const { toggleLike, toggleBookmark } = useLikeBookmark();
+
+  // ── Fetch posts on mount ──
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  const userId = user?._id || null;
+
+  const visiblePosts = getFilteredPosts(query);
 
   const sorted = [...visiblePosts].sort((a, b) => {
     if (sort === 'likes') return b.likes - a.likes;
-    return 0; // latest = insertion order
+    return 0;
   });
+
+  // Remove duplicate render caused by scrollbar on filtering
+  const handleReport = () => {
+    showToast('举报功能即将上线');
+  };
+
+  const handleCarouselClick = () => {
+    navigate('announcements');
+  };
 
   return (
     <div className="home-grid grid grid-cols-[minmax(0,1fr)_320px] gap-5 max-w-[1380px] mx-auto max-lg:grid-cols-1">
       <section className="min-w-0">
-        <HeroCarousel onNavigate={onNavigate} carouselItems={carouselItems} onCarouselItemClick={onCarouselItemClick} />
+        <HeroCarousel onNavigate={navigate} onCarouselItemClick={handleCarouselClick} />
         <div className="overview-strip grid grid-cols-3 gap-3.5 mt-[18px] max-lg:grid-cols-1">
           <article className="overview-card p-4 rounded-md border border-line bg-white/80 shadow-xs">
             <span className="overview-label inline-block mb-1.5 text-blue text-[11px] font-bold tracking-widest uppercase">匿名表达</span>
@@ -59,25 +99,30 @@ function HomePage({ posts: visiblePosts, query, onOpenPost, onNavigate, likedPos
         </div>
         {query && (
           <p className="result-hint mb-[14px] text-text-2 text-sm">
-            搜索 &quot;{query}&quot; 找到 {visiblePosts.length} 条相关树洞。
+            搜索 &quot;{query}&quot; 找到 {sorted.length} 条相关树洞。
           </p>
         )}
         <div className="post-list grid gap-4">
-          {sorted.length > 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-text-3">
+              <Icon name="hourglass_empty" className="mr-2" />
+              加载中...
+            </div>
+          ) : sorted.length > 0 ? (
             sorted.map((post) => (
               <PostCard
                 key={post.id}
                 post={post}
-                onOpen={() => onOpenPost(post)}
+                onOpen={() => openPost(post)}
                 liked={likedPosts.includes(post.id)}
                 bookmarked={bookmarks.includes(post.id)}
-                onLike={() => onLike(post.id)}
-                onBookmark={() => onBookmark(post.id)}
-                onReport={onReport}
+                onLike={() => toggleLike(post.id)}
+                onBookmark={() => toggleBookmark(post.id)}
+                onReport={handleReport}
               />
             ))
           ) : (
-            <EmptyState title="树洞里暂时没有找到相关话题" description="换一个关键词，或者去发布第一条相关动态。" />
+            <EmptyState title="树洞里暂时没有相关话题" description="发布第一条树洞吧！" />
           )}
         </div>
       </section>
@@ -88,5 +133,3 @@ function HomePage({ posts: visiblePosts, query, onOpenPost, onNavigate, likedPos
     </div>
   );
 }
-
-export default HomePage;

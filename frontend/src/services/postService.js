@@ -1,52 +1,40 @@
-import { storageService } from './storageService';
-import { genId, CURRENT_USER_ID } from '../utils';
+const API_BASE = '';
 
-const STORAGE_KEY = 'nju_posts';
-
-export async function getPosts() {
-  return storageService.load(STORAGE_KEY, []);
+async function request(path, options = {}) {
+  const token = localStorage.getItem('accessToken');
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const error = new Error(data?.error || '请求失败');
+    error.status = res.status;
+    error.data = data;
+    throw error;
+  }
+  return data;
 }
 
-export async function persistPosts(posts) {
-  return storageService.save(STORAGE_KEY, posts);
+export async function fetchPosts(page = 1, query = '') {
+  const params = new URLSearchParams({ page, limit: 20 });
+  if (query) params.set('query', query);
+  return request(`/api/posts?${params}`);
 }
 
-export async function createPost(postData) {
-  const posts = await getPosts();
-  const newPost = {
-    ...postData,
-    id: genId(),
-    ownerUserId: CURRENT_USER_ID,
-    time: '刚刚',
-    likes: 0,
-    comments: 0,
-    saves: 0,
-  };
-  const updated = [newPost, ...posts];
-  await persistPosts(updated);
-  return newPost;
+export async function fetchPostById(id) {
+  return request(`/api/posts/${id}`);
 }
 
-export async function updateLikes(postId, increment) {
-  const posts = await getPosts();
-  const updated = posts.map((p) =>
-    p.id === postId ? { ...p, likes: Math.max(0, p.likes + increment) } : p,
-  );
-  await persistPosts(updated);
+export async function createPost(data) {
+  return request('/api/posts', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updateSaves(postId, increment) {
-  const posts = await getPosts();
-  const updated = posts.map((p) =>
-    p.id === postId ? { ...p, saves: Math.max(0, p.saves + increment) } : p,
-  );
-  await persistPosts(updated);
+export async function deletePost(id) {
+  return request(`/api/posts/${id}`, { method: 'DELETE' });
 }
 
-export async function updateCommentCount(postId, increment) {
-  const posts = await getPosts();
-  const updated = posts.map((p) =>
-    p.id === postId ? { ...p, comments: Math.max(0, p.comments + increment) } : p,
-  );
-  await persistPosts(updated);
+export async function toggleLike(id) {
+  return request(`/api/posts/${id}/like`, { method: 'POST' });
 }

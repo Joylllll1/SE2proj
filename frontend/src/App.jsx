@@ -114,7 +114,7 @@ function App() {
           onMarkAllRead={markAllNotifsRead}
         />
         <main className="p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
-          {activePage === 'home' && <UnderConstruction feature="首页" />}
+          {activePage === 'home' && <HomePage />}
           {activePage === 'trending' && <UnderConstruction feature="热门" />}
           {activePage === 'detail' && <UnderConstruction feature="帖子详情" />}
           {activePage === 'compose' && <UnderConstruction feature="发帖" />}
