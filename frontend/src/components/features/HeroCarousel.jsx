@@ -135,14 +135,14 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
         }}
       />
 
-      {/* 两层 grid 叠加实现交叉淡入淡出 */}
-      <div className="col-start-1 row-start-1 grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5"
-        style={{ opacity: showTransition ? 0 : 1, transition: `opacity ${DURATION}ms ease` }}>
+      {/* 当前内容：始终可见，不参与过渡 */}
+      <div className="col-start-1 row-start-1 z-[1] grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5">
         <SlideContent slide={slides[active]} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
       </div>
 
+      {/* 新内容：在旧内容之上淡入 */}
       {showTransition && (
-        <div className="col-start-1 row-start-1 grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5"
+        <div className="col-start-1 row-start-1 z-[2] grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5"
           style={{ animation: `carousel-fade-in ${DURATION}ms ease` }}>
           <SlideContent slide={slides[pending]} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
         </div>
