@@ -1084,7 +1084,7 @@ h1, h2, h3, p {
 }
 
 .comment-actions button {
-  @apply inline-flex items-center gap-1 px-0 py-0 border-0 bg-transparent text-inherit font-bold;
+  @apply inline-flex items-center gap-1 px-0 py-0 border-0 bg-transparent font-bold;
 }
 
 .comment-actions .app-icon {

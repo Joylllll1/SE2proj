@@ -31,7 +31,6 @@ function Comment({ comment, postId, onReply, onReport }) {
           <div className="comment-meta flex items-center justify-between gap-[8px]">
             <div className="flex items-center gap-[8px]">
               <strong>{displayName}</strong>
-              <span className="comment-id text-xs font-semibold text-text-3">#{comment.id}</span>
               {comment.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
             </div>
             {onReport && (
