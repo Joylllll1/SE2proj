@@ -21,12 +21,6 @@ function Comment({ comment, postId, onReply, onReport }) {
     setShowReportModal(false);
   };
 
-  // ── Reply display helpers ──
-  const isReply = comment.parentUserId && comment.parentUserId !== comment.userId;
-  const parentName = isReply
-    ? getDisplayName(comment.parentUserId, postId)
-    : null;
-
   return (
     <>
       <article className={`comment ${comment.official ? 'official' : ''} flex gap-[12px] relative`}>
@@ -56,23 +50,22 @@ function Comment({ comment, postId, onReply, onReport }) {
             <span>{comment.time}</span>
             <button type="button" onClick={onReply}>回复</button>
             <button type="button" onClick={handleLike} className={`inline-flex items-center gap-1 transition-colors duration-150 ${comment.isLiked ? 'text-blue' : 'hover:text-blue'}`}>
-              <Icon name={comment.isLiked ? 'thumb_up' : 'thumb_up_off_alt'} /> {comment.likes}
+              <Icon name="thumb_up" /> {comment.likes}
             </button>
           </div>
           {comment.replies.length > 0 && (
             <div className="reply-list mt-[14px] pl-[14px] border-l-2 border-line">
               {comment.replies.map((reply) => {
                 const replyName = getDisplayName(reply.userId, postId);
-                const replyTarget = reply.parentUserId || reply.replyToUserId;
-                const targetName = replyTarget ? getDisplayName(replyTarget, postId) : null;
+                const isDifferentAuthor = reply.userId !== comment.userId;
                 return (
                   <div className="reply mb-3 last:mb-0" key={reply.id}>
-                    <strong>
+                    <span className="comment-id text-xs font-semibold text-text-3 block">#{reply.id}</span>
+                    <strong className="text-sm">
                       {replyName}
-                      {targetName && (
-                        <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {targetName}</span>
+                      {isDifferentAuthor && (
+                        <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {getDisplayName(comment.userId, postId)}</span>
                       )}
-                      <span className="comment-id text-xs font-semibold text-text-3 ml-1">#{reply.id}</span>
                     </strong>
                     <p className="my-[6px]">{reply.content}</p>
                     <span className="text-[13px] text-text-2">{reply.time} · {reply.likes} 赞</span>
