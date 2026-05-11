@@ -119,6 +119,13 @@ function App() {
   const updateFolders = useBookmarkStore(selectUpdateFolders);
   const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
 
+  // ── Load comments when entering detail page ──
+  React.useEffect(() => {
+    if (activePage === 'detail' && selectedPost?.id) {
+      fetchComments(selectedPost.id);
+    }
+  }, [activePage, selectedPost?.id, fetchComments]);
+
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
 
@@ -160,13 +167,6 @@ function App() {
       showToast(err.message || '发布失败');
     }
   };
-
-  // ── Load comments when entering detail page ──
-  React.useEffect(() => {
-    if (activePage === 'detail' && selectedPost?.id) {
-      fetchComments(selectedPost.id);
-    }
-  }, [activePage, selectedPost?.id, fetchComments]);
 
   const handleComment = async (content) => {
     if (!selectedPost) return;
