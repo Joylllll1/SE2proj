@@ -27,18 +27,26 @@ const useCommentStore = create((set, get) => ({
   },
 
   toggleLike: async (commentId) => {
-    const result = await commentService.toggleLike(commentId);
+    const previous = get().commentsMap;
+    // Optimistic update: toggle isLiked immediately
     set((state) => {
       const updated = { ...state.commentsMap };
       for (const postId of Object.keys(updated)) {
         updated[postId] = updated[postId].map((c) =>
           c.id === commentId || c._id === commentId
-            ? { ...c, likes: result.likes, isLiked: result.liked }
+            ? { ...c, isLiked: !c.isLiked, likes: c.isLiked ? Math.max(0, c.likes - 1) : c.likes + 1 }
             : c,
         );
       }
       return { commentsMap: updated };
     });
+    // Then sync with the API
+    try {
+      await commentService.toggleLike(commentId);
+    } catch {
+      // Rollback on failure
+      set({ commentsMap: previous });
+    }
   },
 
   addReply: async (commentId, content, official = false) => {
