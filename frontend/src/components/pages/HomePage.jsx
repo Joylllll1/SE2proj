@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
-import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import DailyFortune from '../features/DailyFortune';
-import { TrendingTopics } from '../features/DailyLuck';
 import usePostStore from '../../store/postStore';
 import useBookmarkStore from '../../store/bookmarkStore';
 import useUiStore from '../../store/uiStore';
@@ -45,20 +43,14 @@ export default function HomePage() {
     return 0;
   });
 
-  // Remove duplicate render caused by scrollbar on filtering
   const handleReport = () => {
     showToast('举报功能即将上线');
-  };
-
-  const handleCarouselClick = () => {
-    navigate('announcements');
   };
 
   return (
     <div className="home-grid grid grid-cols-[minmax(0,1fr)_320px] gap-5 max-w-[1380px] mx-auto max-lg:grid-cols-1">
       <section className="min-w-0">
-        <HeroCarousel onNavigate={navigate} onCarouselItemClick={handleCarouselClick} />
-        <div className="overview-strip grid grid-cols-3 gap-3.5 mt-[18px] max-lg:grid-cols-1">
+        <div className="overview-strip grid grid-cols-3 gap-3.5 max-lg:grid-cols-1">
           <article className="overview-card p-4 rounded-md border border-line bg-white/80 shadow-xs">
             <span className="overview-label inline-block mb-1.5 text-blue text-[11px] font-bold tracking-widest uppercase">匿名表达</span>
             <strong className="block text-[17px] tracking-tight">同帖稳定身份</strong>
@@ -84,10 +76,13 @@ export default function HomePage() {
             {[
               ['latest', '最新发布'],
               ['likes', '高赞共鸣'],
-              ['topics', '话题聚焦'],
             ].map(([key, label]) => (
               <button
-                className={`border border-line rounded-full bg-white text-text-2 font-semibold shadow-xs px-[14px] py-2 text-[13px] transition-colors duration-150 hover:border-[#b0c4de] hover:text-blue ${sort === key ? 'active text-white border-[#1d1d1f] bg-[#1d1d1f]' : ''} max-sm:flex-1`}
+                className={`rounded-full px-[14px] py-2 text-[13px] font-semibold transition-all duration-150 ${
+                  sort === key
+                    ? 'bg-blue-soft text-blue border border-blue'
+                    : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
+                } max-sm:flex-1`}
                 key={key}
                 onClick={() => setSort(key)}
                 type="button"
@@ -128,7 +123,6 @@ export default function HomePage() {
       </section>
       <aside className="right-rail sticky top-[80px] grid self-start gap-4 max-lg:static max-lg:grid-cols-3 max-sm:grid-cols-1">
         <DailyFortune userId={userId} showToast={showToast} />
-        <TrendingTopics />
       </aside>
     </div>
   );
