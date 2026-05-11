@@ -1,40 +1,25 @@
 import React from 'react';
-import Icon from './components/common/Icon';
 import Toast from './components/common/Toast';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import AIPanel from './components/features/AIPanel';
 import HomePage from './components/pages/HomePage';
-import DetailPage from './components/pages/DetailPage';
-import ComposePage from './components/pages/ComposePage';
-import BookmarksPage from './components/pages/BookmarksPage';
-import AnnouncementsPage from './components/pages/AnnouncementsPage';
-import TrendingPage from './components/pages/TrendingPage';
 import SettingsPage from './components/pages/SettingsPage';
-import AdminPage from './components/pages/AdminPage';
-import TodoPage from './components/pages/TodoPage';
 import LandingPage from './components/pages/LandingPage';
 import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
 import ForgetPasswordPage from './components/pages/ForgetPasswordPage';
+import UnderConstruction from './components/common/UnderConstruction';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
 import { getUserId } from './utils';
 
 // ─── Stores ───
-import usePostStore from './store/postStore';
-import useCommentStore from './store/commentStore';
 import useBookmarkStore from './store/bookmarkStore';
-import useEventStore from './store/eventStore';
 import useUiStore from './store/uiStore';
 
 // ─── Hooks ───
-import usePostActions from './hooks/usePostActions';
 import useLikeBookmark from './hooks/useLikeBookmark';
-import useEventActions from './hooks/useEventActions';
-
-// ─── Services ───
-import { getReports, createReport, dismissReport } from './services/reportService';
 
 /* ─── App Root ─── */
 
@@ -55,31 +40,10 @@ function App() {
   }, []);
 
   // ── Stores ──
-  const posts = usePostStore((s) => s.posts);
-  const likedPosts = usePostStore((s) => s.likedPosts);
-  const selectedPost = usePostStore((s) => s.selectedPost);
-  const addPost = usePostStore((s) => s.addPost);
-
-  const commentsMap = useCommentStore((s) => s.commentsMap);
-  const addCommentStore = useCommentStore((s) => s.addComment);
-
-  const bookmarks = useBookmarkStore((s) => s.bookmarks);
-  const collectionFolders = useBookmarkStore((s) => s.collectionFolders);
-  const bookmarkFolders = useBookmarkStore((s) => s.bookmarkFolders);
   const folderSelectorOpen = useBookmarkStore((s) => s.folderSelectorOpen);
-  const selectFolder = useBookmarkStore((s) => s.selectFolder);
   const closeFolderSelector = useBookmarkStore((s) => s.closeFolderSelector);
-  const updateFolders = useBookmarkStore((s) => s.updateFolders);
-  const updateBookmarkFolders = useBookmarkStore((s) => s.updateBookmarkFolders);
-  const migrateBookmarks = useBookmarkStore((s) => s.migrateBookmarks);
-  const toggleBookmarkStore = useBookmarkStore((s) => s.toggleBookmark);
-
-  const pendingEvents = useEventStore((s) => s.pendingEvents);
-  const approvedEvents = useEventStore((s) => s.approvedEvents);
-  const archivedEvents = useEventStore((s) => s.archivedEvents);
-  const carouselItems = useEventStore((s) => s.carouselItems);
-  const updateCarousel = useEventStore((s) => s.updateCarousel);
-  const submitEvent = useEventStore((s) => s.submitEvent);
+  const collectionFolders = useBookmarkStore((s) => s.collectionFolders);
+  const selectFolder = useBookmarkStore((s) => s.selectFolder);
 
   const toast = useUiStore((s) => s.toast);
   const clearToast = useUiStore((s) => s.clearToast);
@@ -100,37 +64,9 @@ function App() {
 
   const query = useUiStore((s) => s.query);
   const setQuery = useUiStore((s) => s.setQuery);
-  const showToast = useUiStore((s) => s.showToast);
-  const eventToOpen = useUiStore((s) => s.eventToOpen);
-  const openEventFromCarousel = useUiStore((s) => s.openEventFromCarousel);
 
   // ── Hooks ──
-  const { openPost } = usePostActions();
-  const { toggleLike: handleLike, toggleBookmark: handleBookmark, selectFolder: handleSelectFolder } = useLikeBookmark();
-  const { approveEvent, rejectEvent, archiveEvent } = useEventActions();
-
-  // ── Local state (reports are admin-only, no store needed) ──
-  const [reports, setReports] = React.useState([]);
-  React.useEffect(() => {
-    getReports().then(setReports);
-  }, []);
-
-  // Migration for bookmarks
-  React.useEffect(() => {
-    migrateBookmarks();
-  }, [migrateBookmarks]);
-
-  // ── Computed ──
-  const filteredPosts = React.useMemo(() => {
-    if (!query || !query.trim()) return posts;
-    const q = query.trim().toLowerCase();
-    return posts.filter((p) => {
-      const text = `${p.title} ${p.content} ${(p.tags || []).join(' ')}`.toLowerCase();
-      return text.includes(q);
-    });
-  }, [posts, query]);
-
-  const CURRENT_USER_ID = getUserId();
+  const { selectFolder: handleSelectFolder } = useLikeBookmark();
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
@@ -160,24 +96,6 @@ function App() {
   }
 
   // ── Handlers ──
-  const addComment = (postId, content, official = false) => {
-    addCommentStore(postId, content, official);
-  };
-
-  const handleReport = (postId, reason) => {
-    createReport(postId, reason, '举报人: 用户' + CURRENT_USER_ID.slice(-4)).then((newReport) => {
-      setReports((prev) => [newReport, ...prev]);
-    });
-    showToast('举报已提交，感谢反馈');
-  };
-
-  const handleDismissReport = (reportId) => {
-    dismissReport(reportId).then(() => {
-      setReports((prev) => prev.filter((r) => r.id !== reportId));
-    });
-    showToast('已处理');
-  };
-
   const handleToggleAi = () => {
     useUiStore.getState().toggleAi();
   };
@@ -196,68 +114,13 @@ function App() {
           onMarkAllRead={markAllNotifsRead}
         />
         <main className="p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
-          {activePage === 'home' && <TodoPage />}
-          {activePage === 'trending' && (
-            <TrendingPage onOpenPost={openPost} />
-          )}
-          {activePage === 'detail' && selectedPost && (
-            <DetailPage
-              post={selectedPost}
-              comments={commentsMap[selectedPost.id] || []}
-              liked={likedPosts.includes(selectedPost.id)}
-              bookmarked={bookmarks.includes(selectedPost.id)}
-              onLike={() => handleLike(selectedPost.id)}
-              onBookmark={() => handleBookmark(selectedPost.id)}
-              onComment={(content) => addComment(selectedPost.id, content)}
-              onNavigate={navigate}
-              onReport={handleReport}
-            />
-          )}
-          {activePage === 'compose' && (
-            <ComposePage onPublish={addPost} />
-          )}
-          {activePage === 'bookmarks' && (
-            <BookmarksPage
-              posts={posts}
-              bookmarks={bookmarks}
-              likedPosts={likedPosts}
-              onOpenPost={openPost}
-              onLike={handleLike}
-              onBookmark={handleBookmark}
-              onReport={handleReport}
-              collectionFolders={collectionFolders}
-              bookmarkFolders={bookmarkFolders}
-              onUpdateFolders={updateFolders}
-              onUpdateBookmarkFolders={updateBookmarkFolders}
-            />
-          )}
-          {activePage === 'announcements' && (
-            <AnnouncementsPage
-              showToast={showToast}
-              pendingEvents={pendingEvents}
-              approvedEvents={approvedEvents}
-              archivedEvents={archivedEvents}
-              onArchiveEvent={archiveEvent}
-              onSubmitEvent={(ev) => {
-                submitEvent(ev);
-                showToast('活动申请已提交，等待管理员审核');
-              }}
-              initialEventId={eventToOpen}
-            />
-          )}
-          {activePage === 'admin' && (
-            <AdminPage
-              posts={posts}
-              reports={reports}
-              onDismiss={handleDismissReport}
-              pendingEvents={pendingEvents}
-              onApproveEvent={approveEvent}
-              onRejectEvent={rejectEvent}
-              carouselItems={carouselItems}
-              onUpdateCarousel={updateCarousel}
-              approvedEvents={approvedEvents}
-            />
-          )}
+          {activePage === 'home' && <UnderConstruction feature="首页" />}
+          {activePage === 'trending' && <UnderConstruction feature="热门" />}
+          {activePage === 'detail' && <UnderConstruction feature="帖子详情" />}
+          {activePage === 'compose' && <UnderConstruction feature="发帖" />}
+          {activePage === 'bookmarks' && <UnderConstruction feature="收藏" />}
+          {activePage === 'announcements' && <UnderConstruction feature="公告活动" />}
+          {activePage === 'admin' && <UnderConstruction feature="管理后台" />}
           {activePage === 'settings' && <SettingsPage />}
         </main>
       </div>
