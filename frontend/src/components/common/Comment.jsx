@@ -57,13 +57,13 @@ function Comment({ comment, postId, onReply, onReport }) {
             <div className="reply-list mt-[14px] pl-[14px] border-l-2 border-line">
               {comment.replies.map((reply) => {
                 const replyName = getDisplayName(reply.ownerUserId, postId);
-                const isDifferentAuthor = String(reply.ownerUserId) !== String(comment.ownerUserId);
+                const commentAuthorName = getDisplayName(comment.ownerUserId, postId);
                 return (
-                  <div className="reply mb-3 last:mb-0" key={reply.id || reply._id}>
+                  <div className="reply mb-3 last:mb-0" key={reply.id || String(reply._id)}>
                     <strong className="text-sm">
                       {replyName}
-                      {isDifferentAuthor && (
-                        <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {getDisplayName(comment.ownerUserId, postId)}</span>
+                      {String(reply.ownerUserId) !== String(comment.ownerUserId) && (
+                        <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {commentAuthorName}</span>
                       )}
                     </strong>
                     <p className="my-[6px]">{reply.content}</p>
