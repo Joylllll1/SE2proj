@@ -23,7 +23,7 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
               </div>
               <div>
                 <strong className="block text-sm">{authorName}</strong>
-                <span className="block mt-0.5 text-text-3 text-xs">{post.time} · {post.campus}</span>
+                <span className="block mt-0.5 text-text-3 text-xs">{post.time}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">

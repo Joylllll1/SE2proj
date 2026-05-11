@@ -15,7 +15,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
   const commentFileRef = useRef(null);
 
   const sortedComments = [...comments].sort((a, b) => {
-    if (commentSort === 'likes') return b.likes - a.likes;
+    if (commentSort === 'likes') return (b.likes || 0) - (a.likes || 0);
     return 0;
   });
 
@@ -102,12 +102,9 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
         />
         <div className="owner-tools flex items-center gap-3 mt-4 p-3 rounded-md bg-surface-tint">
           <Icon name="shield_person" />
-          <div className="grid flex-1 gap-0.5">
-            <strong className="text-sm font-bold">帖主管理工具</strong>
-            <span className="text-text-2 text-[13px]">你可以修改分类、置顶优质评论或删除不当回复。</span>
+          <div className="flex-1">
+            <strong className="text-sm font-bold">帖主管理工具 (即将上线)</strong>
           </div>
-          <button type="button">修改分类</button>
-          <button type="button">置顶评论</button>
         </div>
       </section>
       <section className="comments-section mt-7">
@@ -122,7 +119,11 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
               ['likes', '按热度'],
             ].map(([key, label]) => (
               <button
-                className={`border border-line rounded-full bg-white text-text-2 font-semibold shadow-xs px-[14px] py-2 text-[13px] transition-colors duration-150 hover:border-[#b0c4de] hover:text-blue ${commentSort === key ? 'active text-white border-[#1d1d1f] bg-[#1d1d1f]' : ''}`}
+                className={`rounded-full px-[14px] py-2 text-[13px] font-semibold transition-all duration-150 ${
+                  commentSort === key
+                    ? 'bg-blue-soft text-blue border border-blue'
+                    : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
+                }`}
                 key={key}
                 onClick={() => setCommentSort(key)}
                 type="button"

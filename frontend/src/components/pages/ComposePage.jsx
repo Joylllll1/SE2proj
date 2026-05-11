@@ -51,7 +51,6 @@ function ComposePage({ onPublish }) {
       mood: moodLabel || '平静',
       moodType: moodType || 'calm',
       tags: tags.length > 0 ? tags : ['树洞'],
-      campus: '仙林校区',
       image: imageUrl || undefined,
     });
   };
