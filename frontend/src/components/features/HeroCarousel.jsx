@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const WELCOME_SLIDES = [
   {
@@ -19,75 +19,27 @@ const WELCOME_SLIDES = [
   },
 ];
 
-// ── 注入一次动画样式 ──
+// 交叉淡入淡出时长
+const DURATION = 400;
+
+// 入场动画
 const STYLE_ID = 'carousel-anim';
 if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   const el = document.createElement('style');
   el.id = STYLE_ID;
   el.textContent = `
-    @keyframes carousel-text-in {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes carousel-img-in {
-      from { opacity: 0; transform: scale(0.96); }
-      to { opacity: 1; transform: scale(1); }
+    @keyframes carousel-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
   `;
   document.head.appendChild(el);
 }
 
-function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
-  const [active, setActive] = useState(0);
-
-  const carouselSlides = carouselItems.map((item) => ({
-    tag: item.type,
-    title: item.title,
-    subtitle: '',
-    desc: item.description
-      ? `${item.time} · ${item.place}。${item.description}`
-      : `${item.time} · ${item.place}。`,
-    image: item.image || item.poster,
-    action: 'announcements',
-    eventId: item.id,
-  }));
-
-  const slides = carouselSlides.length > 0 ? carouselSlides : WELCOME_SLIDES;
-
-  const handleSlideClick = () => {
-    const currentSlide = slides[active];
-    if (currentSlide.eventId && onCarouselItemClick) {
-      onCarouselItemClick(currentSlide.eventId);
-    } else {
-      onNavigate(currentSlide.action);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActive((prev) => (prev + 1) % slides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [slides.length]);
-
-  const slide = slides[active];
-
+function SlideContent({ slide, onNavigate, handleSlideClick }) {
   return (
-    <section className="relative grid min-h-[280px] grid-cols-[1fr_0.88fr] gap-6 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[#fffcfb] p-7 shadow-[0_2px_16px_rgba(180,160,150,0.1),0_0_0_1px_rgba(230,210,200,0.3)] max-md:grid-cols-1 max-md:p-5">
-      {/* 装饰渐变 */}
-      <div
-        className="pointer-events-none absolute -left-[8%] -top-[30%] h-[360px] w-[360px] rounded-full opacity-[0.18]"
-        style={{
-          background: 'radial-gradient(circle, var(--color-rose) 0%, var(--color-lavender) 50%, transparent 70%)',
-        }}
-      />
-
-      {/* 文字内容：key 变化触重新挂载 + 入场动画 */}
-      <div
-        key={active}
-        className="relative z-[1] self-center"
-        style={{ animation: 'carousel-text-in 0.35s ease-out both' }}
-      >
+    <>
+      <div className="relative z-[1] self-center">
         <span className="inline-flex w-fit items-center gap-[5px] rounded-full border border-[var(--color-rose)] bg-[var(--color-rose)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--color-blue)]">
           {slide.tag}
         </span>
@@ -110,19 +62,91 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
           </button>
         </div>
       </div>
-
-      {/* 图片：略有延迟的缩放入场 */}
-      <div
-        key={`img-${active}`}
-        className="relative z-[1] min-h-[220px] overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white/60 shadow-[inset_0_1px_3px_rgba(180,160,150,0.06)]"
-        style={{ animation: 'carousel-img-in 0.4s ease-out both' }}
-      >
+      <div className="relative z-[1] min-h-[220px] overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white/60 shadow-[inset_0_1px_3px_rgba(180,160,150,0.06)]">
         <img
           alt=""
           src={slide.image}
           className="h-full w-full object-cover [filter:saturate(0.9)_contrast(0.95)]"
         />
       </div>
+    </>
+  );
+}
+
+function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
+  const [active, setActive] = useState(0);
+  const [pending, setPending] = useState(null);
+
+  const carouselSlides = carouselItems.map((item) => ({
+    tag: item.type,
+    title: item.title,
+    subtitle: '',
+    desc: item.description
+      ? `${item.time} · ${item.place}。${item.description}`
+      : `${item.time} · ${item.place}。`,
+    image: item.image || item.poster,
+    action: 'announcements',
+    eventId: item.id,
+  }));
+
+  const slides = carouselSlides.length > 0 ? carouselSlides : WELCOME_SLIDES;
+
+  const initiateChange = useCallback((nextIndex) => {
+    if (nextIndex === active || pending !== null) return;
+    setPending(nextIndex);
+    setTimeout(() => {
+      setActive(nextIndex);
+      setPending(null);
+    }, DURATION);
+  }, [active, pending]);
+
+  const handleSlideClick = () => {
+    const idx = pending ?? active;
+    const slide = slides[idx];
+    if (slide.eventId && onCarouselItemClick) {
+      onCarouselItemClick(slide.eventId);
+    } else {
+      onNavigate(slide.action);
+    }
+  };
+
+  useEffect(() => {
+    if (pending !== null) return;
+    const timer = setInterval(() => {
+      const next = (active + 1) % slides.length;
+      setPending(next);
+      setTimeout(() => {
+        setActive(next);
+        setPending(null);
+      }, DURATION);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [active, slides.length, pending]);
+
+  const showTransition = pending !== null;
+
+  return (
+    <section className="relative grid grid-cols-1 grid-rows-1 min-h-[280px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[#fffcfb] shadow-[0_2px_16px_rgba(180,160,150,0.1),0_0_0_1px_rgba(230,210,200,0.3)] max-md:p-5">
+      {/* 装饰渐变 */}
+      <div
+        className="pointer-events-none absolute -left-[8%] -top-[30%] h-[360px] w-[360px] rounded-full opacity-[0.18]"
+        style={{
+          background: 'radial-gradient(circle, var(--color-rose) 0%, var(--color-lavender) 50%, transparent 70%)',
+        }}
+      />
+
+      {/* 两层 grid 叠加实现交叉淡入淡出 */}
+      <div className="col-start-1 row-start-1 grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5"
+        style={{ opacity: showTransition ? 0 : 1, transition: `opacity ${DURATION}ms ease` }}>
+        <SlideContent slide={slides[active]} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
+      </div>
+
+      {showTransition && (
+        <div className="col-start-1 row-start-1 grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5"
+          style={{ animation: `carousel-fade-in ${DURATION}ms ease` }}>
+          <SlideContent slide={slides[pending]} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
+        </div>
+      )}
 
       {/* 指示点 */}
       <div className="absolute bottom-5 right-7 z-[2] flex gap-[7px]">
@@ -132,7 +156,7 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
               i === active ? 'w-7 bg-[var(--color-blue)]' : 'h-[7px] w-[7px] bg-[var(--color-line)]'
             }`}
             key={i}
-            onClick={() => setActive(i)}
+            onClick={() => initiateChange(i)}
           />
         ))}
       </div>
