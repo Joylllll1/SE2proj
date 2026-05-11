@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const WELCOME_SLIDES = [
   {
@@ -18,23 +18,6 @@ const WELCOME_SLIDES = [
     action: 'compose',
   },
 ];
-
-// 交叉淡入淡出时长
-const DURATION = 400;
-
-// 入场动画
-const STYLE_ID = 'carousel-anim';
-if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
-  const el = document.createElement('style');
-  el.id = STYLE_ID;
-  el.textContent = `
-    @keyframes carousel-fade-in {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-  `;
-  document.head.appendChild(el);
-}
 
 function SlideContent({ slide, onNavigate, handleSlideClick }) {
   return (
@@ -75,7 +58,6 @@ function SlideContent({ slide, onNavigate, handleSlideClick }) {
 
 function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
   const [active, setActive] = useState(0);
-  const [pending, setPending] = useState(null);
 
   const carouselSlides = carouselItems.map((item) => ({
     tag: item.type,
@@ -91,18 +73,8 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
 
   const slides = carouselSlides.length > 0 ? carouselSlides : WELCOME_SLIDES;
 
-  const initiateChange = useCallback((nextIndex) => {
-    if (nextIndex === active || pending !== null) return;
-    setPending(nextIndex);
-    setTimeout(() => {
-      setActive(nextIndex);
-      setPending(null);
-    }, DURATION);
-  }, [active, pending]);
-
   const handleSlideClick = () => {
-    const idx = pending ?? active;
-    const slide = slides[idx];
+    const slide = slides[active];
     if (slide.eventId && onCarouselItemClick) {
       onCarouselItemClick(slide.eventId);
     } else {
@@ -111,23 +83,15 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
   };
 
   useEffect(() => {
-    if (pending !== null) return;
     const timer = setInterval(() => {
-      const next = (active + 1) % slides.length;
-      setPending(next);
-      setTimeout(() => {
-        setActive(next);
-        setPending(null);
-      }, DURATION);
+      setActive((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [active, slides.length, pending]);
-
-  const showTransition = pending !== null;
+  }, [slides.length]);
 
   return (
-    <section className="relative grid grid-cols-1 grid-rows-1 min-h-[280px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[#fffcfb] shadow-[0_2px_16px_rgba(180,160,150,0.1),0_0_0_1px_rgba(230,210,200,0.3)] max-md:p-5">
-      {/* 装饰渐变 */}
+    <section className="relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[#fffcfb] shadow-[0_2px_16px_rgba(180,160,150,0.1),0_0_0_1px_rgba(230,210,200,0.3)]">
+      {/* 装饰渐变（背景层，不随滑动移动） */}
       <div
         className="pointer-events-none absolute -left-[8%] -top-[30%] h-[360px] w-[360px] rounded-full opacity-[0.18]"
         style={{
@@ -135,18 +99,19 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
         }}
       />
 
-      {/* 当前内容：始终可见，不参与过渡 */}
-      <div className="col-start-1 row-start-1 z-[1] grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5">
-        <SlideContent slide={slides[active]} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
-      </div>
-
-      {/* 新内容：在旧内容之上淡入 */}
-      {showTransition && (
-        <div className="col-start-1 row-start-1 z-[2] grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5"
-          style={{ animation: `carousel-fade-in ${DURATION}ms ease` }}>
-          <SlideContent slide={slides[pending]} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
+      {/* 幻灯片容器：overflow hidden + flex 横向排列，translateX 滑动切换 */}
+      <div className="overflow-hidden">
+        <div
+          className="flex transition-transform duration-[400ms] ease-in-out"
+          style={{ transform: `translateX(-${active * 100}%)` }}
+        >
+          {slides.map((slide, i) => (
+            <div key={i} className="min-h-[280px] w-full flex-shrink-0 grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5">
+              <SlideContent slide={slide} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* 指示点 */}
       <div className="absolute bottom-5 right-7 z-[2] flex gap-[7px]">
@@ -156,7 +121,7 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
               i === active ? 'w-7 bg-[var(--color-blue)]' : 'h-[7px] w-[7px] bg-[var(--color-line)]'
             }`}
             key={i}
-            onClick={() => initiateChange(i)}
+            onClick={() => setActive(i)}
           />
         ))}
       </div>
