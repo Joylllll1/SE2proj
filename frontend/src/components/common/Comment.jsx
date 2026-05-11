@@ -62,9 +62,7 @@ function Comment({ comment, postId, onReply, onReport }) {
                   <div className="reply mb-3 last:mb-0" key={reply.id || String(reply._id)}>
                     <strong className="text-sm">
                       {replyName}
-                      {String(reply.ownerUserId) !== String(comment.ownerUserId) && (
-                        <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {commentAuthorName}</span>
-                      )}
+                      <span className="reply-arrow text-text-3 mx-1 text-xs">▸ {commentAuthorName}</span>
                     </strong>
                     <p className="my-[6px]">{reply.content}</p>
                     <span className="text-[13px] text-text-2">{reply.time || ''} · {reply.likes} 赞</span>
