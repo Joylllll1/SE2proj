@@ -31,8 +31,11 @@ export const addReply = async (userId, commentId, content, official = false) => 
 
   const savedReply = comment.replies[comment.replies.length - 1];
   return {
-    ...savedReply.toObject(),
     id: savedReply._id.toString(),
+    ownerUserId: savedReply.ownerUserId.toString(),
+    content: savedReply.content,
+    official: savedReply.official,
+    likes: savedReply.likes || 0,
     time: formatRelativeTime(savedReply.createdAt),
   };
 };
@@ -49,6 +52,7 @@ export const getComments = async (postId, userId) => {
     replies: (c.replies || []).map((r) => ({
       ...r,
       id: r._id.toString(),
+      ownerUserId: typeof r.ownerUserId === 'object' ? r.ownerUserId.toString() : r.ownerUserId,
       time: formatRelativeTime(r.createdAt),
     })),
     isLiked: userId ? c.likedBy?.some((id) => id.toString() === userId) : false,
