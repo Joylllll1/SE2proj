@@ -27,6 +27,8 @@ export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => 
     ...p,
     id: p._id.toString(),
     time: formatRelativeTime(p.createdAt),
+    likes: p.likes || 0,
+    saves: p.saves || 0,
     isLiked: userId ? p.likedBy?.some((id) => id.toString() === userId) : false,
   }));
 
@@ -46,6 +48,8 @@ export const getPostById = async (postId, userId) => {
     ...post,
     id: post._id.toString(),
     time: formatRelativeTime(post.createdAt),
+    likes: post.likes || 0,
+    saves: post.saves || 0,
     isLiked: userId ? post.likedBy?.some((id) => id.toString() === userId) : false,
   };
 };
