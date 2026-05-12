@@ -29,8 +29,10 @@ const usePostStore = create((set, get) => ({
   },
 
   toggleLike: async (postId) => {
-    const previous = get().likedPosts;
-    const wasLiked = previous.includes(postId);
+    const previousPosts = get().posts;
+    const previousSelected = get().selectedPost;
+    const previousLiked = get().likedPosts;
+    const wasLiked = previousLiked.includes(postId);
     set((state) => {
       const updatedPosts = state.posts.map((p) =>
         p.id === postId
@@ -55,14 +57,30 @@ const usePostStore = create((set, get) => ({
       };
     });
     try {
-      await postService.toggleLike(postId);
+      const result = await postService.toggleLike(postId);
+      // 用服务器返回的真实状态覆盖，确保同步
+      const { liked, likes } = result.data;
+      set((state) => ({
+        likedPosts: liked
+          ? [...new Set([...state.likedPosts, postId])]
+          : state.likedPosts.filter((id) => id !== postId),
+        posts: state.posts.map((p) =>
+          p.id === postId ? { ...p, isLiked: liked, likes } : p,
+        ),
+        selectedPost:
+          state.selectedPost?.id === postId
+            ? { ...state.selectedPost, isLiked: liked, likes }
+            : state.selectedPost,
+      }));
     } catch {
-      set({ likedPosts: previous });
+      // 完整回滚：防止 API 失败时 likedPosts 和 posts 不同步导致的计数偏移
+      set({ posts: previousPosts, selectedPost: previousSelected, likedPosts: previousLiked });
     }
   },
 
   toggleSave: async (postId) => {
-    const previous = get().posts;
+    const previousPosts = get().posts;
+    const previousSelected = get().selectedPost;
     // Optimistic update
     set((state) => ({
       posts: state.posts.map((p) =>
@@ -84,7 +102,8 @@ const usePostStore = create((set, get) => ({
     try {
       await postService.toggleSave(postId);
     } catch {
-      set({ posts: previous });
+      // 完整回滚
+      set({ posts: previousPosts, selectedPost: previousSelected });
     }
   },
 
