@@ -178,6 +178,16 @@ function App() {
     }
   };
 
+  const handleReply = async (commentId, content) => {
+    if (!selectedPost) return;
+    try {
+      await useCommentStore.getState().addReply(commentId, content);
+      usePostStore.getState().updateCommentCount(selectedPost.id, 1);
+    } catch (err) {
+      showToast(err.message || '回复失败');
+    }
+  };
+
   const handleReport = () => {
     showToast('举报功能即将上线');
   };
@@ -208,6 +218,7 @@ function App() {
                 onLike={() => toggleLike(selectedPost.id)}
                 onBookmark={() => toggleBookmark(selectedPost.id)}
                 onComment={handleComment}
+                onReply={handleReply}
                 onNavigate={navigate}
                 onReport={handleReport}
               />

@@ -4,22 +4,26 @@ import PostCard from '../common/PostCard';
 import Comment from '../common/Comment';
 import { getDisplayName } from '../../utils';
 
-function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onComment, onNavigate, onReport }) {
-  const [commentText, setCommentText] = useState('');
+function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onComment, onReply, onNavigate, onReport }) {
   const [commentSort, setCommentSort] = useState('time');
-  const [replyingTo, setReplyingTo] = useState(null);
+
+  // 主评论输入框
+  const [commentText, setCommentText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
-  const [showMentions, setShowMentions] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
   const [commentImage, setCommentImage] = useState('');
   const commentFileRef = useRef(null);
+
+  // 回复输入框
+  const [replyTarget, setReplyTarget] = useState(null); // { commentId, authorName }
+  const [replyText, setReplyText] = useState('');
+  const replyInputRef = useRef(null);
 
   const sortedComments = [...comments].sort((a, b) => {
     if (commentSort === 'likes') return (b.likes || 0) - (a.likes || 0);
     return 0;
   });
 
-  const handleSubmit = () => {
+  const handleCommentSubmit = () => {
     if (!commentText.trim() && !commentImage) return;
     let finalContent = commentText.trim();
     if (commentImage) {
@@ -28,36 +32,34 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
     onComment(finalContent);
     setCommentText('');
     setCommentImage('');
-    setReplyingTo(null);
   };
 
-  const handleTextChange = (e) => {
-    const val = e.target.value;
-    setCommentText(val);
-    // detect @ mention
-    const lastAtIndex = val.lastIndexOf('@');
-    if (lastAtIndex !== -1 && (lastAtIndex === 0 || val[lastAtIndex - 1] === ' ')) {
-      const query = val.slice(lastAtIndex + 1);
-      if (query.length > 0 && !query.includes(' ')) {
-        setMentionQuery(query);
-        setShowMentions(true);
-      } else {
-        setShowMentions(false);
-      }
-    } else {
-      setShowMentions(false);
-    }
+  const handleReplyClick = (comment) => {
+    const authorName = getDisplayName(comment.ownerUserId, post.id);
+    setReplyTarget({ commentId: comment.id || comment._id, authorName });
+    setReplyText('');
+    // 滚动到回复框
+    setTimeout(() => replyInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   };
 
-  const insertMention = (name) => {
-    const lastAtIndex = commentText.lastIndexOf('@');
-    const before = commentText.slice(0, lastAtIndex);
-    setCommentText(before + '@' + name + ' ');
-    setShowMentions(false);
+  const handleReplySubmit = () => {
+    if (!replyText.trim() || !replyTarget) return;
+    onReply(replyTarget.commentId, replyText.trim());
+    setReplyText('');
+    setReplyTarget(null);
+  };
+
+  const handleCancelReply = () => {
+    setReplyText('');
+    setReplyTarget(null);
   };
 
   const insertEmoji = (emoji) => {
-    setCommentText((prev) => prev + emoji);
+    if (replyTarget) {
+      setReplyText((prev) => prev + emoji);
+    } else {
+      setCommentText((prev) => prev + emoji);
+    }
     setShowEmoji(false);
   };
 
@@ -68,9 +70,6 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
       setCommentImage(url);
     }
   };
-
-  // build mention suggestions from comment authors in this thread
-  const mentionSuggestions = [...new Set(comments.map((c) => getDisplayName(c.ownerUserId, post.id)))];
 
   const EMOJI_LIST = ['😊', '😂', '🥺', '😭', '❤️', '👍', '🎉', '🤔', '💪', '✨', '🙏', '😅', '🥰', '😢', '😤', '🤝', '💯', '🔥', '👀', '💕'];
 
@@ -107,6 +106,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
           </div>
         </div>
       </section>
+
       <section className="comments-section mt-7">
         <div className="section-head flex items-end justify-between gap-[18px] max-sm:flex-col max-sm:items-stretch">
           <div>
@@ -133,12 +133,46 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
             ))}
           </div>
         </div>
+
+        {/* 回复输入框 - 单独显示 */}
+        {replyTarget && (
+          <div ref={replyInputRef} className="reply-input p-[14px] rounded-md border border-blue bg-blue-soft mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-blue font-semibold">回复 {replyTarget.authorName}</span>
+              <button type="button" className="text-text-3 hover:text-text" onClick={handleCancelReply}>取消</button>
+            </div>
+            <textarea
+              className="w-full min-h-[60px] border border-line-soft rounded-md p-2 bg-white outline-0 resize-y text-text"
+              placeholder={`回复 ${replyTarget.authorName}...`}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              autoFocus
+            />
+            <div className="flex items-center justify-between gap-4 mt-2">
+              <button type="button" className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-white hover:text-blue" onClick={() => setShowEmoji(!showEmoji)} aria-label="表情">
+                <Icon name="sentiment_satisfied" />
+              </button>
+              {showEmoji && (
+                <div className="emoji-picker flex flex-wrap gap-1 p-2.5 border border-line rounded-sm bg-white shadow-sm">
+                  {EMOJI_LIST.map((emoji) => (
+                    <button key={emoji} className="emoji-item w-8 h-8 grid place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-lg cursor-pointer transition-colors duration-150 hover:bg-surface-soft" onClick={() => insertEmoji(emoji)} type="button">{emoji}</button>
+                  ))}
+                </div>
+              )}
+              <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleReplySubmit} type="button" disabled={!replyText.trim()}>
+                发送回复
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 主评论输入框 */}
         <div className="comment-input p-[14px] rounded-md border border-line-soft bg-surface">
           <textarea
             className="w-full min-h-[86px] border-0 outline-0 bg-transparent text-text resize-y"
-            placeholder={replyingTo ? `回复 ${replyingTo}...` : '发布你的神回复，或给楼主一点支持...'}
+            placeholder="发布你的神回复，或给楼主一点支持..."
             value={commentText}
-            onChange={handleTextChange}
+            onChange={(e) => setCommentText(e.target.value)}
           />
           {commentImage && (
             <div className="comment-image-preview relative mt-2.5">
@@ -146,17 +180,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
               <button type="button" className="comment-image-remove absolute top-1.5 left-1.5 grid w-6 h-6 place-items-center px-0 py-0 border-0 rounded-full bg-black/60 text-white text-base cursor-pointer" onClick={() => setCommentImage('')}>&times;</button>
             </div>
           )}
-          {showMentions && (
-            <div className="mention-dropdown flex flex-col gap-0.5 p-1.5 border border-line rounded-sm bg-white shadow-sm mb-2.5 max-h-[200px] overflow-y-auto">
-              {mentionSuggestions
-                .filter((n) => n.toLowerCase().includes(mentionQuery.toLowerCase()))
-                .slice(0, 5)
-                .map((name) => (
-                  <button key={name} className="mention-item px-3 py-2 border-0 rounded-md bg-transparent text-text text-sm font-bold text-left cursor-pointer transition-colors duration-150 hover:bg-blue-soft hover:text-blue" onClick={() => insertMention(name)} type="button">@{name}</button>
-                ))}
-            </div>
-          )}
-          {showEmoji && (
+          {showEmoji && !replyTarget && (
             <div className="emoji-picker flex flex-wrap gap-1 p-2.5 border border-line rounded-sm bg-white shadow-sm mb-2.5">
               {EMOJI_LIST.map((emoji) => (
                 <button key={emoji} className="emoji-item w-8 h-8 grid place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-lg cursor-pointer transition-colors duration-150 hover:bg-surface-soft" onClick={() => insertEmoji(emoji)} type="button">{emoji}</button>
@@ -165,25 +189,23 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
           )}
           <div className="flex items-center justify-between gap-4 pt-2.5 border-t border-line-soft">
             <span className="comment-toolbar flex gap-2">
-              <button type="button" className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-surface-soft hover:text-blue" onClick={() => { setShowEmoji(!showEmoji); setShowMentions(false); }} aria-label="表情">
+              <button type="button" className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-surface-soft hover:text-blue" onClick={() => { setShowEmoji(!showEmoji); }} aria-label="表情">
                 <Icon name="sentiment_satisfied" />
               </button>
               <button type="button" className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-surface-soft hover:text-blue" onClick={() => commentFileRef.current?.click()} aria-label="图片">
                 <Icon name="image" />
               </button>
               <input ref={commentFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleCommentImage} />
-              <button type="button" className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-surface-soft hover:text-blue" onClick={() => { setCommentText((prev) => prev + '@'); setShowMentions(false); }} aria-label="@提及">
-                <Icon name="alternate_email" />
-              </button>
             </span>
-            <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSubmit} type="button" disabled={!commentText.trim() && !commentImage}>
+            <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleCommentSubmit} type="button" disabled={!commentText.trim() && !commentImage}>
               发表评论
             </button>
           </div>
         </div>
+
         <div className="comment-list grid gap-3.5 mt-4">
           {sortedComments.map((comment) => (
-            <Comment key={comment.id} comment={comment} postId={post.id} onReply={() => setReplyingTo(getDisplayName(comment.ownerUserId, post.id))} onReport={onReport} />
+            <Comment key={comment.id} comment={comment} postId={post.id} onReply={() => handleReplyClick(comment)} onReport={onReport} />
           ))}
         </div>
       </section>
