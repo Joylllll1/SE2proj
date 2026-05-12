@@ -59,7 +59,7 @@ const usePostStore = create((set, get) => ({
     try {
       const result = await postService.toggleLike(postId);
       // 用服务器返回的真实状态覆盖，确保同步
-      const { liked, likes } = result.data;
+      const { liked, likes } = result;
       set((state) => ({
         likedPosts: liked
           ? [...new Set([...state.likedPosts, postId])]
