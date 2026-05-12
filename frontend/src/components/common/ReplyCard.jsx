@@ -7,7 +7,7 @@ import useCommentStore from '../../store/commentStore';
 // ─── Stable store selectors ───
 const selectToggleReplyLike = (s) => s.toggleReplyLike;
 
-function ReplyCard({ reply, comment, postId, onReply, onReport }) {
+function ReplyCard({ reply, postId, onReply, onReport }) {
   const toggleReplyLike = useCommentStore(selectToggleReplyLike);
   const [showReportModal, setShowReportModal] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -15,10 +15,10 @@ function ReplyCard({ reply, comment, postId, onReply, onReport }) {
   const replyInputRef = useRef(null);
 
   const replyName = reply.official ? '官方小助手' : getDisplayName(reply.ownerUserId, postId);
-  const commentAuthorName = comment.official ? '官方小助手' : getDisplayName(comment.ownerUserId, postId);
+  const parentAuthorName = reply.parentOfficial ? '官方小助手' : getDisplayName(reply.parentAuthorId, postId);
 
   const handleLike = () => {
-    const commentId = comment.id || comment._id;
+    const commentId = reply.parentId;
     const replyId = reply.id || reply._id;
     toggleReplyLike(commentId, replyId);
   };
@@ -34,29 +34,29 @@ function ReplyCard({ reply, comment, postId, onReply, onReport }) {
   };
 
   const handleReplySubmit = (content) => {
-    const commentId = comment.id || comment._id;
+    const commentId = reply.parentId;
     const replyId = reply.id || reply._id;
     onReply(replyId, content);
     setShowReplyInput(false);
   };
 
   // 判断内容是否超过2行（简单判断：字符数超过60）
-  const isLongContent = comment.content.length > 60;
-  const displayContent = expanded || !isLongContent ? comment.content : comment.content.slice(0, 60) + '...';
+  const isLongContent = (reply.parentContent || '').length > 60;
+  const displayContent = expanded || !isLongContent
+    ? reply.parentContent
+    : reply.parentContent.slice(0, 60) + '...';
 
   return (
     <>
-      <article className="reply-card flex gap-[12px] mt-[14px] pl-[14px] border-l-2 border-line">
-        <div className="flex-none">
-          <div className="w-[34px] h-[34px] grid place-items-center border border-line rounded-[8px] bg-surface-soft text-text-3">
-            <Icon name="chat_bubble" />
-          </div>
+      <article className="reply-card flex gap-[12px] relative">
+        <div className="anon-avatar small grid w-[34px] h-[34px] flex-none place-items-center border border-line rounded-[8px] bg-surface-soft text-text-3">
+          <Icon name={reply.official ? 'verified_user' : 'person'} />
         </div>
         <div className="reply-body flex-1 p-4 rounded-md border border-line-soft bg-surface">
           {/* 被回复内容引用 */}
           <div className="quoted-content p-2 mb-3 rounded-md bg-[#f5f5f5] border border-[#e0e0e0] text-text-2 text-sm">
             <div className={`font-semibold text-text mb-1 ${isLongContent && !expanded ? 'line-clamp-2' : ''}`}>
-              {commentAuthorName}:
+              引用: {parentAuthorName}:
             </div>
             <div className={isLongContent && !expanded ? 'line-clamp-2' : ''}>
               {displayContent}
@@ -75,7 +75,10 @@ function ReplyCard({ reply, comment, postId, onReply, onReport }) {
           {/* 回复内容 */}
           <div className="reply-main">
             <div className="reply-meta flex items-center justify-between gap-[8px] mb-2">
-              <strong>{replyName}</strong>
+              <div className="flex items-center gap-[8px]">
+                <strong>{replyName}</strong>
+                {reply.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
+              </div>
               {onReport && (
                 <button
                   className="flex-shrink-0 grid w-7 h-7 place-items-center border-0 rounded-full bg-transparent text-text-3 hover:bg-black/5 hover:text-text transition-colors duration-150"
@@ -87,9 +90,10 @@ function ReplyCard({ reply, comment, postId, onReply, onReport }) {
                 </button>
               )}
             </div>
-            <p className="my-[6px]">回复 {commentAuthorName}: {reply.content}</p>
+            <p className="my-[6px]">回复 {parentAuthorName}: {reply.content}</p>
             <div className="reply-actions flex gap-[14px] text-text-3 text-xs font-semibold">
               <span>{reply.time}</span>
+              <button type="button" onClick={handleReplyClick}>回复</button>
               <button
                 type="button"
                 onClick={handleLike}
@@ -97,12 +101,11 @@ function ReplyCard({ reply, comment, postId, onReply, onReport }) {
               >
                 <Icon name="thumb_up" /> {reply.likes || 0}
               </button>
-              <button type="button" onClick={handleReplyClick}>回复</button>
             </div>
 
             {/* 回复输入框 - 显示在回复卡片正下方 */}
             {showReplyInput && (
-              <InlineReplyInput
+              <ReplyInput
                 ref={replyInputRef}
                 replyToName={replyName}
                 onSubmit={handleReplySubmit}
@@ -125,8 +128,8 @@ function ReplyCard({ reply, comment, postId, onReply, onReport }) {
   );
 }
 
-// 内联回复输入框组件
-const InlineReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) => {
+// 回复输入框组件
+const ReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) => {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
 
@@ -193,6 +196,6 @@ const InlineReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, 
   );
 });
 
-InlineReplyInput.displayName = 'InlineReplyInput';
+ReplyInput.displayName = 'ReplyInput';
 
 export default ReplyCard;

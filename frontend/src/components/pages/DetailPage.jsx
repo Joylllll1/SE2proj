@@ -2,9 +2,12 @@ import React, { useState, useRef } from 'react';
 import Icon from '../common/Icon';
 import PostCard from '../common/PostCard';
 import Comment from '../common/Comment';
+import ReplyCard from '../common/ReplyCard';
+import useCommentStore from '../../store/commentStore';
 
 function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onComment, onReply, onNavigate, onReport }) {
   const [commentSort, setCommentSort] = useState('time');
+  const getFlatComments = useCommentStore((s) => s.getFlatComments);
 
   // 主评论输入框
   const [commentText, setCommentText] = useState('');
@@ -12,7 +15,10 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
   const [commentImage, setCommentImage] = useState('');
   const commentFileRef = useRef(null);
 
-  const sortedComments = [...comments].sort((a, b) => {
+  // 获取扁平化的评论列表
+  const flatComments = getFlatComments(post.id);
+
+  const sortedFlatComments = [...flatComments].sort((a, b) => {
     if (commentSort === 'likes') return (b.likes || 0) - (a.likes || 0);
     return 0;
   });
@@ -81,7 +87,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
         <div className="section-head flex items-end justify-between gap-[18px] max-sm:flex-col max-sm:items-stretch">
           <div>
             <p className="eyebrow mb-[18px] text-blue text-xs font-bold tracking-widest uppercase">Discussion</p>
-            <h2 className="m-0 text-xl tracking-tight">全部评论 ({comments.length})</h2>
+            <h2 className="m-0 text-xl tracking-tight">全部评论 ({flatComments.length})</h2>
           </div>
           <div className="tabs flex flex-wrap gap-2">
             {[
@@ -141,10 +147,30 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
           </div>
         </div>
 
+        {/* 扁平化的评论和回复列表 */}
         <div className="comment-list grid gap-3.5 mt-4">
-          {sortedComments.map((comment) => (
-            <Comment key={comment.id} comment={comment} postId={post.id} onReply={onReply} onReport={onReport} />
-          ))}
+          {sortedFlatComments.map((item) => {
+            if (item.itemType === 'reply') {
+              return (
+                <ReplyCard
+                  key={item.id || item._id}
+                  reply={item}
+                  postId={post.id}
+                  onReply={onReply}
+                  onReport={onReport}
+                />
+              );
+            }
+            return (
+              <Comment
+                key={item.id || item._id}
+                comment={item}
+                postId={post.id}
+                onReply={onReply}
+                onReport={onReport}
+              />
+            );
+          })}
         </div>
       </section>
     </div>

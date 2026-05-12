@@ -15,6 +15,32 @@ const useCommentStore = create((set, get) => ({
     }
   },
 
+  // 获取扁平化的评论列表（评论和回复平级）
+  getFlatComments: (postId) => {
+    const comments = get().commentsMap[postId] || [];
+    const flatList = [];
+
+    comments.forEach((comment) => {
+      // 添加评论
+      flatList.push({ ...comment, itemType: 'comment' });
+      // 添加评论下的所有回复
+      if (comment.replies && comment.replies.length > 0) {
+        comment.replies.forEach((reply) => {
+          flatList.push({
+            ...reply,
+            itemType: 'reply',
+            parentId: comment.id || comment._id,
+            parentContent: comment.content,
+            parentAuthorId: comment.ownerUserId,
+            parentOfficial: comment.official,
+          });
+        });
+      }
+    });
+
+    return flatList;
+  },
+
   addComment: async (postId, content, official = false) => {
     const comment = await commentService.createComment(postId, content, official);
     set((state) => {

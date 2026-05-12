@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
-import ReplyCard from './ReplyCard';
 import { getDisplayName } from '../../utils';
 import useCommentStore from '../../store/commentStore';
 
@@ -75,22 +74,6 @@ function Comment({ comment, postId, onReply, onReport }) {
               onSubmit={handleReplySubmit}
               onCancel={() => setShowReplyInput(false)}
             />
-          )}
-
-          {/* 渲染回复列表 - 独立卡片形式 */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="replies-section mt-[14px]">
-              {comment.replies.map((reply) => (
-                <ReplyCard
-                  key={reply.id || reply._id}
-                  reply={reply}
-                  comment={comment}
-                  postId={postId}
-                  onReply={onReply}
-                  onReport={onReport}
-                />
-              ))}
-            </div>
           )}
         </div>
       </article>
