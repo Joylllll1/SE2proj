@@ -55,18 +55,16 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
         <div className="reply-body flex-1 p-4 rounded-md border border-line-soft bg-surface">
           {/* 被回复内容引用 */}
           <div className="quoted-content p-2 mb-3 rounded-md bg-[#f5f5f5] border border-[#e0e0e0] text-text-2 text-sm">
-            <div className={`font-semibold text-text mb-1 ${isLongContent && !expanded ? 'line-clamp-2' : ''}`}>
-              {parentAuthorName}
+            <div>
+              <strong className="text-text text-sm">{parentAuthorName}</strong>
+              <span className="block mt-0.5 text-text-3 text-xs">{formatTimeAgo(reply.parentTime)}</span>
             </div>
-            <div className={isLongContent && !expanded ? 'line-clamp-2' : ''}>
-              {displayContent}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-text-3 text-xs">{formatTimeAgo(reply.parentTime)}</span>
+            <div className="mt-2">
+              <span className={isLongContent && !expanded ? 'line-clamp-2' : ''}>{displayContent}</span>
               {isLongContent && (
                 <button
                   type="button"
-                  className="text-blue text-xs hover:underline"
+                  className="text-blue text-xs hover:underline ml-2"
                   onClick={() => setExpanded(!expanded)}
                 >
                   {expanded ? '[收起]' : '[展开]'}
@@ -78,7 +76,10 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
           {/* 回复内容 */}
           <div className="reply-meta flex items-center justify-between gap-[8px] mb-2">
             <div className="flex items-center gap-[8px]">
-              <strong>{replyName} · {formatTimeAgo(reply.createdAt)}</strong>
+              <div>
+                <strong className="text-sm">{replyName}</strong>
+                <span className="block mt-0.5 text-text-3 text-xs">{formatTimeAgo(reply.createdAt)}</span>
+              </div>
               {reply.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
             </div>
             {onReport && (

@@ -43,7 +43,10 @@ function Comment({ comment, postId, onReply, onReport }) {
         <div className="comment-body flex-1 p-4 rounded-md border border-line-soft bg-surface">
           <div className="comment-meta flex items-center justify-between gap-[8px]">
             <div className="flex items-center gap-[8px]">
-              <strong>{displayName} · {formatTimeAgo(comment.createdAt)}</strong>
+              <div>
+                <strong className="text-sm">{displayName}</strong>
+                <span className="block mt-0.5 text-text-3 text-xs">{formatTimeAgo(comment.createdAt)}</span>
+              </div>
               {comment.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
             </div>
             {onReport && (
