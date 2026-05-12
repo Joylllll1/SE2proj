@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
-import { getDisplayName, formatTimeAgo } from '../../utils';
+import TimeAgo from './TimeAgo';
+import { getDisplayName } from '../../utils';
 import useCommentStore from '../../store/commentStore';
 
 // ─── Stable store selectors ───
@@ -57,7 +58,7 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
           <div className="quoted-content p-2 mb-3 rounded-md bg-[#f5f5f5] border border-[#e0e0e0] text-text-2 text-sm">
             <div>
               <strong className="text-text text-sm">{parentAuthorName}</strong>
-              <span className="block mt-0.5 text-text-3 text-xs">{formatTimeAgo(reply.parentTime)}</span>
+              <TimeAgo timeString={reply.parentTime} className="block mt-0.5 text-text-3 text-xs" />
             </div>
             <div className="mt-2">
               <span className={isLongContent && !expanded ? 'line-clamp-2' : ''}>{displayContent}</span>
@@ -78,7 +79,7 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
             <div className="flex items-center gap-[8px]">
               <div>
                 <strong className="text-sm">{replyName}</strong>
-                <span className="block mt-0.5 text-text-3 text-xs">{formatTimeAgo(reply.createdAt)}</span>
+                <TimeAgo timeString={reply.createdAt} className="block mt-0.5 text-text-3 text-xs" />
               </div>
               {reply.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
             </div>
@@ -133,6 +134,8 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
 const ReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) => {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [image, setImage] = useState('');
+  const fileRef = useRef(null);
 
   React.useEffect(() => {
     ref.current?.focus();
@@ -140,10 +143,22 @@ const ReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) =
 
   const EMOJI_LIST = ['😊', '😂', '🥺', '😭', '❤️', '👍', '🎉', '🤔', '💪', '✨', '🙏', '😅', '🥰', '😢', '😤', '🤝', '💯', '🔥', '👀', '💕'];
 
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = () => {
-    if (!text.trim()) return;
-    onSubmit(text.trim());
+    if (!text.trim() && !image) return;
+    let content = text.trim();
+    if (image) {
+      content += '\n[图片]';
+    }
+    onSubmit(content);
     setText('');
+    setImage('');
   };
 
   return (
@@ -158,15 +173,32 @@ const ReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) =
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
+      {image && (
+        <div className="comment-image-preview relative mt-2.5">
+          <img src={image} alt="preview" className="max-w-[200px] max-h-[150px] rounded-md object-cover" />
+          <button type="button" className="comment-image-remove absolute top-1.5 left-1.5 grid w-6 h-6 place-items-center px-0 py-0 border-0 rounded-full bg-black/60 text-white text-base cursor-pointer" onClick={() => setImage('')}>&times;</button>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-4 mt-2">
-        <button
-          type="button"
-          className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-white hover:text-blue"
-          onClick={() => setShowEmoji(!showEmoji)}
-          aria-label="表情"
-        >
-          <Icon name="sentiment_satisfied" />
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-white hover:text-blue"
+            onClick={() => setShowEmoji(!showEmoji)}
+            aria-label="表情"
+          >
+            <Icon name="sentiment_satisfied" />
+          </button>
+          <button
+            type="button"
+            className="toolbar-btn grid w-8 h-8 place-items-center px-0 py-0 border-0 rounded-md bg-transparent text-text-3 cursor-pointer transition-colors duration-150 hover:bg-white hover:text-blue"
+            onClick={() => fileRef.current?.click()}
+            aria-label="图片"
+          >
+            <Icon name="image" />
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
+        </div>
         {showEmoji && (
           <div className="emoji-picker absolute mt-8 flex flex-wrap gap-1 p-2.5 border border-line rounded-sm bg-white shadow-sm z-10">
             {EMOJI_LIST.map((emoji) => (
@@ -188,7 +220,7 @@ const ReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) =
           className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleSubmit}
           type="button"
-          disabled={!text.trim()}
+          disabled={!text.trim() && !image}
         >
           发送回复
         </button>

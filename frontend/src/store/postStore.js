@@ -34,7 +34,7 @@ const usePostStore = create((set, get) => ({
     set((state) => {
       const updatedPosts = state.posts.map((p) =>
         p.id === postId
-          ? { ...p, likes: wasLiked ? p.likes - 1 : p.likes + 1 }
+          ? { ...p, likes: wasLiked ? p.likes - 1 : p.likes + 1, isLiked: !wasLiked }
           : p,
       );
       return {
@@ -49,6 +49,7 @@ const usePostStore = create((set, get) => ({
                 likes: wasLiked
                   ? state.selectedPost.likes - 1
                   : state.selectedPost.likes + 1,
+                isLiked: !wasLiked,
               }
             : state.selectedPost,
       };
@@ -85,7 +86,10 @@ const usePostStore = create((set, get) => ({
     }));
   },
 
-  setSelectedPost: (post) => set({ selectedPost: post }),
+  setSelectedPost: (post) => {
+    const likedPosts = get().likedPosts;
+    set({ selectedPost: { ...post, isLiked: likedPosts.includes(post.id) } });
+  },
 
   getFilteredPosts: (query) => {
     const { posts } = get();

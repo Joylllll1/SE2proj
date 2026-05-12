@@ -42,9 +42,11 @@ export const addReply = async (userId, commentId, content, official = false, rep
     content: savedReply.content,
     official: savedReply.official,
     likes: savedReply.likes || 0,
+    likedBy: [],
     replyToId: savedReply.replyToId ? savedReply.replyToId.toString() : null,
     createdAt: savedReply.createdAt,
     time: formatRelativeTime(savedReply.createdAt),
+    isLiked: false,
   };
 };
 
@@ -63,6 +65,7 @@ export const getComments = async (postId, userId) => {
       ownerUserId: typeof r.ownerUserId === 'object' ? r.ownerUserId.toString() : r.ownerUserId,
       replyToId: r.replyToId ? (typeof r.replyToId === 'object' ? r.replyToId.toString() : r.replyToId) : null,
       time: formatRelativeTime(r.createdAt),
+      isLiked: userId ? r.likedBy?.some((id) => id.toString() === userId) : false,
     })),
     isLiked: userId ? c.likedBy?.some((id) => id.toString() === userId) : false,
   }));
