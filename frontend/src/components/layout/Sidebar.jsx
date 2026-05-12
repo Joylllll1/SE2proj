@@ -24,13 +24,11 @@ function Sidebar({ activePage, onNavigate }) {
   return (
     <aside className="sidebar sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-[#f5f5f7] z-30 max-md:hidden">
       <div className="pt-5 px-[14px]">
-        <button className="flex items-center gap-2.5 w-full mb-[22px] px-2 py-1.5 border-0 rounded-md bg-transparent text-inherit text-left hover:bg-surface" onClick={() => onNavigate('home')} type="button">
-          <span className="grid w-9 h-9 place-items-center rounded-[10px] text-white bg-gradient-to-br from-[#134ba0] to-blue shadow-sm">
-            <Icon name="park" filled />
-          </span>
+        <button className="brand" onClick={() => onNavigate('home')} type="button">
+          <span className="brand-mark">N</span>
           <span>
             <strong className="block text-[17px] font-bold tracking-tight">南大树洞</strong>
-            <small className="block mt-px text-text-3 text-[10px] font-semibold tracking-widest uppercase">NJU Community</small>
+            <small className="block mt-px text-text-3 text-[10px] font-semibold tracking-widest uppercase">NJU Treehole</small>
           </span>
         </button>
         <nav className="grid gap-[5px]">
