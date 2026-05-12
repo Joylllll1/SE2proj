@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
-import { getDisplayName } from '../../utils';
+import { getDisplayName, formatTimeAgo } from '../../utils';
 import useCommentStore from '../../store/commentStore';
 
 // ─── Stable store selectors ───
@@ -59,7 +59,7 @@ function Comment({ comment, postId, onReply, onReport }) {
           </div>
           <p className="my-[9px]">{comment.content}</p>
           <div className="comment-actions flex gap-[14px] text-text-3 text-xs font-semibold">
-            <span>{comment.time}</span>
+            <span>{formatTimeAgo(comment.createdAt)}</span>
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button type="button" onClick={handleLike} className={`inline-flex items-center gap-1 transition-colors duration-150 ${comment.isLiked ? 'text-red' : 'hover:text-red'}`}>
               <Icon name="thumb_up" /> {comment.likes}

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
-import { getDisplayName } from '../../utils';
+import { getDisplayName, formatTimeAgo } from '../../utils';
 import useCommentStore from '../../store/commentStore';
 
 // ─── Stable store selectors ───
@@ -35,8 +35,7 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
 
   const handleReplySubmit = (content) => {
     const commentId = reply.parentId;
-    const replyId = reply.id || reply._id;
-    onReply(replyId, content);
+    onReply(commentId, content);
     setShowReplyInput(false);
   };
 
@@ -56,63 +55,64 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
           {/* 被回复内容引用 */}
           <div className="quoted-content p-2 mb-3 rounded-md bg-[#f5f5f5] border border-[#e0e0e0] text-text-2 text-sm">
             <div className={`font-semibold text-text mb-1 ${isLongContent && !expanded ? 'line-clamp-2' : ''}`}>
-              引用: {parentAuthorName}:
+              {parentAuthorName}
             </div>
             <div className={isLongContent && !expanded ? 'line-clamp-2' : ''}>
               {displayContent}
             </div>
-            {isLongContent && (
-              <button
-                type="button"
-                className="text-blue text-xs mt-1 hover:underline"
-                onClick={() => setExpanded(!expanded)}
-              >
-                {expanded ? '[收起]' : '[展开]'}
-              </button>
-            )}
-          </div>
-
-          {/* 回复内容 */}
-          <div className="reply-main">
-            <div className="reply-meta flex items-center justify-between gap-[8px] mb-2">
-              <div className="flex items-center gap-[8px]">
-                <strong>{replyName}</strong>
-                {reply.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
-              </div>
-              {onReport && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-text-3 text-xs">{formatTimeAgo(reply.parentTime)}</span>
+              {isLongContent && (
                 <button
-                  className="flex-shrink-0 grid w-7 h-7 place-items-center border-0 rounded-full bg-transparent text-text-3 hover:bg-black/5 hover:text-text transition-colors duration-150"
-                  onClick={() => setShowReportModal(true)}
                   type="button"
-                  aria-label="举报"
+                  className="text-blue text-xs hover:underline"
+                  onClick={() => setExpanded(!expanded)}
                 >
-                  <Icon name="report_problem" style={{ fontSize: '14px' }} />
+                  {expanded ? '[收起]' : '[展开]'}
                 </button>
               )}
             </div>
-            <p className="my-[6px]">回复 {parentAuthorName}: {reply.content}</p>
-            <div className="reply-actions flex gap-[14px] text-text-3 text-xs font-semibold">
-              <span>{reply.time}</span>
-              <button type="button" onClick={handleReplyClick}>回复</button>
-              <button
-                type="button"
-                onClick={handleLike}
-                className={`inline-flex items-center gap-1 transition-colors duration-150 ${reply.isLiked ? 'text-red' : 'hover:text-red'}`}
-              >
-                <Icon name="thumb_up" /> {reply.likes || 0}
-              </button>
-            </div>
+          </div>
 
-            {/* 回复输入框 - 显示在回复卡片正下方 */}
-            {showReplyInput && (
-              <ReplyInput
-                ref={replyInputRef}
-                replyToName={replyName}
-                onSubmit={handleReplySubmit}
-                onCancel={() => setShowReplyInput(false)}
-              />
+          {/* 回复内容 */}
+          <div className="reply-meta flex items-center justify-between gap-[8px] mb-2">
+            <div className="flex items-center gap-[8px]">
+              <strong>{replyName}</strong>
+              {reply.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
+            </div>
+            {onReport && (
+              <button
+                className="flex-shrink-0 grid w-7 h-7 place-items-center border-0 rounded-full bg-transparent text-text-3 hover:bg-black/5 hover:text-text transition-colors duration-150"
+                onClick={() => setShowReportModal(true)}
+                type="button"
+                aria-label="举报"
+              >
+                <Icon name="report_problem" style={{ fontSize: '14px' }} />
+              </button>
             )}
           </div>
+          <p className="my-[9px]">回复 {parentAuthorName}: {reply.content}</p>
+          <div className="reply-actions flex gap-[14px] text-text-3 text-xs font-semibold">
+            <span>{formatTimeAgo(reply.createdAt)}</span>
+            <button type="button" onClick={handleReplyClick}>回复</button>
+            <button
+              type="button"
+              onClick={handleLike}
+              className={`inline-flex items-center gap-1 transition-colors duration-150 ${reply.isLiked ? 'text-red' : 'hover:text-red'}`}
+            >
+              <Icon name="thumb_up" /> {reply.likes || 0}
+            </button>
+          </div>
+
+          {/* 回复输入框 - 显示在回复卡片正下方 */}
+          {showReplyInput && (
+            <ReplyInput
+              ref={replyInputRef}
+              replyToName={replyName}
+              onSubmit={handleReplySubmit}
+              onCancel={() => setShowReplyInput(false)}
+            />
+          )}
         </div>
       </article>
 

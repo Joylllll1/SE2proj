@@ -20,6 +20,47 @@ function formatEventTime(datetimeLocal) {
   return `${month}.${day} ${weekday} ${hours}:${minutes}`;
 }
 
+// 格式化相对时间 + 具体时间 (e.g. "2小时前 (2024/05/12 14:30)")
+function formatTimeAgo(timeString) {
+  if (!timeString) return '';
+
+  const date = new Date(timeString);
+  if (isNaN(date.getTime())) return timeString;
+
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  const diffMonth = Math.floor(diffDay / 30);
+  const diffYear = Math.floor(diffDay / 365);
+
+  let ago;
+  if (diffYear > 0) {
+    ago = `${diffYear}年前`;
+  } else if (diffMonth > 0) {
+    ago = `${diffMonth}月前`;
+  } else if (diffDay > 0) {
+    ago = `${diffDay}天前`;
+  } else if (diffHour > 0) {
+    ago = `${diffHour}小时前`;
+  } else if (diffMin > 0) {
+    ago = `${diffMin}分钟前`;
+  } else {
+    ago = '刚刚';
+  }
+
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const fullTime = `${year}/${month}/${day} ${hours}:${minutes}`;
+
+  return `${ago} (${fullTime})`;
+}
+
 function loadJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -281,6 +322,7 @@ export {
   genId,
   formatCount,
   formatEventTime,
+  formatTimeAgo,
   loadJSON,
   saveJSON,
   getUserId,

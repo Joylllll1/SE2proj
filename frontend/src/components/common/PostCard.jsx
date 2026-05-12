@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
-import { getDisplayName, formatCount } from '../../utils';
+import { getDisplayName, formatCount, formatTimeAgo } from '../../utils';
 
 function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, onBookmark, onReport }) {
   const [showReportModal, setShowReportModal] = useState(false);
@@ -23,7 +23,7 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
               </div>
               <div>
                 <strong className="block text-sm">{authorName}</strong>
-                <span className="block mt-0.5 text-text-3 text-xs">{post.time}</span>
+                <span className="block mt-0.5 text-text-3 text-xs">{formatTimeAgo(post.createdAt)}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">

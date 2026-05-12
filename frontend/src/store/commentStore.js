@@ -33,6 +33,7 @@ const useCommentStore = create((set, get) => ({
             parentContent: comment.content,
             parentAuthorId: comment.ownerUserId,
             parentOfficial: comment.official,
+            parentTime: comment.createdAt,
           });
         });
       }
