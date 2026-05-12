@@ -1091,6 +1091,19 @@ h1, h2, h3, p {
   @apply w-[15px] h-[15px];
 }
 
+/* Reply actions - same as comment actions */
+.reply-actions {
+  @apply flex gap-[14px] text-text-3 text-xs font-semibold;
+}
+
+.reply-actions button {
+  @apply inline-flex items-center gap-1 px-0 py-0 border-0 bg-transparent font-bold;
+}
+
+.reply-actions .app-icon {
+  @apply w-[15px] h-[15px];
+}
+
 /* Reply list */
 .reply-list {
   @apply grid gap-3 mt-[14px] pl-[14px] border-l-2 border-line;
