@@ -104,6 +104,25 @@ export const toggleLike = async (userId, commentId) => {
   return { liked: idx === -1, likes: comment.likes };
 };
 
+export const toggleReplyLike = async (userId, commentId, replyId) => {
+  const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+
+  const reply = comment.replies.id(replyId);
+  if (!reply) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
+
+  const idx = reply.likedBy.findIndex((id) => id.toString() === userId);
+  if (idx > -1) {
+    reply.likedBy.splice(idx, 1);
+    reply.likes = Math.max(0, reply.likes - 1);
+  } else {
+    reply.likedBy.push(userId);
+    reply.likes += 1;
+  }
+  await comment.save();
+  return { liked: idx === -1, likes: reply.likes };
+};
+
 // ─── Helpers ───
 
 function formatRelativeTime(date) {

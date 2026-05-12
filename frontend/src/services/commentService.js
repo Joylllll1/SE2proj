@@ -40,3 +40,7 @@ export async function addReply(commentId, content, official = false) {
     body: JSON.stringify({ content, official }),
   });
 }
+
+export async function toggleReplyLike(commentId, replyId) {
+  return request(`/api/comments/${commentId}/reply/${replyId}/like`, { method: 'POST' });
+}

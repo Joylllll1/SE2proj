@@ -49,6 +49,40 @@ const useCommentStore = create((set, get) => ({
     }
   },
 
+  toggleReplyLike: async (commentId, replyId) => {
+    const previous = get().commentsMap;
+    // Optimistic update
+    set((state) => {
+      const updated = { ...state.commentsMap };
+      for (const postId of Object.keys(updated)) {
+        updated[postId] = updated[postId].map((c) => {
+          if (c.id === commentId || c._id === commentId) {
+            const updatedReplies = (c.replies || []).map((r) => {
+              if (r.id === replyId || r._id === replyId) {
+                return {
+                  ...r,
+                  isLiked: !r.isLiked,
+                  likes: r.isLiked ? Math.max(0, (r.likes || 0) - 1) : (r.likes || 0) + 1,
+                };
+              }
+              return r;
+            });
+            return { ...c, replies: updatedReplies };
+          }
+          return c;
+        });
+      }
+      return { commentsMap: updated };
+    });
+    // Then sync with the API
+    try {
+      await commentService.toggleReplyLike(commentId, replyId);
+    } catch {
+      // Rollback on failure
+      set({ commentsMap: previous });
+    }
+  },
+
   addReply: async (commentId, content, official = false) => {
     const reply = await commentService.addReply(commentId, content, official);
     set((state) => {

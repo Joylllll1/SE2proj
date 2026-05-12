@@ -9,6 +9,7 @@ router.get('/:postId', auth, commentController.list);
 router.delete('/:commentId', auth, commentController.remove);
 router.post('/:commentId/like', auth, commentController.like);
 router.post('/:commentId/reply', auth, commentController.reply);
+router.post('/:commentId/reply/:replyId/like', auth, commentController.likeReply);
 router.delete('/:commentId/reply/:replyId', auth, commentController.removeReply);
 
 export default router;
