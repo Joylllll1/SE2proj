@@ -42,7 +42,7 @@
 
 #### Scenario: seed 脚本插入数据
 - **WHEN** 运行 seed 脚本
-- **THEN** FortuneItem 集合被清空并插入所有预定义条目（宜约 1000 条、忌约 1000 条）
+- **THEN** FortuneItem 集合被清空并插入所有预定义条目（宜约 200 条、忌约 200 条）
 
 #### Scenario: seed 脚本幂等
 - **WHEN** 多次运行 seed 脚本

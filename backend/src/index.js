@@ -9,6 +9,7 @@ import passwordRoutes from './routes/passwordRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
 import likeRoutes from './routes/likeRoutes.js';
+import fortuneRoutes from './routes/fortuneRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.use('/api/password', passwordRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/likes', likeRoutes);
+app.use('/api/fortune', fortuneRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

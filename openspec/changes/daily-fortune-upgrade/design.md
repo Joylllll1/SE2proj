@@ -10,7 +10,7 @@
 ## Goals / Non-Goals
 
 **Goals:**
-- FortuneItem 数据存入 MongoDB，支持宜忌各 ~1000 条
+- FortuneItem 数据存入 MongoDB，支持宜忌各约 200 条
 - 打卡记录存入后端，跨设备、跨浏览器同步
 - 连续打卡天数基于后端 CheckIn 记录计算
 - 后端提供打卡 API，前端调用获取运势和记录
@@ -90,13 +90,13 @@ POST /api/fortune/checkin → {
 
 **Decision**: `backend/src/scripts/seedFortune.js`，跑一次灌入约 2000 条数据。
 
-**Rationale**: 独立脚本不耦合启动流程，只在需要时执行。提供 `--reset` 参数清空重建。
+**Rationale**: 独立脚本不耦合启动流程，只在需要时执行。提供 `--reset` 参数清空重建。约 400 条数据可直接写在脚本中。
 
 ## Risks / Trade-offs
 
 | 风险 | 缓解措施 |
 |------|---------|
-| seed 脚本中 2000 条数据体积大，维护困难 | 数据写在独立 JSON 文件中，脚本只做读取+插入 |
+| seed 脚本中约 400 条数据可控 | 数据直接写在 seed 脚本中，无需外部文件 |
 | 现有用户 localStorage 中的打卡记录丢失 | 首次 API 调用即开始新记录，历史 streak 重置属于可接受行为；项目非生产环境 |
 | 后端依赖 MongoDB，部署新增 seed 步骤 | 在 README/部署文档中注明；提供 `npm run seed:fortune` 快捷命令 |
-| 2000 条中可能出现内容重复 | seed 脚本插入前做去重检查 |
+| 约 400 条中可能出现内容重复 | seed 脚本插入前做去重检查 |

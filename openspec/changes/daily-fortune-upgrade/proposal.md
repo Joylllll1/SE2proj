@@ -4,10 +4,10 @@
 
 ## What Changes
 
-1. **新建 FortuneItem 数据模型** — 在 MongoDB 中存储宜/忌条目，每条含 activity + description，通过 seed 脚本批量灌入约 2000 条
+1. **新建 FortuneItem 数据模型** — 在 MongoDB 中存储宜/忌条目，每条含 activity + description，通过 seed 脚本批量灌入约 400 条
 2. **新建 CheckIn 模型 + 打卡 API** — `POST /api/fortune/checkin` 实现打卡、运势生成、连续天数计算
 3. **前端 DailyFortune 组件对接 API** — 替换硬编码数据源和 localStorage 打卡逻辑
-4. **宜忌词汇大规模拓展** — 每条 ~1000 条，覆盖学习、生活、社交、健康、娱乐等多维度
+4. **宜忌词汇大规模拓展** — 每条约 200 条，覆盖学习、生活、社交、健康、娱乐等多维度
 5. **忌类描述风格改造** — 从"温和辩解"改为"批评/后果+幽默"风格
 
 ## Capabilities
