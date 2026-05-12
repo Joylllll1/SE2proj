@@ -38,3 +38,7 @@ export async function deletePost(id) {
 export async function toggleLike(id) {
   return request(`/api/posts/${id}/like`, { method: 'POST' });
 }
+
+export async function toggleSave(id) {
+  return request(`/api/posts/${id}/save`, { method: 'POST' });
+}

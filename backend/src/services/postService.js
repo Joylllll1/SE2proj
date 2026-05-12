@@ -30,6 +30,7 @@ export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => 
     likes: p.likes || 0,
     saves: p.saves || 0,
     isLiked: userId ? p.likedBy?.some((id) => id.toString() === userId) : false,
+    isSaved: userId ? p.savedBy?.some((id) => id.toString() === userId) : false,
   }));
 
   return {
@@ -51,6 +52,7 @@ export const getPostById = async (postId, userId) => {
     likes: post.likes || 0,
     saves: post.saves || 0,
     isLiked: userId ? post.likedBy?.some((id) => id.toString() === userId) : false,
+    isSaved: userId ? post.savedBy?.some((id) => id.toString() === userId) : false,
   };
 };
 
@@ -78,6 +80,22 @@ export const toggleLike = async (userId, postId) => {
   }
   await post.save();
   return { liked: idx === -1, likes: post.likes };
+};
+
+export const toggleSave = async (userId, postId) => {
+  const post = await Post.findOne({ _id: postId, isDeleted: false });
+  if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
+
+  const idx = post.savedBy.findIndex((id) => id.toString() === userId);
+  if (idx > -1) {
+    post.savedBy.splice(idx, 1);
+    post.saves = Math.max(0, post.saves - 1);
+  } else {
+    post.savedBy.push(userId);
+    post.saves += 1;
+  }
+  await post.save();
+  return { saved: idx === -1, saves: post.saves };
 };
 
 // ─── Helpers ───

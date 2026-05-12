@@ -27,3 +27,8 @@ export const like = async (req, res) => {
   const result = await postService.toggleLike(req.user._id.toString(), req.params.id);
   res.json(result);
 };
+
+export const save = async (req, res) => {
+  const result = await postService.toggleSave(req.user._id.toString(), req.params.id);
+  res.json(result);
+};

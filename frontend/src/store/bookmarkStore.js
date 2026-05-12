@@ -31,8 +31,6 @@ const useBookmarkStore = create((set, get) => ({
       set({ bookmarks: newBookmarks, bookmarkFolders: folders });
       saveJSON('nju_bookmarks', newBookmarks);
       saveJSON('nju_bookmark_folders', folders);
-
-      // Update saves count (postStore handles this via separate call)
       return 'removed';
     } else {
       // Open folder selector

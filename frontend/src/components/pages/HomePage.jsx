@@ -47,6 +47,16 @@ export default function HomePage() {
     fetchPosts();
   }, [fetchPosts]);
 
+  // ── Auto-polling every 60s ──
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchPosts();
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [fetchPosts]);
+
   const userId = user?._id || null;
 
   const visiblePosts = getFilteredPosts(query);
@@ -124,7 +134,7 @@ export default function HomePage() {
                 post={post}
                 onOpen={() => openPost(post)}
                 liked={likedPosts.includes(post.id)}
-                bookmarked={bookmarks.includes(post.id)}
+                bookmarked={post.isSaved}
                 onLike={() => toggleLike(post.id)}
                 onBookmark={() => toggleBookmark(post.id)}
                 onReport={handleReport}

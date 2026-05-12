@@ -14,6 +14,7 @@ const postSchema = new mongoose.Schema(
     likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     comments: { type: Number, default: 0 },
     saves: { type: Number, default: 0 },
+    savedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     isDeleted: { type: Boolean, default: false, index: true },
   },
   { timestamps: true, toJSON: { virtuals: true } },

@@ -61,6 +61,33 @@ const usePostStore = create((set, get) => ({
     }
   },
 
+  toggleSave: async (postId) => {
+    const previous = get().posts;
+    // Optimistic update
+    set((state) => ({
+      posts: state.posts.map((p) =>
+        p.id === postId
+          ? { ...p, saves: p.isSaved ? p.saves - 1 : p.saves + 1, isSaved: !p.isSaved }
+          : p,
+      ),
+      selectedPost:
+        state.selectedPost?.id === postId
+          ? {
+              ...state.selectedPost,
+              saves: state.selectedPost.isSaved
+                ? state.selectedPost.saves - 1
+                : state.selectedPost.saves + 1,
+              isSaved: !state.selectedPost.isSaved,
+            }
+          : state.selectedPost,
+    }));
+    try {
+      await postService.toggleSave(postId);
+    } catch {
+      set({ posts: previous });
+    }
+  },
+
   updateSaves: (postId, increment) => {
     set((state) => ({
       posts: state.posts.map((p) =>

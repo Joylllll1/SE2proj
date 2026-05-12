@@ -10,5 +10,6 @@ router.get('/', optionalAuth, postController.list);
 router.get('/:id', optionalAuth, postController.getById);
 router.delete('/:id', auth, postController.remove);
 router.post('/:id/like', auth, postController.like);
+router.post('/:id/save', auth, postController.save);
 
 export default router;

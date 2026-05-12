@@ -4,6 +4,29 @@ function genId() {
   return 'P-' + Math.random().toString(36).slice(2, 6).toUpperCase();
 }
 
+/* ─── global time tick (shared across TimeAgo instances) ─── */
+
+const timeListeners = new Set();
+let timeTick = 0;
+
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    timeTick++;
+    timeListeners.forEach((listener) => listener());
+  }, 30000);
+}
+
+export function subscribeToTimeTick(listener) {
+  timeListeners.add(listener);
+  return () => timeListeners.delete(listener);
+}
+
+export function getTimeTick() {
+  return timeTick;
+}
+
+/* ─── format ─── */
+
 function formatCount(value) {
   return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : value;
 }

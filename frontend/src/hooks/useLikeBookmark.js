@@ -5,14 +5,14 @@ import useUiStore from '../store/uiStore';
 
 // ─── Stable store selectors ───
 const selectToggleLike = (s) => s.toggleLike;
-const selectUpdateSaves = (s) => s.updateSaves;
+const selectToggleSave = (s) => s.toggleSave;
 const selectToggleBookmark = (s) => s.toggleBookmark;
 const selectSelectFolder = (s) => s.selectFolder;
 const selectShowToast = (s) => s.showToast;
 
 export default function useLikeBookmark() {
   const toggleLike = usePostStore(selectToggleLike);
-  const updateSaves = usePostStore(selectUpdateSaves);
+  const toggleSave = usePostStore(selectToggleSave);
   const toggleBookmark = useBookmarkStore(selectToggleBookmark);
   const selectFolder = useBookmarkStore(selectSelectFolder);
   const showToast = useUiStore(selectShowToast);
@@ -24,12 +24,12 @@ export default function useLikeBookmark() {
   const handleToggleBookmark = useCallback((itemId) => {
     const result = toggleBookmark(itemId);
     if (result === 'removed') {
-      updateSaves(itemId, -1);
+      toggleSave(itemId);
       showToast('已取消收藏');
     } else if (result === 'selecting_folder') {
       // folder selector will handle the rest
     }
-  }, [toggleBookmark, updateSaves, showToast]);
+  }, [toggleBookmark, toggleSave, showToast]);
 
   const handleSelectFolder = useCallback((folderId) => {
     // Capture itemId BEFORE selectFolder clears pendingBookmarkItem
@@ -38,11 +38,11 @@ export default function useLikeBookmark() {
     const result = selectFolder(folderId);
     if (result === 'added') {
       if (itemId) {
-        updateSaves(itemId, 1);
+        toggleSave(itemId);
       }
       showToast('已收藏');
     }
-  }, [selectFolder, updateSaves, showToast]);
+  }, [selectFolder, toggleSave, showToast]);
 
   return {
     toggleLike: handleToggleLike,

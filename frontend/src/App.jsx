@@ -214,7 +214,7 @@ function App() {
                 post={selectedPost}
                 comments={comments}
                 liked={likedPosts.includes(selectedPost.id)}
-                bookmarked={bookmarks.includes(selectedPost.id)}
+                bookmarked={selectedPost.isSaved}
                 onLike={() => toggleLike(selectedPost.id)}
                 onBookmark={() => toggleBookmark(selectedPost.id)}
                 onComment={handleComment}
