@@ -7,7 +7,7 @@ function TimeAgo({ timeString, className = '' }) {
   useEffect(() => {
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 60000);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 

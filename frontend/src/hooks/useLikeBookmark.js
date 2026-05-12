@@ -32,11 +32,13 @@ export default function useLikeBookmark() {
   }, [toggleBookmark, updateSaves, showToast]);
 
   const handleSelectFolder = useCallback((folderId) => {
+    // Capture itemId BEFORE selectFolder clears pendingBookmarkItem
+    const store = useBookmarkStore.getState();
+    const itemId = store.pendingBookmarkItem?.id;
     const result = selectFolder(folderId);
     if (result === 'added') {
-      const store = useBookmarkStore.getState();
-      if (store.pendingBookmarkItem) {
-        updateSaves(store.pendingBookmarkItem.id, 1);
+      if (itemId) {
+        updateSaves(itemId, 1);
       }
       showToast('已收藏');
     }
