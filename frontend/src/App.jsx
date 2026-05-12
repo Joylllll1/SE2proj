@@ -178,10 +178,10 @@ function App() {
     }
   };
 
-  const handleReply = async (commentId, content) => {
+  const handleReply = async (commentId, content, replyToId = null) => {
     if (!selectedPost) return;
     try {
-      await useCommentStore.getState().addReply(commentId, content);
+      await useCommentStore.getState().addReply(commentId, content, false, replyToId);
       usePostStore.getState().updateCommentCount(selectedPost.id, 1);
     } catch (err) {
       showToast(err.message || '回复失败');

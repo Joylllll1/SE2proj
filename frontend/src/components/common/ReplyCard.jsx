@@ -35,7 +35,8 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
 
   const handleReplySubmit = (content) => {
     const commentId = reply.parentId;
-    onReply(commentId, content);
+    const replyToId = reply.id || reply._id;
+    onReply(commentId, content, replyToId);
     setShowReplyInput(false);
   };
 
@@ -77,7 +78,7 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
           {/* 回复内容 */}
           <div className="reply-meta flex items-center justify-between gap-[8px] mb-2">
             <div className="flex items-center gap-[8px]">
-              <strong>{replyName}</strong>
+              <strong>{replyName} · {formatTimeAgo(reply.createdAt)}</strong>
               {reply.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
             </div>
             {onReport && (
@@ -93,7 +94,6 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
           </div>
           <p className="my-[9px]">回复 {parentAuthorName}: {reply.content}</p>
           <div className="reply-actions flex gap-[14px] text-text-3 text-xs font-semibold">
-            <span>{formatTimeAgo(reply.createdAt)}</span>
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button
               type="button"

@@ -34,10 +34,10 @@ export async function toggleLike(commentId) {
   return request(`/api/comments/${commentId}/like`, { method: 'POST' });
 }
 
-export async function addReply(commentId, content, official = false) {
+export async function addReply(commentId, content, official = false, replyToId = null) {
   return request(`/api/comments/${commentId}/reply`, {
     method: 'POST',
-    body: JSON.stringify({ content, official }),
+    body: JSON.stringify({ content, official, replyToId }),
   });
 }
 

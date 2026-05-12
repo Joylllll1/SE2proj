@@ -19,11 +19,17 @@ export const createComment = async (userId, postId, content, official = false) =
   };
 };
 
-export const addReply = async (userId, commentId, content, official = false) => {
+export const addReply = async (userId, commentId, content, official = false, replyToId = null) => {
   const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
 
-  const reply = { ownerUserId: userId, content, official, likes: 0, likedBy: [] };
+  // 如果 replyToId 存在，验证被回复的回复是否存在
+  if (replyToId) {
+    const parentReply = comment.replies.id(replyToId);
+    if (!parentReply) throw new AppError('被回复的回复不存在', 404, 'REPLY_NOT_FOUND');
+  }
+
+  const reply = { ownerUserId: userId, content, official, likes: 0, likedBy: [], replyToId };
   comment.replies.push(reply);
   await comment.save();
 
@@ -36,6 +42,8 @@ export const addReply = async (userId, commentId, content, official = false) => 
     content: savedReply.content,
     official: savedReply.official,
     likes: savedReply.likes || 0,
+    replyToId: savedReply.replyToId ? savedReply.replyToId.toString() : null,
+    createdAt: savedReply.createdAt,
     time: formatRelativeTime(savedReply.createdAt),
   };
 };
@@ -53,6 +61,7 @@ export const getComments = async (postId, userId) => {
       ...r,
       id: r._id.toString(),
       ownerUserId: typeof r.ownerUserId === 'object' ? r.ownerUserId.toString() : r.ownerUserId,
+      replyToId: r.replyToId ? (typeof r.replyToId === 'object' ? r.replyToId.toString() : r.replyToId) : null,
       time: formatRelativeTime(r.createdAt),
     })),
     isLiked: userId ? c.likedBy?.some((id) => id.toString() === userId) : false,

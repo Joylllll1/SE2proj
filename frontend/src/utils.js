@@ -20,7 +20,7 @@ function formatEventTime(datetimeLocal) {
   return `${month}.${day} ${weekday} ${hours}:${minutes}`;
 }
 
-// 格式化相对时间 + 具体时间 (e.g. "2小时前 (2024/05/12 14:30)")
+// 格式化相对时间 + 具体时间 (e.g. "2小时前 · 2024/05/12 14:30")
 function formatTimeAgo(timeString) {
   if (!timeString) return '';
 
@@ -58,7 +58,7 @@ function formatTimeAgo(timeString) {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   const fullTime = `${year}/${month}/${day} ${hours}:${minutes}`;
 
-  return `${ago} (${fullTime})`;
+  return `${ago} · ${fullTime}`;
 }
 
 function loadJSON(key, fallback) {

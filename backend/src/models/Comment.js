@@ -7,6 +7,8 @@ const replySchema = new mongoose.Schema(
     official: { type: Boolean, default: false },
     likes: { type: Number, default: 0 },
     likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    // 回复的目标：replyToId 为 null 表示回复评论，否则为被回复的回复ID
+    replyToId: { type: mongoose.Schema.Types.ObjectId, default: null },
   },
   { timestamps: true },
 );

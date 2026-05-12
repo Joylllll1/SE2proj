@@ -26,14 +26,33 @@ const useCommentStore = create((set, get) => ({
       // 添加评论下的所有回复
       if (comment.replies && comment.replies.length > 0) {
         comment.replies.forEach((reply) => {
+          // 查找被回复的内容（可能是评论或另一个回复）
+          let parentContent = comment.content;
+          let parentAuthorId = comment.ownerUserId;
+          let parentOfficial = comment.official;
+          let parentTime = comment.createdAt;
+
+          // 如果是回复另一个回复，需要找到那条回复
+          if (reply.replyToId) {
+            const parentReply = comment.replies.find(
+              (r) => r.id === reply.replyToId || r._id === reply.replyToId
+            );
+            if (parentReply) {
+              parentContent = parentReply.content;
+              parentAuthorId = parentReply.ownerUserId;
+              parentOfficial = parentReply.official;
+              parentTime = parentReply.createdAt;
+            }
+          }
+
           flatList.push({
             ...reply,
             itemType: 'reply',
             parentId: comment.id || comment._id,
-            parentContent: comment.content,
-            parentAuthorId: comment.ownerUserId,
-            parentOfficial: comment.official,
-            parentTime: comment.createdAt,
+            parentContent,
+            parentAuthorId,
+            parentOfficial,
+            parentTime,
           });
         });
       }
@@ -110,8 +129,8 @@ const useCommentStore = create((set, get) => ({
     }
   },
 
-  addReply: async (commentId, content, official = false) => {
-    const reply = await commentService.addReply(commentId, content, official);
+  addReply: async (commentId, content, official = false, replyToId = null) => {
+    const reply = await commentService.addReply(commentId, content, official, replyToId);
     set((state) => {
       const updated = { ...state.commentsMap };
       for (const postId of Object.keys(updated)) {

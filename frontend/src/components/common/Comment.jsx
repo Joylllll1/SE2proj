@@ -43,7 +43,7 @@ function Comment({ comment, postId, onReply, onReport }) {
         <div className="comment-body flex-1 p-4 rounded-md border border-line-soft bg-surface">
           <div className="comment-meta flex items-center justify-between gap-[8px]">
             <div className="flex items-center gap-[8px]">
-              <strong>{displayName}</strong>
+              <strong>{displayName} · {formatTimeAgo(comment.createdAt)}</strong>
               {comment.official && <span className="pill blue text-[10px] px-[2px_6px]">官方</span>}
             </div>
             {onReport && (
@@ -59,7 +59,6 @@ function Comment({ comment, postId, onReply, onReport }) {
           </div>
           <p className="my-[9px]">{comment.content}</p>
           <div className="comment-actions flex gap-[14px] text-text-3 text-xs font-semibold">
-            <span>{formatTimeAgo(comment.createdAt)}</span>
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button type="button" onClick={handleLike} className={`inline-flex items-center gap-1 transition-colors duration-150 ${comment.isLiked ? 'text-red' : 'hover:text-red'}`}>
               <Icon name="thumb_up" /> {comment.likes}

@@ -7,8 +7,8 @@ export const create = async (req, res) => {
 };
 
 export const reply = async (req, res) => {
-  const { content, official } = req.body;
-  const reply = await commentService.addReply(req.user._id.toString(), req.params.commentId, content, official);
+  const { content, official, replyToId } = req.body;
+  const reply = await commentService.addReply(req.user._id.toString(), req.params.commentId, content, official, replyToId);
   res.status(201).json(reply);
 };
 
