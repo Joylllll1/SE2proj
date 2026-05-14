@@ -1,11 +1,33 @@
 import CheckIn from '../models/CheckIn.js';
 import FortuneItem from '../models/FortuneItem.js';
 
-const FORTUNE_LEVELS = ['大吉', '中吉', '小吉', '中平', '小凶', '大凶'];
+const FORTUNE_LEVELS = [
+  { level: '大吉', weight: 5 },
+  { level: '中吉', weight: 15 },
+  { level: '小吉', weight: 30 },
+  { level: '中平', weight: 25 },
+  { level: '小凶', weight: 15 },
+  { level: '大凶', weight: 10 },
+];
 
-function seededRandom(seed) {
-  const x = Math.sin(seed) * 10000;
-  return Math.abs(x - Math.floor(x));
+function createSeededRng(seed) {
+  let s = seed | 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) | 0;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+function pickWeighted(seed) {
+  const rng = createSeededRng(seed);
+  const total = FORTUNE_LEVELS.reduce((s, l) => s + l.weight, 0);
+  const r = rng() * total;
+  let sum = 0;
+  for (const { level, weight } of FORTUNE_LEVELS) {
+    sum += weight;
+    if (r < sum) return level;
+  }
+  return FORTUNE_LEVELS[FORTUNE_LEVELS.length - 1].level;
 }
 
 function getToday() {
@@ -14,8 +36,13 @@ function getToday() {
 }
 
 function pickRandom(arr, count, seed) {
-  const shuffled = [...arr].sort(() => seededRandom(seed) - 0.5);
-  return shuffled.slice(0, count);
+  const rng = createSeededRng(seed);
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, count);
 }
 
 async function calcStreak(userId) {
@@ -50,18 +77,17 @@ export const checkin = async (userId) => {
     return { checkedIn: false, ...existing, streak };
   }
 
-  // 运势等级
+  // 运势等级（加权随机）
   const dateNum = parseInt(today.replace(/-/g, ''));
   const userNum = parseInt((userId || '').slice(-6)) || 0;
   const seed = dateNum + userNum;
-  const levelIndex = Math.floor(seededRandom(seed) * FORTUNE_LEVELS.length);
-  const level = FORTUNE_LEVELS[levelIndex];
+  const level = pickWeighted(seed);
 
-  // 选取宜忌
+  // 选取宜忌（Fisher-Yates 真洗牌）
   const allDos = await FortuneItem.find({ type: 'dos' }).lean();
   const allDonts = await FortuneItem.find({ type: 'donts' }).lean();
-  const dos = pickRandom(allDos, 2, seed + 3);
-  const donts = pickRandom(allDonts, 2, seed + 4);
+  const dos = pickRandom(allDos, 2, seed + 1);
+  const donts = pickRandom(allDonts, 2, seed + 2);
 
   // 创建打卡记录
   await CheckIn.create({ userId, date: today, level, dos, donts });
