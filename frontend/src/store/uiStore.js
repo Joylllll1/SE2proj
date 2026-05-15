@@ -58,6 +58,7 @@ const useUiStore = create((set, get) => ({
     title: '离开当前页面？',
     description: '你有尚未保存的内容，离开后本次修改会丢失。',
     confirmText: '直接离开',
+    discardText: null,
     cancelText: '继续编辑',
     mode: 'discard',
   },
@@ -131,6 +132,21 @@ const useUiStore = create((set, get) => ({
       // Keep dialog open when save flow fails.
     }
   },
+  discardPendingNavigation: async () => {
+    const { pendingNavigation } = get();
+    if (!pendingNavigation) return;
+
+    set((state) => ({
+      leaveConfirm: { ...state.leaveConfirm, open: false },
+      pendingNavigation: null,
+    }));
+
+    if (typeof pendingNavigation.action === 'function') {
+      await pendingNavigation.action();
+      return;
+    }
+    get().navigate(pendingNavigation.page, pendingNavigation.params, { force: true });
+  },
   requestNavigationConfirmation: (config) => {
     set({
       pendingNavigation: config.pendingNavigation,
@@ -152,6 +168,7 @@ const useUiStore = create((set, get) => ({
           title: '离开当前页面？',
           description: '你修改过内容但还没保存。继续离开会丢掉这次修改。',
           confirmText: '直接离开',
+          discardText: null,
           cancelText: '继续编辑',
           mode: 'discard',
         });
@@ -160,6 +177,7 @@ const useUiStore = create((set, get) => ({
           title: '保存当前草稿？',
           description: '你修改过内容但还没保存。现在离开会丢掉这次修改。',
           confirmText: '保存并离开',
+          discardText: '不保存离开',
           cancelText: '留在这里',
           mode: 'save',
         });
@@ -205,6 +223,7 @@ const useUiStore = create((set, get) => ({
         title: '保存当前草稿？',
         description: '你修改过内容但还没保存。现在离开会丢掉这次修改。',
         confirmText: '保存并离开',
+        discardText: '不保存离开',
         cancelText: '留在这里',
         mode: 'save',
       });

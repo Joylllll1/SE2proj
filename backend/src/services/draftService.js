@@ -86,8 +86,8 @@ export const publishDraft = async (draftId, userId) => {
     ownerUserId: userId,
     title: draft.title || '无标题',
     content: draft.content || '',
-    moodType: draft.moodType,
-    mood: draft.mood,
+    moodType: draft.moodType || 'calm',
+    mood: draft.mood || '平静',
     tags: draft.tags?.length > 0 ? draft.tags : ['树洞'],
     images: draft.image ? [draft.image] : [],
   });

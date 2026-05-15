@@ -49,6 +49,7 @@ const selectUiDraftId = (s) => s.draftId;
 const selectLeaveConfirm = (s) => s.leaveConfirm;
 const selectCloseLeaveConfirm = (s) => s.closeLeaveConfirm;
 const selectConfirmPendingNavigation = (s) => s.confirmPendingNavigation;
+const selectDiscardPendingNavigation = (s) => s.discardPendingNavigation;
 const selectNavigate = (s) => s.navigate;
 const selectQuery = (s) => s.query;
 const selectSetQuery = (s) => s.setQuery;
@@ -99,6 +100,7 @@ function App() {
   const leaveConfirm = useUiStore(selectLeaveConfirm);
   const closeLeaveConfirm = useUiStore(selectCloseLeaveConfirm);
   const confirmPendingNavigation = useUiStore(selectConfirmPendingNavigation);
+  const discardPendingNavigation = useUiStore(selectDiscardPendingNavigation);
   const navigate = useUiStore(selectNavigate);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
@@ -309,9 +311,11 @@ function App() {
         title={leaveConfirm.title}
         description={leaveConfirm.description}
         confirmText={leaveConfirm.confirmText}
+        discardText={leaveConfirm.discardText}
         cancelText={leaveConfirm.cancelText}
         mode={leaveConfirm.mode}
         onConfirm={confirmPendingNavigation}
+        onDiscard={discardPendingNavigation}
         onCancel={closeLeaveConfirm}
       />
 

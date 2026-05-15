@@ -207,8 +207,9 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       }
       setDraftId(null);
       setLastSavedAt(null);
+      clearUnsavedChangesHandler();
       applyDraftToForm(EMPTY_DRAFT);
-      navigate('home');
+      navigate('home', undefined, { force: true });
     } catch (err) {
       showToast(err.message || '发布失败');
     } finally {
