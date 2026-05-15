@@ -34,6 +34,26 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   const moodLabel = moodOptions.find(([, , t]) => t === moodType)?.[0] || '';
 
+  // Initialize originalData for new post
+  useEffect(() => {
+    if (!initialDraftId && !originalData) {
+      setOriginalData({
+        title: '',
+        content: '',
+        moodType: null,
+        tags: [],
+        image: '',
+      });
+    }
+  }, [initialDraftId, originalData]);
+
+  // Sync draftId when initialDraftId changes
+  useEffect(() => {
+    if (initialDraftId) {
+      setDraftId(initialDraftId);
+    }
+  }, [initialDraftId]);
+
   // Load draft when editing
   useEffect(() => {
     if (!initialDraftId) return;
@@ -133,8 +153,11 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     setLoading(true);
     try {
       if (draftId) {
-        const post = await draftService.publishDraft(draftId);
+        await draftService.publishDraft(draftId);
         showToast('发布成功');
+        // Reset form
+        setDraftId(null);
+        window.history.replaceState(null, '', '/compose');
       } else {
         await onPublish({
           title: title.trim() || '无标题',
