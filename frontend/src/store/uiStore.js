@@ -88,6 +88,7 @@ const useUiStore = create((set, get) => ({
     }
     if (url) {
       window.history.pushState({ page, params }, '', url);
+      window.scrollTo(0, 0);
     }
     set({ activePage: page, ...params });
   },

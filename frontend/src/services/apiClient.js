@@ -1,4 +1,5 @@
 const API_BASE = '';
+import useAuthStore from '../store/authStore';
 
 export async function request(path, options = {}) {
   const token = localStorage.getItem('accessToken');
@@ -11,7 +12,6 @@ export async function request(path, options = {}) {
   if (res.status === 401 && token) {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    const { useAuthStore } = await import('../store/authStore');
     useAuthStore.setState({
       user: null,
       accessToken: null,
