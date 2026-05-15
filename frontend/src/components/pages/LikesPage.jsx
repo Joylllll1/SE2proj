@@ -46,7 +46,6 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
 
   const handleCommentLike = async (comment) => {
     const commentId = comment.item?.id || comment.itemId;
-    const replyId = comment.type === 'reply' ? comment.item?.id : null;
 
     setCommentLikes((prev) => ({
       ...prev,
@@ -55,7 +54,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
 
     try {
       if (comment.type === 'reply') {
-        await toggleReplyLike(comment.postId, replyId);
+        await toggleReplyLike(comment.parentCommentId, commentId);
       } else {
         await toggleCommentLike(commentId);
       }
