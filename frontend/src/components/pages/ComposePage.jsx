@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
 import * as draftService from '../../services/draftService';
@@ -130,44 +130,6 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   };
 
   const handlePublish = async () => {
-    // If editing a draft and click "发布新动态" (not the draft's own publish)
-    // Check if there are unsaved changes
-    if (draftId && isDirty) {
-      const confirmed = window.confirm('草稿有未保存的修改，是否保存后发布？');
-      if (confirmed) {
-        setSaving(true);
-        try {
-          const data = {
-            title: title.trim() || undefined,
-            content: content.trim(),
-            moodType,
-            mood: moodLabel || '平静',
-            tags: tags.length > 0 ? tags : undefined,
-            image: imageUrl || undefined,
-          };
-          await draftService.updateDraft(draftId, data);
-          const post = await draftService.publishDraft(draftId);
-          showToast('发布成功');
-          navigate('home');
-        } catch (err) {
-          showToast(err.message || '发布失败');
-        } finally {
-          setSaving(false);
-        }
-        return;
-      }
-      // User chose not to save, but still wants to publish the saved version
-      try {
-        const post = await draftService.publishDraft(draftId);
-        showToast('发布成功');
-        navigate('home');
-      } catch (err) {
-        showToast(err.message || '发布失败');
-      }
-      return;
-    }
-
-    // Normal publish or publish from edited page
     setLoading(true);
     try {
       if (draftId) {
@@ -206,12 +168,38 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       const confirmed = window.confirm('有未保存的修改，是否保存？');
       if (confirmed) {
         handleSaveDraft().then(() => {
-          useUiStore.getState().navigate('drafts');
+          navigate('drafts');
         });
         return;
       }
     }
-    useUiStore.getState().navigate('drafts');
+    navigate('drafts');
+  };
+
+  const handleGoHome = () => {
+    if (draftId && isDirty) {
+      const confirmed = window.confirm('有未保存的修改，是否保存？');
+      if (confirmed) {
+        handleSaveDraft().then(() => {
+          navigate('home');
+        });
+        return;
+      }
+    }
+    navigate('home');
+  };
+
+  const handleGoCompose = () => {
+    if (draftId && isDirty) {
+      const confirmed = window.confirm('有未保存的修改，是否保存？');
+      if (confirmed) {
+        handleSaveDraft().then(() => {
+          navigate('compose');
+        });
+        return;
+      }
+    }
+    navigate('compose');
   };
 
   const formatSavedTime = (dateString) => {
@@ -226,24 +214,15 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   return (
     <div className="compose-page max-w-[1180px] mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <section className="compose-heading max-w-[760px] mb-0">
-          <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
-          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
-          {lastSavedAt ? (
-            <p className="mt-[9px] mb-0 text-text-2">保存于 {formatSavedTime(lastSavedAt)}</p>
-          ) : (
-            <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">分享你此刻的想法，或记录一段校园回忆。前台匿名展示，后台仅在合规审计中可追责。</p>
-          )}
-        </section>
-        <button
-          className="inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150 hover:bg-surface-soft"
-          onClick={handleGoToDrafts}
-          type="button"
-        >
-          草稿箱
-        </button>
-      </div>
+      <section className="compose-heading max-w-[760px] mb-6">
+        <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
+        <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
+        {lastSavedAt ? (
+          <p className="mt-[9px] mb-0 text-text-2">保存于 {formatSavedTime(lastSavedAt)}</p>
+        ) : (
+          <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">分享你此刻的想法，或记录一段校园回忆。前台匿名展示，后台仅在合规审计中可追责。</p>
+        )}
+      </section>
       <section className="editor-card overflow-hidden rounded-lg border border-line-soft bg-surface shadow-sm">
         <input
           className="w-full p-[18px_20px] border-b border-line-soft bg-transparent text-xl font-bold"
@@ -328,14 +307,16 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
         <div className="publish-row flex flex-wrap items-center justify-between gap-3 p-[14px_20px] border-t border-line-soft bg-[#fafbfc]">
           <p className="publish-hint m-0 text-text-3 text-sm font-medium">将以匿名身份发布，身份在帖子内保持一致</p>
           <div className="flex flex-wrap gap-2.5">
-            <button
-              className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150"
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={saving}
-            >
-              {saving ? '保存中...' : '保存草稿'}
-            </button>
+            {draftId && (
+              <button
+                className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150"
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={saving}
+              >
+                {saving ? '保存中...' : '保存草稿'}
+              </button>
+            )}
             <button
               className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!canPublish || loading}
@@ -347,18 +328,16 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
           </div>
         </div>
       </section>
-      {!lastSavedAt && (
-        <div className="guidance-grid grid grid-cols-2 gap-[18px] mt-[22px] max-sm:grid-cols-1">
-          <section className="dark-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-[#1e3a5f]">
-            <h3 className="m-0 mb-2 text-xl tracking-tight">发布贴士</h3>
-            <p className="m-0 text-white/76 leading-relaxed">友善发言是树洞的基石。请遵守社区公约，避免泄露自己或他人的真实身份。</p>
-          </section>
-          <section className="blue-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-gradient-to-br from-[#0e4a8a] to-blue">
-            <h3 className="m-0 mb-2 text-xl tracking-tight">话题推荐</h3>
-            <p className="m-0 text-white/76 leading-relaxed">#期末周碎碎念 #食堂新品测评 #南大星空 #科研日常</p>
-          </section>
-        </div>
-      )}
+      <div className="guidance-grid grid grid-cols-2 gap-[18px] mt-[22px] max-sm:grid-cols-1">
+        <section className="dark-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-[#1e3a5f]">
+          <h3 className="m-0 mb-2 text-xl tracking-tight">发布贴士</h3>
+          <p className="m-0 text-white/76 leading-relaxed">友善发言是树洞的基石。请遵守社区公约，避免泄露自己或他人的真实身份。</p>
+        </section>
+        <section className="blue-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-gradient-to-br from-[#0e4a8a] to-blue">
+          <h3 className="m-0 mb-2 text-xl tracking-tight">话题推荐</h3>
+          <p className="m-0 text-white/76 leading-relaxed">#期末周碎碎念 #食堂新品测评 #南大星空 #科研日常</p>
+        </section>
+      </div>
     </div>
   );
 }
