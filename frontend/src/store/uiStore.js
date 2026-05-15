@@ -51,6 +51,7 @@ const useUiStore = create((set, get) => ({
   notifs: loadJSON('nju_notifs', SEED_NOTIFS),
   // Routing
   activePage: getInitialPage(),
+  draftId: null,
   // Search
   query: '',
   // Carousel navigation
@@ -93,7 +94,11 @@ const useUiStore = create((set, get) => ({
       window.history.pushState({ page, params }, '', url);
       window.scrollTo(0, 0);
     }
-    set({ activePage: page, ...params });
+    set({
+      activePage: page,
+      draftId: page === 'compose' ? params?.draftId ?? null : null,
+      ...params,
+    });
   },
   handlePopState: () => {
     const path = window.location.pathname;

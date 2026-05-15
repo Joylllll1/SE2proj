@@ -145,6 +145,7 @@ function DraftsPage({ onNavigate }) {
                     type="checkbox"
                     checked={selectedIds.has(draft.id)}
                     onChange={() => handleSelectToggle(draft.id)}
+                    onClick={(e) => e.stopPropagation()}
                     className="w-4 h-4 rounded border-line text-blue focus:ring-blue"
                   />
                 </div>

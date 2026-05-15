@@ -5,6 +5,14 @@ import * as draftService from '../../services/draftService';
 
 const selectShowToast = (s) => s.showToast;
 
+const EMPTY_DRAFT = {
+  title: '',
+  content: '',
+  moodType: null,
+  tags: [],
+  image: '',
+};
+
 function ComposePage({ onPublish, draftId: initialDraftId }) {
   const [draftId, setDraftId] = useState(initialDraftId || null);
   const [title, setTitle] = useState('');
@@ -34,53 +42,68 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   const moodLabel = moodOptions.find(([, , t]) => t === moodType)?.[0] || '';
 
-  // Initialize originalData for new post
-  useEffect(() => {
-    if (!initialDraftId && !originalData) {
-      setOriginalData({
-        title: '',
-        content: '',
-        moodType: null,
-        tags: [],
-        image: '',
-      });
-    }
-  }, [initialDraftId, originalData]);
+  const applyDraftToForm = (draft) => {
+    setTitle(draft.title || '');
+    setContent(draft.content || '');
+    setMoodType(draft.moodType || null);
+    setTags(draft.tags || []);
+    setImageUrl(draft.image || '');
+    setOriginalData({
+      title: draft.title || '',
+      content: draft.content || '',
+      moodType: draft.moodType || null,
+      tags: draft.tags || [],
+      image: draft.image || '',
+    });
+    setIsDirty(false);
+  };
+
+  const buildDraftPayload = () => ({
+    title: title.trim() || undefined,
+    content: content.trim(),
+    moodType,
+    mood: moodLabel || '平静',
+    tags: tags.length > 0 ? tags : undefined,
+    image: imageUrl || undefined,
+  });
 
   // Sync draftId when initialDraftId changes
   useEffect(() => {
     if (initialDraftId) {
       setDraftId(initialDraftId);
+      return;
     }
+    setDraftId(null);
+    setLastSavedAt(null);
+    applyDraftToForm(EMPTY_DRAFT);
   }, [initialDraftId]);
 
   // Load draft when editing
   useEffect(() => {
-    if (!initialDraftId) return;
+    if (!initialDraftId) return undefined;
+    let cancelled = false;
+
     const loadDraft = async () => {
       try {
         const draft = await draftService.fetchDraftById(initialDraftId);
+        if (cancelled) return;
         setDraftId(draft.id);
-        setTitle(draft.title || '');
-        setContent(draft.content || '');
-        setMoodType(draft.moodType || null);
-        setTags(draft.tags || []);
-        setImageUrl(draft.image || '');
         setLastSavedAt(draft.updatedAt);
-        setOriginalData({
-          title: draft.title || '',
-          content: draft.content || '',
-          moodType: draft.moodType,
-          tags: draft.tags || [],
-          image: draft.image || '',
-        });
-        setIsDirty(false);
+        applyDraftToForm(draft);
       } catch (err) {
         console.error('加载草稿失败:', err);
+        if (!cancelled) {
+          showToast(err.message || '加载草稿失败');
+          navigate('drafts');
+        }
       }
     };
+
     loadDraft();
-  }, [initialDraftId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [initialDraftId, navigate, showToast]);
 
   // Track dirty state
   useEffect(() => {
@@ -123,27 +146,25 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     }
     setSaving(true);
     try {
-      const data = {
-        title: title.trim() || undefined,
-        content: content.trim(),
-        moodType,
-        mood: moodLabel || '平静',
-        tags: tags.length > 0 ? tags : undefined,
-        image: imageUrl || undefined,
-      };
+      const data = buildDraftPayload();
+      let savedDraft;
       if (draftId) {
-        await draftService.updateDraft(draftId, data);
+        savedDraft = await draftService.updateDraft(draftId, data);
       } else {
-        const draft = await draftService.createDraft(data);
-        setDraftId(draft.id);
-        window.history.replaceState(null, '', `/compose?draftId=${draft.id}`);
+        savedDraft = await draftService.createDraft(data);
+        setDraftId(savedDraft.id);
+        window.history.replaceState(null, '', `/compose?draftId=${savedDraft.id}`);
+        useUiStore.setState({ draftId: savedDraft.id });
       }
-      setLastSavedAt(new Date().toISOString());
-      setOriginalData(data);
+      applyDraftToForm(savedDraft);
+      setDraftId(savedDraft.id);
+      setLastSavedAt(savedDraft.updatedAt);
       setIsDirty(false);
       showToast('已保存');
+      return savedDraft;
     } catch (err) {
       showToast(err.message || '保存失败');
+      return null;
     } finally {
       setSaving(false);
     }
@@ -153,11 +174,18 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     setLoading(true);
     try {
       if (draftId) {
-        await draftService.publishDraft(draftId);
+        let publishTargetId = draftId;
+        if (isDirty) {
+          const savedDraft = await handleSaveDraft();
+          if (!savedDraft?.id) {
+            return;
+          }
+          publishTargetId = savedDraft.id;
+        }
+        await draftService.publishDraft(publishTargetId);
         showToast('发布成功');
-        // Reset form
-        setDraftId(null);
         window.history.replaceState(null, '', '/compose');
+        useUiStore.setState({ draftId: null });
       } else {
         await onPublish({
           title: title.trim() || '无标题',
@@ -168,16 +196,9 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
           image: imageUrl || undefined,
         });
       }
-      // Reset form and navigate to home
-      setTitle('');
-      setContent('');
-      setMoodType(null);
-      setTags([]);
-      setImageUrl('');
-      setLastSavedAt(null);
       setDraftId(null);
-      setOriginalData(null);
-      setIsDirty(false);
+      setLastSavedAt(null);
+      applyDraftToForm(EMPTY_DRAFT);
       navigate('home');
     } catch (err) {
       showToast(err.message || '发布失败');
@@ -190,8 +211,10 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     if (isDirty) {
       const confirmed = window.confirm('有未保存的修改，是否保存？');
       if (confirmed) {
-        handleSaveDraft().then(() => {
-          navigate('drafts');
+        handleSaveDraft().then((savedDraft) => {
+          if (savedDraft?.id) {
+            navigate('drafts');
+          }
         });
         return;
       }

@@ -44,6 +44,7 @@ const selectCloseAi = (s) => s.closeAi;
 const selectNotifs = (s) => s.notifs;
 const selectMarkAllNotifsRead = (s) => s.markAllNotifsRead;
 const selectActivePage = (s) => s.activePage;
+const selectUiDraftId = (s) => s.draftId;
 const selectNavigate = (s) => s.navigate;
 const selectQuery = (s) => s.query;
 const selectSetQuery = (s) => s.setQuery;
@@ -90,6 +91,7 @@ function App() {
   const notifs = useUiStore(selectNotifs);
   const markAllNotifsRead = useUiStore(selectMarkAllNotifsRead);
   const activePage = useUiStore(selectActivePage);
+  const uiDraftId = useUiStore(selectUiDraftId);
   const navigate = useUiStore(selectNavigate);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
@@ -152,7 +154,7 @@ function App() {
     } else {
       setComposeDraftId(null);
     }
-  }, [activePage]);
+  }, [activePage, uiDraftId]);
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
