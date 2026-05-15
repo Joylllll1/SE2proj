@@ -23,39 +23,57 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     pendingCommentUnlikesRef.current = pendingCommentUnlikes;
   }, [pendingCommentUnlikes]);
 
-  // 提交帖子取消点赞
-  const submitPendingUnlikes = async (unlikes) => {
+  // 提交帖子取消点赞（带重试）
+  const submitPendingUnlikes = async (unlikes, retries = 2) => {
     if (!unlikes || unlikes.length === 0) return;
+    const toSubmit = [...unlikes];
     // 清空状态
     setPendingUnlikes(new Set());
-    for (const postId of unlikes) {
-      try {
-        await toggleLikeApi(postId);
-        if (onUnlikeConfirm) {
-          onUnlikeConfirm(postId);
+    for (const postId of toSubmit) {
+      let lastError;
+      for (let i = 0; i < retries; i++) {
+        try {
+          await toggleLikeApi(postId);
+          if (onUnlikeConfirm) {
+            onUnlikeConfirm(postId);
+          }
+          lastError = null;
+          break;
+        } catch (e) {
+          console.error('Retry unlike post:', postId, i, e);
+          lastError = e;
         }
-      } catch (e) {
-        console.error('Failed to unlike post:', postId, e);
+      }
+      if (lastError) {
+        console.error('Failed to unlike post after retries:', postId, lastError);
       }
     }
   };
 
-  // 提交评论取消点赞
-  const submitPendingCommentUnlikes = async (unlikes, commentsData) => {
+  // 提交评论取消点赞（带重试）
+  const submitPendingCommentUnlikes = async (unlikes, commentsData, retries = 2) => {
     if (!unlikes || unlikes.length === 0) return;
-    // 清空状态
     setPendingCommentUnlikes(new Set());
     for (const commentKey of unlikes) {
-      const comment = commentsData.find((c) => `${c.type}-${c.item?.id}` === commentKey);
+      const comment = commentsData?.find((c) => `${c.type}-${c.item?.id}` === commentKey);
       if (!comment) continue;
-      try {
-        if (comment.type === 'reply') {
-          await toggleReplyLike(comment.parentCommentId, comment.item?.id);
-        } else {
-          await toggleCommentLike(comment.item?.id);
+      let lastError;
+      for (let i = 0; i < retries; i++) {
+        try {
+          if (comment.type === 'reply') {
+            await toggleReplyLike(comment.parentCommentId, comment.item?.id);
+          } else {
+            await toggleCommentLike(comment.item?.id);
+          }
+          lastError = null;
+          break;
+        } catch (e) {
+          console.error('Retry unlike comment:', commentKey, i, e);
+          lastError = e;
         }
-      } catch (e) {
-        console.error('Failed to unlike comment:', commentKey, e);
+      }
+      if (lastError) {
+        console.error('Failed to unlike comment after retries:', commentKey, lastError);
       }
     }
   };
