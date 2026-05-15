@@ -4,7 +4,7 @@ import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
 import { fetchLikes, toggleCommentLike, toggleReplyLike, toggleLike as toggleLikeApi } from '../../services/postService';
 
-function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport }) {
+function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport, onUnlikeConfirm }) {
   const [activeTab, setActiveTab] = useState('posts');
   const [likesData, setLikesData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,12 +16,16 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const submitPendingUnlikes = async () => {
     if (pendingUnlikes.size === 0) return;
     const unlikes = [...pendingUnlikes];
+    // 先清空 UI 状态
     setPendingUnlikes(new Set());
+    // 然后逐个提交
     for (const postId of unlikes) {
       try {
         await toggleLikeApi(postId);
       } catch (e) {
         console.error('Failed to unlike post:', postId, e);
+        // 失败后恢复 UI 状态
+        setPendingUnlikes((prev) => new Set([...prev, postId]));
       }
     }
   };
@@ -98,7 +102,10 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   };
 
   const likedPostIds = allLikedPosts || [];
-  const posts = (allPosts || []).filter((p) => likedPostIds.includes(p.id));
+  const posts = (allPosts || []).filter((p) => likedPostIds.includes(p.id)).map((p) => ({
+    ...p,
+    likes: pendingUnlikes.has(p.id) ? p.likes - 1 : p.likes,
+  }));
   const comments = likesData?.comments || [];
 
   return (
