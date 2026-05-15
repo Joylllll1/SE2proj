@@ -2,15 +2,38 @@ import React, { useState, useEffect } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
-import { fetchLikes, toggleCommentLike, toggleReplyLike } from '../../services/postService';
+import { fetchLikes, toggleCommentLike, toggleReplyLike, toggleLike as toggleLikeApi } from '../../services/postService';
 
-function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onLike, onReport }) {
+function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport }) {
   const [activeTab, setActiveTab] = useState('posts');
   const [likesData, setLikesData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
   const [commentLikes, setCommentLikes] = useState({});
+
+  // 切出帖子 Tab 时批量提交取消点赞
+  const submitPendingUnlikes = async () => {
+    if (pendingUnlikes.size === 0) return;
+    const unlikes = [...pendingUnlikes];
+    setPendingUnlikes(new Set());
+    for (const postId of unlikes) {
+      try {
+        await toggleLikeApi(postId);
+      } catch (e) {
+        console.error('Failed to unlike post:', postId, e);
+      }
+    }
+  };
+
+  // 离开页面时提交
+  useEffect(() => {
+    return () => {
+      if (activeTab === 'posts' && pendingUnlikes.size > 0) {
+        submitPendingUnlikes();
+      }
+    };
+  }, [activeTab, pendingUnlikes]);
 
   useEffect(() => {
     setLoading(true);
@@ -32,16 +55,23 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
       });
   }, []);
 
-  const handleTabChange = (newTab) => {
-    if (activeTab === 'posts' && newTab !== 'posts' && pendingUnlikes.size > 0) {
-      console.log('Batch submit pending unlikes:', [...pendingUnlikes]);
-      setPendingUnlikes(new Set());
+  const handleTabChange = async (newTab) => {
+    if (activeTab === 'posts' && newTab !== 'posts') {
+      await submitPendingUnlikes();
     }
     setActiveTab(newTab);
   };
 
   const handlePostUnlike = (postId) => {
-    setPendingUnlikes((prev) => new Set([...prev, postId]));
+    setPendingUnlikes((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId); // 再次点击恢复点赞
+      } else {
+        next.add(postId); // 取消点赞
+      }
+      return next;
+    });
   };
 
   const handleCommentLike = async (comment) => {
@@ -68,7 +98,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
   };
 
   const likedPostIds = allLikedPosts || [];
-  const posts = (allPosts || []).filter((p) => likedPostIds.includes(p.id) && !pendingUnlikes.has(p.id));
+  const posts = (allPosts || []).filter((p) => likedPostIds.includes(p.id));
   const comments = likesData?.comments || [];
 
   return (
@@ -113,18 +143,21 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
           <EmptyState title="还没有赞过的帖子" />
         ) : (
           <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
-            {posts.map((post) => (
-              <div key={post.id} className="inline-block w-full mb-[18px]">
-                <PostCard
-                  compact
-                  post={post}
-                  onOpen={() => onOpenPost(post)}
-                  liked
-                  onLike={() => handlePostUnlike(post.id)}
-                  onReport={onReport}
-                />
-              </div>
-            ))}
+            {posts.map((post) => {
+              const isPendingUnlike = pendingUnlikes.has(post.id);
+              return (
+                <div key={post.id} className="inline-block w-full mb-[18px]">
+                  <PostCard
+                    compact
+                    post={post}
+                    onOpen={() => onOpenPost(post)}
+                    liked={!isPendingUnlike}
+                    onLike={() => handlePostUnlike(post.id)}
+                    onReport={onReport}
+                  />
+                </div>
+              );
+            })}
           </section>
         )
       ) : (

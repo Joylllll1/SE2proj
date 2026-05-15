@@ -248,7 +248,6 @@ function App() {
               posts={posts}
               likedPosts={likedPosts}
               onOpenPost={openPost}
-              onLike={toggleLike}
               onReport={handleReport}
             />
           )}
