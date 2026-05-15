@@ -47,8 +47,8 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
         <button
           className={`tab-btn px-4 py-[10px] text-sm font-semibold rounded-full border transition-all duration-200 ${
             activeTab === 'posts'
-              ? 'bg-[#1d1d1f] text-white border-[#1d1d1f]'
-              : 'bg-white text-text-2 border-line hover:border-blue/40 hover:text-blue'
+              ? 'bg-blue-soft text-blue border-blue'
+              : 'bg-white text-text-2 border-line hover:border-[#b0c4de] hover:text-blue'
           }`}
           onClick={() => setActiveTab('posts')}
         >
@@ -57,8 +57,8 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
         <button
           className={`tab-btn px-4 py-[10px] text-sm font-semibold rounded-full border transition-all duration-200 ${
             activeTab === 'comments'
-              ? 'bg-[#1d1d1f] text-white border-[#1d1d1f]'
-              : 'bg-white text-text-2 border-line hover:border-blue/40 hover:text-blue'
+              ? 'bg-blue-soft text-blue border-blue'
+              : 'bg-white text-text-2 border-line hover:border-[#b0c4de] hover:text-blue'
           }`}
           onClick={() => setActiveTab('comments')}
         >
@@ -94,22 +94,26 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
           <EmptyState title="还没有赞过的评论" />
         ) : (
           <section className="space-y-4">
-            {comments.map((comment) => (
-              <div
-                key={comment.item.id}
-                className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all cursor-pointer"
-                onClick={() => onOpenPost({ id: comment.postId, highlightComment: comment.item.id })}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs text-text-3 font-medium">来自：{comment.postTitle}</span>
+            {comments.map((comment) => {
+              const postId = comment.postId;
+              const post = postId ? allPosts.find((p) => p.id === postId) : null;
+              return (
+                <div
+                  key={comment.item?.id || Math.random()}
+                  className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all cursor-pointer"
+                  onClick={() => post && onOpenPost(post)}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs text-text-3 font-medium">来自：{post?.title || comment.postTitle || '未知帖子'}</span>
+                  </div>
+                  <p className="text-sm text-text-2 mb-2">
+                    {comment.type === 'reply' ? '↳ ' : '💬 '}
+                    {comment.item?.content || ''}
+                  </p>
+                  <div className="text-xs text-text-3">♥ {comment.item?.likes || 0}</div>
                 </div>
-                <p className="text-sm text-text-2 mb-2">
-                  {comment.type === 'reply' ? '↳ ' : '💬 '}
-                  {comment.item.content}
-                </p>
-                <div className="text-xs text-text-3">♥ {comment.item.likes}</div>
-              </div>
-            ))}
+              );
+            })}
           </section>
         )
       )}
