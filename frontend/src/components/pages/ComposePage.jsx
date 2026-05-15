@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
+import * as draftService from '../../services/draftService';
 
 const selectShowToast = (s) => s.showToast;
 
-function ComposePage({ onPublish, draftId }) {
+function ComposePage({ onPublish, draftId: initialDraftId }) {
+  const [draftId, setDraftId] = useState(initialDraftId || null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [moodType, setMoodType] = useState(null);
@@ -34,8 +36,7 @@ function ComposePage({ onPublish, draftId }) {
     if (!draftId) return;
     const loadDraft = async () => {
       try {
-        const { fetchDraftById } = await import('../../services/draftService');
-        const draft = await fetchDraftById(draftId);
+        const draft = await draftService.fetchDraftById(draftId);
         setTitle(draft.title || '');
         setContent(draft.content || '');
         setMoodType(draft.moodType || null);
@@ -86,14 +87,12 @@ function ComposePage({ onPublish, draftId }) {
         tags: tags.length > 0 ? tags : undefined,
         image: imageUrl || undefined,
       };
-      const { createDraft, updateDraft } = await import('../../services/draftService');
       if (draftId) {
-        await updateDraft(draftId, data);
+        await draftService.updateDraft(draftId, data);
       } else {
-        const draft = await createDraft(data);
-        // Update URL and state to reflect we're now editing this draft
+        const draft = await draftService.createDraft(data);
+        setDraftId(draft.id);
         window.history.replaceState(null, '', `/compose?draftId=${draft.id}`);
-        useUiStore.getState().setComposeDraftId(draft.id);
       }
       setLastSavedAt(new Date().toISOString());
       showToast('已保存');
@@ -106,11 +105,9 @@ function ComposePage({ onPublish, draftId }) {
 
   const handlePublish = async () => {
     if (draftId) {
-      // Publish from draft
       setLoading(true);
       try {
-        const { publishDraft } = await import('../../services/draftService');
-        const post = await publishDraft(draftId);
+        const post = await draftService.publishDraft(draftId);
         showToast('发布成功');
         onPublish({ ...post, id: post.id });
       } catch (err) {
@@ -119,7 +116,6 @@ function ComposePage({ onPublish, draftId }) {
         setLoading(false);
       }
     } else {
-      // Normal publish
       onPublish({
         title: title.trim() || '无标题',
         content: content.trim(),
@@ -192,7 +188,6 @@ function ComposePage({ onPublish, draftId }) {
           placeholder="在这里写下你的内容..."
           value={content}
         />
-        {/* image preview */}
         {imageUrl && (
           <div className="editor-image-preview relative p-3 border-t border-line-soft bg-[#fafbfc]">
             <img src={imageUrl} alt="preview" className="w-full max-h-[200px] rounded-md object-cover" />
@@ -209,7 +204,6 @@ function ComposePage({ onPublish, draftId }) {
           </button>
           <span className="ml-auto text-text-3 text-[13px] font-bold">{content.length}/1000</span>
         </div>
-        {/* tag area */}
         {(tags.length > 0 || showTagInput) && (
           <div className="editor-tag-area p-3 border-t border-line-soft bg-[#fafbfc]">
             {tags.length > 0 && (

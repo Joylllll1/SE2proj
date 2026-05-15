@@ -42,6 +42,7 @@ const Icon = ({ name, filled = false }) => {
     bookmark_border: 'M7 5h10v15l-5-3-5 3V5Z',
     arrow_back: 'M5 12h14M5 12l5-5M5 12l5 5',
     delete: 'M6 7h12M6 7l1 12h10l1-12M9 7V5h6v2m-4 4v5m2-5v5',
+    edit: 'M5 3l10 10M3 21l3-1 11-11-2-2-11 11-1 3Z',
     check: 'M5 12l5 5L20 7',
     loop: 'M12 4a8 8 0 0 1 8 8M20 12l-3-3m3 3-3 3M4 12l3-3m-3 3 3 3',
     error_outline: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-1-13v5m0 4h.1',

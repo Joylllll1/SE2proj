@@ -143,14 +143,14 @@ function App() {
   }, [activePage, selectedPost, showToast]);
 
   // ── Get draftId from URL for compose page ──
-  const draftIdRef = React.useRef(null);
+  const [composeDraftId, setComposeDraftId] = React.useState(null);
   React.useEffect(() => {
     if (activePage === 'compose') {
       const params = new URLSearchParams(window.location.search);
       const did = params.get('draftId');
-      if (did) {
-        draftIdRef.current = did;
-      }
+      setComposeDraftId(did || null);
+    } else {
+      setComposeDraftId(null);
     }
   }, [activePage]);
 
@@ -254,7 +254,7 @@ function App() {
               <UnderConstruction feature="帖子详情" />
             )
           )}
-          {activePage === 'compose' && <ComposePage onPublish={handlePublish} draftId={draftIdRef.current} />}
+          {activePage === 'compose' && <ComposePage onPublish={handlePublish} draftId={composeDraftId} />}
           {activePage === 'drafts' && <DraftsPage onNavigate={navigate} />}
           {activePage === 'bookmarks' && (
             <BookmarksPage

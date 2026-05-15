@@ -84,6 +84,8 @@ const useUiStore = create((set, get) => ({
     let url;
     if (page === 'detail' && params?.selectedPost) {
       url = `/detail/${params.selectedPost.id}`;
+    } else if (page === 'compose' && params?.draftId) {
+      url = `/compose?draftId=${params.draftId}`;
     } else {
       url = PAGE_URLS[page];
     }

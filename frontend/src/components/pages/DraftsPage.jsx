@@ -136,34 +136,24 @@ function DraftsPage({ onNavigate }) {
           {drafts.map((draft) => (
             <article
               key={draft.id}
-              className={`draft-item flex gap-3 p-4 rounded-lg border border-line-soft bg-surface cursor-pointer transition-all duration-150 hover:border-line ${selectMode ? 'pl-2' : ''}`}
-              onClick={() => !selectMode && handleEditDraft(draft.id)}
+              className={`draft-item flex gap-3 p-4 rounded-lg border border-line-soft bg-surface transition-all duration-150 hover:border-line ${selectMode ? 'cursor-default pl-2' : 'cursor-pointer'}`}
+              onClick={() => { if (selectMode) { handleSelectToggle(draft.id); } else { handleEditDraft(draft.id); } }}
             >
               {selectMode && (
-                <label className="flex items-center justify-center w-6 flex-shrink-0 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-center w-6 flex-shrink-0">
                   <input
                     type="checkbox"
                     checked={selectedIds.has(draft.id)}
                     onChange={() => handleSelectToggle(draft.id)}
                     className="w-4 h-4 rounded border-line text-blue focus:ring-blue"
                   />
-                </label>
+                </div>
               )}
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-bold text-text truncate">{getTitle(draft)}</h3>
                 <TimeAgo timeString={draft.updatedAt} className="block mt-0.5 text-text-3 text-xs" />
                 <p className="mt-2 text-sm text-text-2 line-clamp-2">{getContentPreview(draft)}</p>
               </div>
-              {!selectMode && (
-                <button
-                  className="flex-shrink-0 grid w-8 h-8 place-items-center text-text-3 hover:text-red-500 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); handleEditDraft(draft.id); }}
-                  type="button"
-                  aria-label="编辑"
-                >
-                  <Icon name="edit" />
-                </button>
-              )}
             </article>
           ))}
         </section>
