@@ -2,28 +2,28 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
 import TimeAgo from '../common/TimeAgo';
 import useAuthStore from '../../store/authStore';
+import * as draftService from '../../services/draftService';
 
-const selectIsLoggedIn = (s) => s.isLoggedIn;
+const selectIsAuthenticated = (s) => s.isAuthenticated;
 
 function DraftsPage({ onNavigate }) {
-  const isLoggedIn = useAuthStore(selectIsLoggedIn);
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const [drafts, setDrafts] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isAuthenticated) {
       onNavigate('login');
       return;
     }
     loadDrafts();
-  }, [isLoggedIn]);
+  }, [isAuthenticated]);
 
   const loadDrafts = async () => {
     try {
-      const { default: apiClient } = await import('../../services/apiClient');
-      const data = await apiClient.request('/api/drafts');
+      const data = await draftService.fetchDrafts();
       setDrafts(data);
     } catch (err) {
       console.error('加载草稿失败:', err);
