@@ -12,7 +12,7 @@ export default function usePostActions() {
 
   const openPost = useCallback((post) => {
     setSelectedPost(post);
-    navigate('detail');
+    navigate('detail', { selectedPost: post });
   }, [setSelectedPost, navigate]);
 
   return { openPost };
