@@ -113,14 +113,14 @@ function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBoo
               <button
                 className={`folder-name-btn px-4 py-[10px] text-sm font-semibold rounded-full border transition-all duration-200 ${
                   isActive
-                    ? 'bg-[#1d1d1f] text-white border-[#1d1d1f] shadow-md'
+                    ? 'bg-blue-soft text-blue border border-blue'
                     : 'bg-white text-text-2 border-line hover:border-blue/40 hover:text-blue hover:shadow-sm'
                 }`}
                 onClick={() => setActiveFolder(folder.id)}
                 type="button"
               >
                 {folder.name}
-                <span className={`ml-1.5 text-xs ${isActive ? 'text-white/60' : 'text-text-3'}`}>
+                <span className={`ml-1.5 text-xs ${isActive ? 'text-blue' : 'text-text-3'}`}>
                   ({count})
                 </span>
               </button>
