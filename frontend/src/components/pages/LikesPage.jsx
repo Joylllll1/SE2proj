@@ -147,17 +147,6 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       });
   }, []);
 
-  const handleTabChange = (newTab) => {
-    // 切出当前 Tab 时提交
-    if (activeTab === 'posts' && pendingUnlikes.size > 0) {
-      submitPendingUnlikes([...pendingUnlikes]);
-    }
-    if (activeTab === 'comments' && pendingCommentUnlikes.size > 0 && likesData?.comments) {
-      submitPendingCommentUnlikes([...pendingCommentUnlikes], likesData.comments);
-    }
-    setActiveTab(newTab);
-  };
-
   const handlePostUnlike = (postId) => {
     setPendingUnlikes((prev) => {
       const next = new Set(prev);
