@@ -205,8 +205,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     });
   };
 
-  const likedPostIds = allLikedPosts || [];
-  const posts = (allPosts || []).filter((p) => likedPostIds.includes(p.id)).map((p) => ({
+  const posts = (likesData?.posts || (allPosts || []).filter((p) => (allLikedPosts || []).includes(p.id))).map((p) => ({
     ...p,
     likes: pendingUnlikes.has(p.id) ? p.likes - 1 : p.likes,
   }));

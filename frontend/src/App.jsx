@@ -27,6 +27,7 @@ import useUiStore from './store/uiStore';
 // ─── Hooks ───
 import useLikeBookmark from './hooks/useLikeBookmark';
 import usePostActions from './hooks/usePostActions';
+import * as postService from './services/postService';
 
 // ─── Stable store selectors (prevents zustand getSnapshot churn) ───
 const selectInitialized = (s) => s.initialized;
@@ -126,6 +127,19 @@ function App() {
       fetchComments(selectedPost.id);
     }
   }, [activePage, selectedPost?.id, fetchComments]);
+
+  // ── Load post from URL when refreshing on detail page ──
+  React.useEffect(() => {
+    if (activePage === 'detail' && !selectedPost) {
+      const match = window.location.pathname.match(/^\/detail\/(.+)/);
+      if (match) {
+        const postId = match[1];
+        postService.fetchPostById(postId)
+          .then((post) => { usePostStore.getState().setSelectedPost(post); })
+          .catch(() => showToast('加载帖子失败'));
+      }
+    }
+  }, [activePage, selectedPost, showToast]);
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;

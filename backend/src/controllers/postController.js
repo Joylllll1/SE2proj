@@ -32,3 +32,9 @@ export const save = async (req, res) => {
   const result = await postService.toggleSave(req.user._id.toString(), req.params.id);
   res.json(result);
 };
+
+export const getSaved = async (req, res) => {
+  const userId = req.user._id.toString();
+  const posts = await postService.getSavedPosts(userId);
+  res.json(posts);
+};

@@ -30,6 +30,10 @@ export async function fetchLikes() {
   return request('/api/likes');
 }
 
+export async function fetchSavedPosts() {
+  return request('/api/posts/saved');
+}
+
 export async function toggleCommentLike(commentId) {
   return request(`/api/comments/${commentId}/like`, { method: 'POST' });
 }

@@ -98,6 +98,22 @@ export const toggleSave = async (userId, postId) => {
   return { saved: idx === -1, saves: post.saves };
 };
 
+export const getSavedPosts = async (userId) => {
+  const posts = await Post.find({ isDeleted: false, savedBy: userId })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  return posts.map((p) => ({
+    ...p,
+    id: p._id.toString(),
+    time: formatRelativeTime(p.createdAt),
+    likes: p.likes || 0,
+    saves: p.saves || 0,
+    isLiked: userId ? p.likedBy?.some((id) => id.toString() === userId) : false,
+    isSaved: true,
+  }));
+};
+
 // ─── Helpers ───
 
 function formatRelativeTime(date) {

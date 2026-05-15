@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Icon from '../common/Icon';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
+import * as postService from '../../services/postService';
 
 function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
   const [activeFolder, setActiveFolder] = useState('all');
@@ -10,6 +11,8 @@ function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBoo
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolder, setEditingFolder] = useState(null);
   const [editFolderName, setEditFolderName] = useState('');
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
   const menuRefs = useRef({});
 
   // Close menu when clicking outside
@@ -28,6 +31,19 @@ function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBoo
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showFolderMenu]);
+
+  // ── Fetch saved posts from API when page loads without post data ──
+  useEffect(() => {
+    if (bookmarks.length > 0 && posts.length === 0 && !loadingSaved) {
+      setLoadingSaved(true);
+      postService.fetchSavedPosts()
+        .then(setSavedPosts)
+        .catch(() => {})
+        .finally(() => setLoadingSaved(false));
+    }
+  // Only run on mount when props haven't changed yet
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
@@ -70,13 +86,14 @@ function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBoo
 
   // Get bookmarked posts for the active folder
   const getBookmarksForFolder = (folderId) => {
+    const source = posts.length > 0 ? posts : savedPosts;
     if (folderId === 'all') {
       // Return all bookmarked posts
-      return posts.filter((p) => bookmarks.includes(p.id));
+      return source.filter((p) => bookmarks.includes(p.id));
     }
     // Return posts bookmarked in this specific folder
     const bookmarkIds = bookmarkFolders[folderId] || [];
-    return posts.filter((p) => bookmarkIds.includes(p.id));
+    return source.filter((p) => bookmarkIds.includes(p.id));
   };
 
   const folderPosts = getBookmarksForFolder(activeFolder);
