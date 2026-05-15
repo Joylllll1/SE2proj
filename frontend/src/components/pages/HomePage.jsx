@@ -77,7 +77,7 @@ export default function HomePage() {
         <div className="overview-strip grid grid-cols-3 gap-3.5 mt-[18px] max-lg:grid-cols-1">
           <article className="overview-card p-4 rounded-md border border-line bg-white/80 shadow-xs">
             <span className="overview-label inline-block mb-1.5 text-blue text-[11px] font-bold tracking-widest uppercase">匿名表达</span>
-            <strong className="block text-[17px] tracking-tight">同帖稳定身份</strong>
+            <strong className="block text-[17px] tracking-tight">同帖稳定 · 跨帖不可关联</strong>
             <p className="mt-1.5 mb-0 text-text-2 text-[13px] leading-relaxed">减少熟人压力，同时保留讨论连续性。</p>
           </article>
           <article className="overview-card p-4 rounded-md border border-line bg-white/80 shadow-xs">

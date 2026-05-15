@@ -54,13 +54,6 @@ function Sidebar({ activePage, onNavigate }) {
           <Icon name="edit_square" />
           <span>发布新动态</span>
         </button>
-        <section className="identity-card grid grid-cols-[30px_1fr] gap-2.5 p-[14px] border border-line rounded-md bg-surface shadow-xs mt-3">
-          <div className="avatar grid w-[30px] h-[30px] place-items-center rounded-lg text-blue bg-blue-soft text-[13px] font-bold">鲸</div>
-          <div>
-            <strong className="block text-xs mt-0">匿名身份</strong>
-            <p className="m-0 mt-[3px] text-text-3 text-[11px] leading-normal">同帖稳定 · 跨帖不可关联</p>
-          </div>
-        </section>
         <button
           className="flex items-center gap-2 w-full mt-2 px-3 py-2 border-0 rounded-lg text-text-3 bg-transparent text-xs font-semibold transition-colors duration-150 hover:text-red-500 hover:bg-red-50"
           onClick={handleLogout}
