@@ -1,5 +1,6 @@
 import React from 'react';
 import Toast from './components/common/Toast';
+import ConfirmLeaveDialog from './components/common/ConfirmLeaveDialog';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import AIPanel from './components/features/AIPanel';
@@ -45,6 +46,9 @@ const selectNotifs = (s) => s.notifs;
 const selectMarkAllNotifsRead = (s) => s.markAllNotifsRead;
 const selectActivePage = (s) => s.activePage;
 const selectUiDraftId = (s) => s.draftId;
+const selectLeaveConfirm = (s) => s.leaveConfirm;
+const selectCloseLeaveConfirm = (s) => s.closeLeaveConfirm;
+const selectConfirmPendingNavigation = (s) => s.confirmPendingNavigation;
 const selectNavigate = (s) => s.navigate;
 const selectQuery = (s) => s.query;
 const selectSetQuery = (s) => s.setQuery;
@@ -92,6 +96,9 @@ function App() {
   const markAllNotifsRead = useUiStore(selectMarkAllNotifsRead);
   const activePage = useUiStore(selectActivePage);
   const uiDraftId = useUiStore(selectUiDraftId);
+  const leaveConfirm = useUiStore(selectLeaveConfirm);
+  const closeLeaveConfirm = useUiStore(selectCloseLeaveConfirm);
+  const confirmPendingNavigation = useUiStore(selectConfirmPendingNavigation);
   const navigate = useUiStore(selectNavigate);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
@@ -297,6 +304,16 @@ function App() {
       </div>
       <AIPanel open={aiOpen} onClose={closeAi} />
       {toast && <Toast message={toast} onDone={clearToast} />}
+      <ConfirmLeaveDialog
+        open={leaveConfirm.open}
+        title={leaveConfirm.title}
+        description={leaveConfirm.description}
+        confirmText={leaveConfirm.confirmText}
+        cancelText={leaveConfirm.cancelText}
+        mode={leaveConfirm.mode}
+        onConfirm={confirmPendingNavigation}
+        onCancel={closeLeaveConfirm}
+      />
 
       {/* Folder Selector Modal */}
       {folderSelectorOpen && (

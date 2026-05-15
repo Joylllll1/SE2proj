@@ -52,6 +52,16 @@ const useUiStore = create((set, get) => ({
   // Routing
   activePage: getInitialPage(),
   draftId: null,
+  pendingNavigation: null,
+  leaveConfirm: {
+    open: false,
+    title: '离开当前页面？',
+    description: '你有尚未保存的内容，离开后本次修改会丢失。',
+    confirmText: '直接离开',
+    cancelText: '继续编辑',
+    mode: 'discard',
+  },
+  unsavedChangesHandler: null,
   // Search
   query: '',
   // Carousel navigation
@@ -81,7 +91,81 @@ const useUiStore = create((set, get) => ({
   },
 
   // Routing
-  navigate: (page, params) => {
+  setUnsavedChangesHandler: (handler) => set({ unsavedChangesHandler: handler }),
+  clearUnsavedChangesHandler: () => set({ unsavedChangesHandler: null }),
+  openLeaveConfirm: (config = {}) =>
+    set((state) => ({
+      leaveConfirm: {
+        ...state.leaveConfirm,
+        ...config,
+        open: true,
+      },
+    })),
+  closeLeaveConfirm: () =>
+    set((state) => ({
+      leaveConfirm: {
+        ...state.leaveConfirm,
+        open: false,
+      },
+      pendingNavigation: null,
+    })),
+  confirmPendingNavigation: async () => {
+    const { pendingNavigation, unsavedChangesHandler } = get();
+    if (!pendingNavigation) return;
+
+    try {
+      if (pendingNavigation.mode === 'save' && unsavedChangesHandler) {
+        const shouldProceed = await unsavedChangesHandler();
+        if (!shouldProceed) return;
+      }
+      set((state) => ({
+        leaveConfirm: { ...state.leaveConfirm, open: false },
+        pendingNavigation: null,
+      }));
+      if (typeof pendingNavigation.action === 'function') {
+        await pendingNavigation.action();
+        return;
+      }
+      get().navigate(pendingNavigation.page, pendingNavigation.params, { force: true });
+    } catch {
+      // Keep dialog open when save flow fails.
+    }
+  },
+  requestNavigationConfirmation: (config) => {
+    set({
+      pendingNavigation: config.pendingNavigation,
+    });
+    get().openLeaveConfirm(config.dialog);
+  },
+  navigate: (page, params, options = {}) => {
+    const { unsavedChangesHandler } = get();
+    if (!options.force && unsavedChangesHandler) {
+      set({
+        pendingNavigation: {
+          page,
+          params,
+          mode: options.unsavedMode || 'save',
+        },
+      });
+      if ((options.unsavedMode || 'save') === 'discard') {
+        get().openLeaveConfirm({
+          title: '离开当前页面？',
+          description: '你修改过内容但还没保存。继续离开会丢掉这次修改。',
+          confirmText: '直接离开',
+          cancelText: '继续编辑',
+          mode: 'discard',
+        });
+      } else {
+        get().openLeaveConfirm({
+          title: '保存当前草稿？',
+          description: '你修改过内容但还没保存。现在离开会丢掉这次修改。',
+          confirmText: '保存并离开',
+          cancelText: '留在这里',
+          mode: 'save',
+        });
+      }
+      return false;
+    }
     let url;
     if (page === 'detail' && params?.selectedPost) {
       url = `/detail/${params.selectedPost.id}`;
@@ -97,14 +181,35 @@ const useUiStore = create((set, get) => ({
     set({
       activePage: page,
       draftId: page === 'compose' ? params?.draftId ?? null : null,
+      pendingNavigation: null,
       ...params,
     });
+    return true;
   },
   handlePopState: () => {
     const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    const draftId = params.get('draftId');
+    const searchParams = new URLSearchParams(window.location.search);
+    const draftId = searchParams.get('draftId');
     const page = urlToPage(path) || 'home';
+    const { unsavedChangesHandler } = get();
+    if (unsavedChangesHandler) {
+      window.history.go(1);
+      set({
+        pendingNavigation: {
+          page,
+          params: page === 'compose' && draftId ? { draftId } : undefined,
+          mode: 'save',
+        },
+      });
+      get().openLeaveConfirm({
+        title: '保存当前草稿？',
+        description: '你修改过内容但还没保存。现在离开会丢掉这次修改。',
+        confirmText: '保存并离开',
+        cancelText: '留在这里',
+        mode: 'save',
+      });
+      return;
+    }
     set({ activePage: page, draftId });
   },
 

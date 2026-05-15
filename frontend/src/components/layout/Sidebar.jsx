@@ -1,6 +1,7 @@
 import React from 'react';
 import Icon from '../common/Icon';
 import useAuthStore from '../../store/authStore';
+import useUiStore from '../../store/uiStore';
 
 const navItems = [
   { id: 'home', label: '动态首页', icon: 'dynamic_feed' },
@@ -14,13 +15,38 @@ const navItems = [
 ];
 
 const selectLogout = (s) => s.logout;
+const selectRequestNavigationConfirmation = (s) => s.requestNavigationConfirmation;
+const selectUnsavedChangesHandler = (s) => s.unsavedChangesHandler;
 
 function Sidebar({ activePage, onNavigate }) {
   const logout = useAuthStore(selectLogout);
+  const requestNavigationConfirmation = useUiStore(selectRequestNavigationConfirmation);
+  const unsavedChangesHandler = useUiStore(selectUnsavedChangesHandler);
 
   const handleLogout = () => {
-    logout();
-    onNavigate('login');
+    if (!unsavedChangesHandler) {
+      Promise.resolve(logout()).finally(() => {
+        onNavigate('login', undefined, { force: true });
+      });
+      return;
+    }
+
+    requestNavigationConfirmation({
+      pendingNavigation: {
+        mode: 'discard',
+        action: async () => {
+          await logout();
+          onNavigate('login', undefined, { force: true });
+        },
+      },
+      dialog: {
+        title: '退出登录？',
+        description: '当前内容还没有保存。退出后本次修改会丢失，你需要重新登录才能继续编辑。',
+        confirmText: '退出登录',
+        cancelText: '继续编辑',
+        mode: 'discard',
+      },
+    });
   };
 
   return (

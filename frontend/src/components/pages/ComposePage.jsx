@@ -4,6 +4,8 @@ import useUiStore from '../../store/uiStore';
 import * as draftService from '../../services/draftService';
 
 const selectShowToast = (s) => s.showToast;
+const selectSetUnsavedChangesHandler = (s) => s.setUnsavedChangesHandler;
+const selectClearUnsavedChangesHandler = (s) => s.clearUnsavedChangesHandler;
 
 const EMPTY_DRAFT = {
   title: '',
@@ -29,7 +31,10 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   const [originalData, setOriginalData] = useState(null);
   const showToast = useUiStore(selectShowToast);
   const navigate = useUiStore((s) => s.navigate);
+  const setUnsavedChangesHandler = useUiStore(selectSetUnsavedChangesHandler);
+  const clearUnsavedChangesHandler = useUiStore(selectClearUnsavedChangesHandler);
   const fileInputRef = useRef(null);
+  const saveDraftRef = useRef(null);
 
   const moodOptions = [
     ['平静', 'sentiment_satisfied', 'calm'],
@@ -170,6 +175,10 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     }
   };
 
+  useEffect(() => {
+    saveDraftRef.current = handleSaveDraft;
+  }, [handleSaveDraft]);
+
   const handlePublish = async () => {
     setLoading(true);
     try {
@@ -207,18 +216,35 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     }
   };
 
-  const handleGoToDrafts = () => {
-    if (isDirty) {
-      const confirmed = window.confirm('有未保存的修改，是否保存？');
-      if (confirmed) {
-        handleSaveDraft().then((savedDraft) => {
-          if (savedDraft?.id) {
-            navigate('drafts');
-          }
-        });
-        return;
-      }
+  useEffect(() => {
+    if (!isDirty) {
+      clearUnsavedChangesHandler();
+      return undefined;
     }
+
+    const leaveHandler = async () => {
+      const savedDraft = await saveDraftRef.current?.();
+      return Boolean(savedDraft?.id);
+    };
+
+    setUnsavedChangesHandler(() => leaveHandler);
+    return () => {
+      clearUnsavedChangesHandler();
+    };
+  }, [isDirty, clearUnsavedChangesHandler, setUnsavedChangesHandler]);
+
+  useEffect(() => {
+    const onBeforeUnload = (event) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
+
+  const handleGoToDrafts = () => {
     navigate('drafts');
   };
 
