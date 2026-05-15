@@ -17,7 +17,10 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
   const showToast = useUiStore(selectShowToast);
+  const navigate = useUiStore((s) => s.navigate);
   const fileInputRef = useRef(null);
 
   const moodOptions = [
@@ -44,12 +47,32 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
         setTags(draft.tags || []);
         setImageUrl(draft.image || '');
         setLastSavedAt(draft.updatedAt);
+        setOriginalData({
+          title: draft.title || '',
+          content: draft.content || '',
+          moodType: draft.moodType,
+          tags: draft.tags || [],
+          image: draft.image || '',
+        });
+        setIsDirty(false);
       } catch (err) {
         console.error('加载草稿失败:', err);
       }
     };
     loadDraft();
   }, [initialDraftId]);
+
+  // Track dirty state
+  useEffect(() => {
+    if (!draftId || !originalData) return;
+    const changed =
+      title !== originalData.title ||
+      content !== originalData.content ||
+      moodType !== originalData.moodType ||
+      JSON.stringify(tags) !== JSON.stringify(originalData.tags) ||
+      imageUrl !== originalData.image;
+    setIsDirty(changed);
+  }, [title, content, moodType, tags, imageUrl, draftId, originalData]);
 
   const addTag = (t) => {
     const cleaned = t.trim().replace(/^#/, '');
@@ -96,6 +119,8 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
         window.history.replaceState(null, '', `/compose?draftId=${draft.id}`);
       }
       setLastSavedAt(new Date().toISOString());
+      setOriginalData(data);
+      setIsDirty(false);
       showToast('已保存');
     } catch (err) {
       showToast(err.message || '保存失败');
@@ -105,30 +130,87 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   };
 
   const handlePublish = async () => {
-    if (draftId) {
-      setLoading(true);
+    // If editing a draft and click "发布新动态" (not the draft's own publish)
+    // Check if there are unsaved changes
+    if (draftId && isDirty) {
+      const confirmed = window.confirm('草稿有未保存的修改，是否保存后发布？');
+      if (confirmed) {
+        setSaving(true);
+        try {
+          const data = {
+            title: title.trim() || undefined,
+            content: content.trim(),
+            moodType,
+            mood: moodLabel || '平静',
+            tags: tags.length > 0 ? tags : undefined,
+            image: imageUrl || undefined,
+          };
+          await draftService.updateDraft(draftId, data);
+          const post = await draftService.publishDraft(draftId);
+          showToast('发布成功');
+          navigate('home');
+        } catch (err) {
+          showToast(err.message || '发布失败');
+        } finally {
+          setSaving(false);
+        }
+        return;
+      }
+      // User chose not to save, but still wants to publish the saved version
       try {
         const post = await draftService.publishDraft(draftId);
         showToast('发布成功');
-        onPublish({ ...post, id: post.id });
+        navigate('home');
       } catch (err) {
         showToast(err.message || '发布失败');
-      } finally {
-        setLoading(false);
       }
-    } else {
-      onPublish({
-        title: title.trim() || '无标题',
-        content: content.trim(),
-        mood: moodLabel || '平静',
-        moodType: moodType || 'calm',
-        tags: tags.length > 0 ? tags : ['树洞'],
-        image: imageUrl || undefined,
-      });
+      return;
+    }
+
+    // Normal publish or publish from edited page
+    setLoading(true);
+    try {
+      if (draftId) {
+        const post = await draftService.publishDraft(draftId);
+        showToast('发布成功');
+      } else {
+        await onPublish({
+          title: title.trim() || '无标题',
+          content: content.trim(),
+          mood: moodLabel || '平静',
+          moodType: moodType || 'calm',
+          tags: tags.length > 0 ? tags : ['树洞'],
+          image: imageUrl || undefined,
+        });
+      }
+      // Reset form and navigate to home
+      setTitle('');
+      setContent('');
+      setMoodType(null);
+      setTags([]);
+      setImageUrl('');
+      setLastSavedAt(null);
+      setDraftId(null);
+      setOriginalData(null);
+      setIsDirty(false);
+      navigate('home');
+    } catch (err) {
+      showToast(err.message || '发布失败');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoToDrafts = () => {
+    if (draftId && isDirty) {
+      const confirmed = window.confirm('有未保存的修改，是否保存？');
+      if (confirmed) {
+        handleSaveDraft().then(() => {
+          useUiStore.getState().navigate('drafts');
+        });
+        return;
+      }
+    }
     useUiStore.getState().navigate('drafts');
   };
 
@@ -148,32 +230,19 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
         <section className="compose-heading max-w-[760px] mb-0">
           <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
           <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
-          {lastSavedAt && (
+          {lastSavedAt ? (
             <p className="mt-[9px] mb-0 text-text-2">保存于 {formatSavedTime(lastSavedAt)}</p>
-          )}
-          {!lastSavedAt && (
+          ) : (
             <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">分享你此刻的想法，或记录一段校园回忆。前台匿名展示，后台仅在合规审计中可追责。</p>
           )}
         </section>
-        <div className="flex gap-2">
-          <button
-            className="inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150 hover:bg-surface-soft"
-            onClick={handleGoToDrafts}
-            type="button"
-          >
-            草稿箱
-          </button>
-          {draftId && (
-            <button
-              className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2"
-              onClick={handlePublish}
-              disabled={!canPublish || loading}
-              type="button"
-            >
-              {loading ? '发布中...' : '发布动态'}
-            </button>
-          )}
-        </div>
+        <button
+          className="inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150 hover:bg-surface-soft"
+          onClick={handleGoToDrafts}
+          type="button"
+        >
+          草稿箱
+        </button>
       </div>
       <section className="editor-card overflow-hidden rounded-lg border border-line-soft bg-surface shadow-sm">
         <input
@@ -267,16 +336,14 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
             >
               {saving ? '保存中...' : '保存草稿'}
             </button>
-            {!draftId && (
-              <button
-                className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!canPublish}
-                onClick={handlePublish}
-                type="button"
-              >
-                发布动态
-              </button>
-            )}
+            <button
+              className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!canPublish || loading}
+              onClick={handlePublish}
+              type="button"
+            >
+              {loading ? '发布中...' : '发布动态'}
+            </button>
           </div>
         </div>
       </section>
