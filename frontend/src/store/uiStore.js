@@ -96,8 +96,11 @@ const useUiStore = create((set, get) => ({
     set({ activePage: page, ...params });
   },
   handlePopState: () => {
-    const page = urlToPage(window.location.pathname) || 'home';
-    set({ activePage: page });
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    const draftId = params.get('draftId');
+    const page = urlToPage(path) || 'home';
+    set({ activePage: page, draftId });
   },
 
   // Search
