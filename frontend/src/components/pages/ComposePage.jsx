@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
 import * as draftService from '../../services/draftService';
@@ -64,7 +64,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   // Track dirty state
   useEffect(() => {
-    if (!draftId || !originalData) return;
+    if (!originalData) return;
     const changed =
       title !== originalData.title ||
       content !== originalData.content ||
@@ -72,7 +72,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       JSON.stringify(tags) !== JSON.stringify(originalData.tags) ||
       imageUrl !== originalData.image;
     setIsDirty(changed);
-  }, [title, content, moodType, tags, imageUrl, draftId, originalData]);
+  }, [title, content, moodType, tags, imageUrl, originalData]);
 
   const addTag = (t) => {
     const cleaned = t.trim().replace(/^#/, '');
@@ -164,7 +164,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   };
 
   const handleGoToDrafts = () => {
-    if (draftId && isDirty) {
+    if (isDirty) {
       const confirmed = window.confirm('有未保存的修改，是否保存？');
       if (confirmed) {
         handleSaveDraft().then(() => {
@@ -174,32 +174,6 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       }
     }
     navigate('drafts');
-  };
-
-  const handleGoHome = () => {
-    if (draftId && isDirty) {
-      const confirmed = window.confirm('有未保存的修改，是否保存？');
-      if (confirmed) {
-        handleSaveDraft().then(() => {
-          navigate('home');
-        });
-        return;
-      }
-    }
-    navigate('home');
-  };
-
-  const handleGoCompose = () => {
-    if (draftId && isDirty) {
-      const confirmed = window.confirm('有未保存的修改，是否保存？');
-      if (confirmed) {
-        handleSaveDraft().then(() => {
-          navigate('compose');
-        });
-        return;
-      }
-    }
-    navigate('compose');
   };
 
   const formatSavedTime = (dateString) => {
@@ -214,15 +188,24 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   return (
     <div className="compose-page max-w-[1180px] mx-auto">
-      <section className="compose-heading max-w-[760px] mb-6">
-        <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
-        <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
-        {lastSavedAt ? (
-          <p className="mt-[9px] mb-0 text-text-2">保存于 {formatSavedTime(lastSavedAt)}</p>
-        ) : (
-          <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">分享你此刻的想法，或记录一段校园回忆。前台匿名展示，后台仅在合规审计中可追责。</p>
-        )}
-      </section>
+      <div className="flex items-center justify-between mb-6">
+        <section className="compose-heading max-w-[760px] mb-0">
+          <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
+          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
+          {lastSavedAt ? (
+            <p className="mt-[9px] mb-0 text-text-2">保存于 {formatSavedTime(lastSavedAt)}</p>
+          ) : (
+            <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">分享你此刻的想法，或记录一段校园回忆。前台匿名展示，后台仅在合规审计中可追责。</p>
+          )}
+        </section>
+        <button
+          className="inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150 hover:bg-surface-soft"
+          onClick={handleGoToDrafts}
+          type="button"
+        >
+          草稿箱
+        </button>
+      </div>
       <section className="editor-card overflow-hidden rounded-lg border border-line-soft bg-surface shadow-sm">
         <input
           className="w-full p-[18px_20px] border-b border-line-soft bg-transparent text-xl font-bold"
@@ -307,16 +290,14 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
         <div className="publish-row flex flex-wrap items-center justify-between gap-3 p-[14px_20px] border-t border-line-soft bg-[#fafbfc]">
           <p className="publish-hint m-0 text-text-3 text-sm font-medium">将以匿名身份发布，身份在帖子内保持一致</p>
           <div className="flex flex-wrap gap-2.5">
-            {draftId && (
-              <button
-                className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150"
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={saving}
-              >
-                {saving ? '保存中...' : '保存草稿'}
-              </button>
-            )}
+            <button
+              className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150"
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={saving}
+            >
+              {saving ? '保存中...' : '保存草稿'}
+            </button>
             <button
               className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!canPublish || loading}
