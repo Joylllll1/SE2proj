@@ -12,6 +12,7 @@ import ForgetPasswordPage from './components/pages/ForgetPasswordPage';
 import BookmarksPage from './components/pages/BookmarksPage';
 import DetailPage from './components/pages/DetailPage';
 import ComposePage from './components/pages/ComposePage';
+import LikesPage from './components/pages/LikesPage';
 import UnderConstruction from './components/common/UnderConstruction';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
@@ -240,6 +241,15 @@ function App() {
               bookmarkFolders={bookmarkFolders}
               onUpdateFolders={updateFolders}
               onUpdateBookmarkFolders={updateBookmarkFolders}
+            />
+          )}
+          {activePage === 'likes' && (
+            <LikesPage
+              posts={posts}
+              likedPosts={likedPosts}
+              onOpenPost={openPost}
+              onLike={toggleLike}
+              onReport={handleReport}
             />
           )}
           {activePage === 'announcements' && <UnderConstruction feature="公告活动" />}
