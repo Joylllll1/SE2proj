@@ -104,38 +104,54 @@ export const toggleLike = async (userId, commentId) => {
   const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
 
-  const idx = comment.likedBy.findIndex((id) => id.toString() === userId);
-  if (idx > -1) {
-    comment.likedBy.splice(idx, 1);
-    comment.likes = Math.max(0, comment.likes - 1);
+  const isLiked = comment.likedBy.some((id) => id.toString() === userId);
+
+  // 使用原子操作更新，避免版本冲突
+  if (isLiked) {
+    await Comment.updateOne(
+      { _id: commentId },
+      { $pull: { likedBy: userId }, $inc: { likes: -1 } }
+    );
   } else {
-    comment.likedBy.push(userId);
-    comment.likes += 1;
+    await Comment.updateOne(
+      { _id: commentId },
+      { $addToSet: { likedBy: userId }, $inc: { likes: 1 } }
+    );
   }
-  await comment.save();
-  return { liked: idx === -1, likes: comment.likes };
+
+  return { liked: !isLiked, likes: isLiked ? comment.likes - 1 : comment.likes + 1 };
 };
 
 export const toggleReplyLike = async (userId, commentId, replyId) => {
-  console.log('[toggleReplyLike] commentId:', commentId, 'replyId:', replyId);
+  // 先检查评论是否存在
   const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
 
-  console.log('[toggleReplyLike] Found comment:', comment._id, 'replies:', comment.replies?.length);
   const reply = comment.replies.id(replyId);
-  console.log('[toggleReplyLike] Found reply:', reply?._id);
   if (!reply) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
 
-  const idx = reply.likedBy.findIndex((id) => id.toString() === userId);
-  if (idx > -1) {
-    reply.likedBy.splice(idx, 1);
-    reply.likes = Math.max(0, reply.likes - 1);
+  const isLiked = reply.likedBy.some((id) => id.toString() === userId);
+
+  // 使用原子操作更新，避免版本冲突
+  if (isLiked) {
+    await Comment.updateOne(
+      { _id: commentId, 'replies._id': replyId },
+      {
+        $pull: { 'replies.$.likedBy': userId },
+        $inc: { 'replies.$.likes': -1 }
+      }
+    );
   } else {
-    reply.likedBy.push(userId);
-    reply.likes += 1;
+    await Comment.updateOne(
+      { _id: commentId, 'replies._id': replyId },
+      {
+        $addToSet: { 'replies.$.likedBy': userId },
+        $inc: { 'replies.$.likes': 1 }
+      }
+    );
   }
-  await comment.save();
-  return { liked: idx === -1, likes: reply.likes };
+
+  return { liked: !isLiked, likes: isLiked ? reply.likes - 1 : reply.likes + 1 };
 };
 
 // ─── Helpers ───
