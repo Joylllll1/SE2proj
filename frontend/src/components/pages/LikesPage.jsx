@@ -126,17 +126,14 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [likesData]);
 
-  // 离开组件时提交（根据当前 Tab）
+  // 离开组件时只提交帖子（评论在 handleTabChange 已处理）
   useEffect(() => {
     return () => {
       if (activeTab === 'posts' && pendingUnlikesRef.current.size > 0) {
         submitPendingUnlikes([...pendingUnlikesRef.current]);
       }
-      if (activeTab === 'comments' && pendingCommentUnlikesRef.current.size > 0 && likesData?.comments) {
-        submitPendingCommentUnlikes([...pendingCommentUnlikesRef.current], likesData.comments);
-      }
     };
-  }, [activeTab, likesData]);
+  }, [activeTab]);
 
   const handleTabChange = (newTab) => {
     // 切出当前 Tab 时提交
