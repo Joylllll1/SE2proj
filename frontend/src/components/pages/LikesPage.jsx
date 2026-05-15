@@ -5,17 +5,30 @@ import { fetchLikes } from '../../services/postService';
 
 function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onLike, onReport }) {
   const [activeTab, setActiveTab] = useState('posts'); // 'posts' | 'comments'
+  const [postsSort, setPostsSort] = useState('newest');
+  const [commentsSort, setCommentsSort] = useState('newest');
   const [likesData, setLikesData] = useState({ posts: [], comments: [] });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchLikes()
       .then(setLikesData)
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const posts = allPosts.filter((p) => allLikedPosts.includes(p.id));
+  const likedPostIds = allLikedPosts;
+  const posts = allPosts.filter((p) => likedPostIds.includes(p.id));
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (postsSort === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+    return b.likes - a.likes;
+  });
   const comments = likesData.comments || [];
+  const sortedComments = [...comments].sort((a, b) => {
+    if (commentsSort === 'newest') return new Date(b.item.createdAt) - new Date(a.item.createdAt);
+    return b.item.likes - a.item.likes;
+  });
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
@@ -46,17 +59,43 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
         >
           评论
         </button>
+
+        {/* 排序选择 */}
+        <div className="ml-auto flex gap-1">
+          <button
+            className={`sort-btn px-3 py-[6px] text-xs font-medium rounded-full border transition-all ${
+              (activeTab === 'posts' ? postsSort : commentsSort) === 'newest'
+                ? 'bg-blue text-white border-blue'
+                : 'bg-white text-text-3 border-line hover:border-blue/40'
+            }`}
+            onClick={() => activeTab === 'posts' ? setPostsSort('newest') : setCommentsSort('newest')}
+          >
+            最新发布
+          </button>
+          <button
+            className={`sort-btn px-3 py-[6px] text-xs font-medium rounded-full border transition-all ${
+              (activeTab === 'posts' ? postsSort : commentsSort) === 'likes'
+                ? 'bg-blue text-white border-blue'
+                : 'bg-white text-text-3 border-line hover:border-blue/40'
+            }`}
+            onClick={() => activeTab === 'posts' ? setPostsSort('likes') : setCommentsSort('likes')}
+          >
+            最热共鸣
+          </button>
+        </div>
       </div>
 
       {/* 内容区 */}
       {loading ? (
         <div className="py-10 text-center text-text-3">加载中...</div>
+      ) : error ? (
+        <EmptyState title="加载失败" description={error} />
       ) : activeTab === 'posts' ? (
-        posts.length === 0 ? (
+        sortedPosts.length === 0 ? (
           <EmptyState title="还没有赞过的帖子" />
         ) : (
           <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
-            {posts.map((post) => (
+            {sortedPosts.map((post) => (
               <div key={post.id} className="inline-block w-full mb-[18px]">
                 <PostCard
                   compact
@@ -71,11 +110,11 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
           </section>
         )
       ) : (
-        comments.length === 0 ? (
+        sortedComments.length === 0 ? (
           <EmptyState title="还没有赞过的评论" />
         ) : (
           <section className="space-y-4">
-            {comments.map((comment) => (
+            {sortedComments.map((comment) => (
               <div
                 key={comment.item.id}
                 className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all cursor-pointer"
