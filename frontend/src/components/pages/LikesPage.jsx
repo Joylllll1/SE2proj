@@ -77,6 +77,15 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         console.error('Failed to unlike comment after retries:', item, lastError);
       }
     }
+    // 从 likesData 中移除已取消点赞的评论
+    const keys = new Set(unlikes.map((item) => `${item.type}-${item.id}`));
+    setLikesData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        comments: prev.comments.filter((c) => !keys.has(`${c.type}-${c.item?.id}`)),
+      };
+    });
   };
 
   // 刷新/关闭页面时同步提交
