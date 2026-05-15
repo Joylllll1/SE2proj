@@ -102,7 +102,7 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
               onClick={handleLike}
               className={`inline-flex items-center gap-1 transition-colors duration-150 ${reply.isLiked ? 'text-red' : 'hover:text-red'}`}
             >
-              <Icon name="thumb_up" /> {reply.likes || 0}
+              <Icon name={reply.isLiked ? 'favorite' : 'favorite_border'} /> {reply.likes || 0}
             </button>
           </div>
 

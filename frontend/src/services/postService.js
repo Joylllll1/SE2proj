@@ -46,3 +46,11 @@ export async function toggleSave(id) {
 export async function fetchLikes() {
   return request('/api/likes');
 }
+
+export async function toggleCommentLike(commentId) {
+  return request(`/api/comments/${commentId}/like`, { method: 'POST' });
+}
+
+export async function toggleReplyLike(commentId, replyId) {
+  return request(`/api/comments/${commentId}/reply/${replyId}/like`, { method: 'POST' });
+}

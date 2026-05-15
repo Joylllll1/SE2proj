@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
-import { fetchLikes } from '../../services/postService';
+import Icon from '../common/Icon';
+import { fetchLikes, toggleCommentLike, toggleReplyLike } from '../../services/postService';
 
 function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onLike, onReport }) {
   const [activeTab, setActiveTab] = useState('posts');
   const [likesData, setLikesData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
+  const [commentLikes, setCommentLikes] = useState({});
 
   useEffect(() => {
     setLoading(true);
@@ -29,8 +32,44 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
       });
   }, []);
 
+  const handleTabChange = (newTab) => {
+    if (activeTab === 'posts' && newTab !== 'posts' && pendingUnlikes.size > 0) {
+      console.log('Batch submit pending unlikes:', [...pendingUnlikes]);
+      setPendingUnlikes(new Set());
+    }
+    setActiveTab(newTab);
+  };
+
+  const handlePostUnlike = (postId) => {
+    setPendingUnlikes((prev) => new Set([...prev, postId]));
+  };
+
+  const handleCommentLike = async (comment) => {
+    const commentId = comment.item?.id || comment.itemId;
+    const replyId = comment.type === 'reply' ? comment.item?.id : null;
+
+    setCommentLikes((prev) => ({
+      ...prev,
+      [commentId]: !prev[commentId],
+    }));
+
+    try {
+      if (comment.type === 'reply') {
+        await toggleReplyLike(comment.postId, replyId);
+      } else {
+        await toggleCommentLike(commentId);
+      }
+    } catch (e) {
+      console.error('toggle comment like error:', e);
+      setCommentLikes((prev) => ({
+        ...prev,
+        [commentId]: prev[commentId],
+      }));
+    }
+  };
+
   const likedPostIds = allLikedPosts || [];
-  const posts = (allPosts || []).filter((p) => likedPostIds.includes(p.id));
+  const posts = (allPosts || []).filter((p) => likedPostIds.includes(p.id) && !pendingUnlikes.has(p.id));
   const comments = likesData?.comments || [];
 
   return (
@@ -47,20 +86,20 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
         <button
           className={`tab-btn px-4 py-[10px] text-sm font-semibold rounded-full border transition-all duration-200 ${
             activeTab === 'posts'
-              ? 'bg-blue-soft text-blue border-blue'
-              : 'bg-white text-text-2 border-line hover:border-[#b0c4de] hover:text-blue'
+              ? 'bg-blue-soft text-blue border border-blue'
+              : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
           }`}
-          onClick={() => setActiveTab('posts')}
+          onClick={() => handleTabChange('posts')}
         >
           帖子
         </button>
         <button
           className={`tab-btn px-4 py-[10px] text-sm font-semibold rounded-full border transition-all duration-200 ${
             activeTab === 'comments'
-              ? 'bg-blue-soft text-blue border-blue'
-              : 'bg-white text-text-2 border-line hover:border-[#b0c4de] hover:text-blue'
+              ? 'bg-blue-soft text-blue border border-blue'
+              : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
           }`}
-          onClick={() => setActiveTab('comments')}
+          onClick={() => handleTabChange('comments')}
         >
           评论
         </button>
@@ -82,7 +121,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
                   post={post}
                   onOpen={() => onOpenPost(post)}
                   liked
-                  onLike={() => onLike(post.id)}
+                  onLike={() => handlePostUnlike(post.id)}
                   onReport={onReport}
                 />
               </div>
@@ -97,20 +136,36 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
             {comments.map((comment) => {
               const postId = comment.postId;
               const post = postId ? allPosts.find((p) => p.id === postId) : null;
+              const commentId = comment.item?.id || comment.itemId;
+              const isLiked = commentLikes[commentId] ?? comment.item?.isLiked ?? false;
+
               return (
                 <div
                   key={comment.item?.id || Math.random()}
-                  className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all cursor-pointer"
-                  onClick={() => post && onOpenPost(post)}
+                  className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs text-text-3 font-medium">来自：{post?.title || comment.postTitle || '未知帖子'}</span>
+                    <span
+                      className="text-xs text-text-3 font-medium cursor-pointer hover:text-blue"
+                      onClick={() => post && onOpenPost(post)}
+                    >
+                      来自：{post?.title || comment.postTitle || '无标题'}
+                    </span>
                   </div>
                   <p className="text-sm text-text-2 mb-2">
                     {comment.type === 'reply' ? '↳ ' : '💬 '}
                     {comment.item?.content || ''}
                   </p>
-                  <div className="text-xs text-text-3">♥ {comment.item?.likes || 0}</div>
+                  <div className="flex items-center gap-3 text-xs text-text-3">
+                    <button
+                      type="button"
+                      onClick={() => handleCommentLike(comment)}
+                      className={`inline-flex items-center gap-1 transition-colors duration-150 ${isLiked ? 'text-red' : 'hover:text-red'}`}
+                    >
+                      <Icon name={isLiked ? 'favorite' : 'favorite_border'} />
+                      {comment.item?.likes || 0}
+                    </button>
+                  </div>
                 </div>
               );
             })}

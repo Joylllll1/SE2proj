@@ -65,7 +65,7 @@ function Comment({ comment, postId, onReply, onReport }) {
           <div className="comment-actions flex gap-[14px] text-text-3 text-xs font-semibold">
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button type="button" onClick={handleLike} className={`inline-flex items-center gap-1 transition-colors duration-150 ${comment.isLiked ? 'text-red' : 'hover:text-red'}`}>
-              <Icon name="thumb_up" /> {comment.likes}
+              <Icon name={comment.isLiked ? 'favorite' : 'favorite_border'} /> {comment.likes}
             </button>
           </div>
 
