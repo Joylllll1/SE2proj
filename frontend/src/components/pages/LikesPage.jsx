@@ -48,6 +48,14 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         console.error('Failed to unlike post after retries:', postId, lastError);
       }
     }
+    setLikesData((prev) => {
+      if (!prev) return prev;
+      const removedIds = new Set(toSubmit);
+      return {
+        ...prev,
+        posts: prev.posts.filter((post) => !removedIds.has(post.id)),
+      };
+    });
   };
 
   // 提交评论取消点赞（带重试）
@@ -142,15 +150,15 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     };
   }, []);
 
-  const handleTabChange = (newTab) => {
+  const handleTabChange = async (newTab) => {
     // 切出当前 Tab 时提交
     if (activeTab === 'posts' && pendingUnlikes.size > 0) {
       console.log('[TabChange] Submitting post unlikes:', [...pendingUnlikes]);
-      submitPendingUnlikes([...pendingUnlikes]);
+      await submitPendingUnlikes([...pendingUnlikes]);
     }
     if (activeTab === 'comments' && pendingCommentUnlikes.size > 0) {
       console.log('[TabChange] Submitting comment unlikes:', [...pendingCommentUnlikes.values()]);
-      submitPendingCommentUnlikes([...pendingCommentUnlikes.values()]);
+      await submitPendingCommentUnlikes([...pendingCommentUnlikes.values()]);
     }
     setActiveTab(newTab);
   };

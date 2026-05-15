@@ -201,9 +201,9 @@ function App() {
     try {
       const { image, ...rest } = postData;
       await usePostStore.getState().addPost({ ...rest, images: image ? [image] : [] });
-      navigate('home');
     } catch (err) {
       showToast(err.message || '发布失败');
+      throw err;
     }
   };
 

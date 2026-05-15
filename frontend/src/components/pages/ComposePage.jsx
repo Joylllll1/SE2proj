@@ -182,6 +182,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   const handlePublish = async () => {
     setLoading(true);
     try {
+      clearUnsavedChangesHandler();
       if (draftId) {
         let publishTargetId = draftId;
         if (isDirty) {
@@ -228,7 +229,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       return Boolean(savedDraft?.id);
     };
 
-    setUnsavedChangesHandler(() => leaveHandler);
+    setUnsavedChangesHandler(leaveHandler);
     return () => {
       clearUnsavedChangesHandler();
     };
