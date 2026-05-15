@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
@@ -11,17 +11,26 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const [error, setError] = useState(null);
   const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
   const [commentLikes, setCommentLikes] = useState({});
+  const pendingUnlikesRef = useRef(pendingUnlikes);
+
+  // 保持 ref 同步
+  useEffect(() => {
+    pendingUnlikesRef.current = pendingUnlikes;
+  }, [pendingUnlikes]);
 
   // 切出帖子 Tab 时批量提交取消点赞
-  const submitPendingUnlikes = async () => {
-    if (pendingUnlikes.size === 0) return;
-    const unlikes = [...pendingUnlikes];
+  const submitPendingUnlikes = async (unlikes) => {
+    if (!unlikes || unlikes.length === 0) return;
     // 先清空 UI 状态
     setPendingUnlikes(new Set());
     // 然后逐个提交
     for (const postId of unlikes) {
       try {
         await toggleLikeApi(postId);
+        // 成功后通知父组件更新全局状态
+        if (onUnlikeConfirm) {
+          onUnlikeConfirm(postId);
+        }
       } catch (e) {
         console.error('Failed to unlike post:', postId, e);
         // 失败后恢复 UI 状态
@@ -30,14 +39,37 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     }
   };
 
-  // 离开页面时提交
+  // 刷新/关闭页面时同步提交（使用 keepalive 确保发送）
   useEffect(() => {
-    return () => {
-      if (activeTab === 'posts' && pendingUnlikes.size > 0) {
-        submitPendingUnlikes();
+    const handleBeforeUnload = () => {
+      const unlikes = [...pendingUnlikesRef.current];
+      if (unlikes.length > 0 && activeTab === 'posts') {
+        // 使用 keepalive fetch 确保页面关闭时也能发送
+        for (const postId of unlikes) {
+          const token = localStorage.getItem('accessToken');
+          fetch(`/api/posts/${postId}/like`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            keepalive: true
+          }).catch(() => {});
+        }
       }
     };
-  }, [activeTab, pendingUnlikes]);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeTab]);
+
+  // 离开组件时提交（切换到其他页面）
+  useEffect(() => {
+    return () => {
+      if (activeTab === 'posts' && pendingUnlikesRef.current.size > 0) {
+        submitPendingUnlikes([...pendingUnlikesRef.current]);
+      }
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     setLoading(true);

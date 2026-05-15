@@ -249,6 +249,15 @@ function App() {
               likedPosts={likedPosts}
               onOpenPost={openPost}
               onReport={handleReport}
+              onUnlikeConfirm={(postId) => {
+                // 直接更新 store 的 likedPosts，不再次调用 API
+                usePostStore.setState((state) => ({
+                  likedPosts: state.likedPosts.filter((id) => id !== postId),
+                  posts: state.posts.map((p) =>
+                    p.id === postId ? { ...p, isLiked: false } : p
+                  ),
+                }));
+              }}
             />
           )}
           {activePage === 'announcements' && <UnderConstruction feature="公告活动" />}
