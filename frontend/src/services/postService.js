@@ -42,3 +42,7 @@ export async function toggleLike(id) {
 export async function toggleSave(id) {
   return request(`/api/posts/${id}/save`, { method: 'POST' });
 }
+
+export async function fetchLikes() {
+  return request('/api/likes');
+}
