@@ -235,7 +235,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
 
       <div className="category-row flex flex-wrap gap-3 my-[22px]">
         <button
-          className={`rounded-full px-4 py-[10px] text-sm font-semibold transition-all duration-200 active:scale-95 ${
+          className={`rounded-full px-4 py-[10px] text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 ${
             activeTab === 'posts'
               ? 'bg-blue-soft text-blue border border-blue'
               : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
@@ -245,7 +245,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
           帖子
         </button>
         <button
-          className={`rounded-full px-4 py-[10px] text-sm font-semibold transition-all duration-200 active:scale-95 ${
+          className={`rounded-full px-4 py-[10px] text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 ${
             activeTab === 'comments'
               ? 'bg-blue-soft text-blue border border-blue'
               : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
