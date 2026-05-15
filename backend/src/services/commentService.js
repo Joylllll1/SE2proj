@@ -117,10 +117,13 @@ export const toggleLike = async (userId, commentId) => {
 };
 
 export const toggleReplyLike = async (userId, commentId, replyId) => {
+  console.log('[toggleReplyLike] commentId:', commentId, 'replyId:', replyId);
   const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
 
+  console.log('[toggleReplyLike] Found comment:', comment._id, 'replies:', comment.replies?.length);
   const reply = comment.replies.id(replyId);
+  console.log('[toggleReplyLike] Found reply:', reply?._id);
   if (!reply) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
 
   const idx = reply.likedBy.findIndex((id) => id.toString() === userId);
