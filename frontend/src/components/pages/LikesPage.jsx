@@ -51,33 +51,30 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   };
 
   // 提交评论取消点赞（带重试）
-  const submitPendingCommentUnlikes = async (unlikes, commentsData, retries = 2) => {
+  const submitPendingCommentUnlikes = async (unlikes, retries = 2) => {
     if (!unlikes || unlikes.length === 0) return;
-    console.log('[SubmitCommentUnlikes] Starting with:', unlikes, 'commentsData:', commentsData?.length);
+    console.log('[SubmitCommentUnlikes] Starting with:', unlikes);
     setPendingCommentUnlikes(new Set());
-    for (const commentKey of unlikes) {
-      const comment = commentsData?.find((c) => `${c.type}-${c.item?.id}` === commentKey);
-      console.log('[SubmitCommentUnlikes] Processing:', commentKey, 'found:', !!comment);
-      if (!comment) continue;
+    for (const item of unlikes) {
       let lastError;
       for (let i = 0; i < retries; i++) {
         try {
-          if (comment.type === 'reply') {
-            console.log('[SubmitCommentUnlikes] Calling toggleReplyLike:', comment.parentCommentId, comment.item?.id);
-            await toggleReplyLike(comment.parentCommentId, comment.item?.id);
+          if (item.type === 'reply') {
+            console.log('[SubmitCommentUnlikes] Calling toggleReplyLike:', item.parentId, item.id);
+            await toggleReplyLike(item.parentId, item.id);
           } else {
-            console.log('[SubmitCommentUnlikes] Calling toggleCommentLike:', comment.item?.id);
-            await toggleCommentLike(comment.item?.id);
+            console.log('[SubmitCommentUnlikes] Calling toggleCommentLike:', item.id);
+            await toggleCommentLike(item.id);
           }
           lastError = null;
           break;
         } catch (e) {
-          console.error('Retry unlike comment:', commentKey, i, e);
+          console.error('Retry unlike comment:', item, i, e);
           lastError = e;
         }
       }
       if (lastError) {
-        console.error('Failed to unlike comment after retries:', commentKey, lastError);
+        console.error('Failed to unlike comment after retries:', item, lastError);
       }
     }
   };
@@ -104,13 +101,11 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
 
       // 提交评论取消点赞
       const commentUnlikes = [...pendingCommentUnlikesRef.current];
-      if (commentUnlikes.length > 0 && likesData?.comments) {
-        for (const commentKey of commentUnlikes) {
-          const comment = likesData.comments.find((c) => `${c.type}-${c.item?.id}` === commentKey);
-          if (!comment) continue;
-          const url = comment.type === 'reply'
-            ? `/api/comments/${comment.parentCommentId}/reply/${comment.item?.id}/like`
-            : `/api/comments/${comment.item?.id}/like`;
+      if (commentUnlikes.length > 0) {
+        for (const item of commentUnlikes) {
+          const url = item.type === 'reply'
+            ? `/api/comments/${item.parentId}/reply/${item.id}/like`
+            : `/api/comments/${item.id}/like`;
           fetch(url, {
             method: 'POST',
             headers: {
@@ -141,9 +136,9 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       console.log('[TabChange] Submitting post unlikes:', [...pendingUnlikes]);
       submitPendingUnlikes([...pendingUnlikes]);
     }
-    if (activeTab === 'comments' && pendingCommentUnlikes.size > 0 && likesData?.comments) {
+    if (activeTab === 'comments' && pendingCommentUnlikes.size > 0) {
       console.log('[TabChange] Submitting comment unlikes:', [...pendingCommentUnlikes]);
-      submitPendingCommentUnlikes([...pendingCommentUnlikes], likesData.comments);
+      submitPendingCommentUnlikes([...pendingCommentUnlikes]);
     }
     setActiveTab(newTab);
   };
@@ -181,13 +176,19 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   };
 
   const handleCommentUnlike = (comment) => {
-    const commentKey = `${comment.type}-${comment.item?.id}`;
+    const item = {
+      type: comment.type,
+      id: comment.item?.id,
+      parentId: comment.parentCommentId || null,
+    };
+    // 用 JSON 字符串作为 key
+    const itemKey = JSON.stringify(item);
     setPendingCommentUnlikes((prev) => {
       const next = new Set(prev);
-      if (next.has(commentKey)) {
-        next.delete(commentKey);
+      if (next.has(itemKey)) {
+        next.delete(itemKey);
       } else {
-        next.add(commentKey);
+        next.add(itemKey);
       }
       return next;
     });
@@ -199,8 +200,13 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     likes: pendingUnlikes.has(p.id) ? p.likes - 1 : p.likes,
   }));
   const comments = (likesData?.comments || []).map((c) => {
-    const commentKey = `${c.type}-${c.item?.id}`;
-    const isPendingUnlike = pendingCommentUnlikes.has(commentKey);
+    const item = {
+      type: c.type,
+      id: c.item?.id,
+      parentId: c.parentCommentId || null,
+    };
+    const itemKey = JSON.stringify(item);
+    const isPendingUnlike = pendingCommentUnlikes.has(itemKey);
     return {
       ...c,
       item: {
