@@ -10,7 +10,8 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
-  const [pendingCommentUnlikes, setPendingCommentUnlikes] = useState(new Set());
+  const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
+  const [pendingCommentUnlikes, setPendingCommentUnlikes] = useState(new Map());
   const pendingUnlikesRef = useRef(pendingUnlikes);
   const pendingCommentUnlikesRef = useRef(pendingCommentUnlikes);
 
@@ -54,7 +55,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const submitPendingCommentUnlikes = async (unlikes, retries = 2) => {
     if (!unlikes || unlikes.length === 0) return;
     console.log('[SubmitCommentUnlikes] Starting with:', unlikes);
-    setPendingCommentUnlikes(new Set());
+    setPendingCommentUnlikes(new Map());
     for (const item of unlikes) {
       let lastError;
       for (let i = 0; i < retries; i++) {
@@ -100,7 +101,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       }
 
       // 提交评论取消点赞
-      const commentUnlikes = [...pendingCommentUnlikesRef.current];
+      const commentUnlikes = [...pendingCommentUnlikesRef.current.values()];
       if (commentUnlikes.length > 0) {
         for (const item of commentUnlikes) {
           const url = item.type === 'reply'
@@ -119,16 +120,19 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [likesData]);
+  }, []);
 
-  // 离开组件时只提交帖子（评论在 handleTabChange 已处理）
+  // 离开组件时提交所有待取消的点赞（帖子 + 评论）
   useEffect(() => {
     return () => {
-      if (activeTab === 'posts' && pendingUnlikesRef.current.size > 0) {
+      if (pendingUnlikesRef.current.size > 0) {
         submitPendingUnlikes([...pendingUnlikesRef.current]);
       }
+      if (pendingCommentUnlikesRef.current.size > 0) {
+        submitPendingCommentUnlikes([...pendingCommentUnlikesRef.current.values()]);
+      }
     };
-  }, [activeTab]);
+  }, []);
 
   const handleTabChange = (newTab) => {
     // 切出当前 Tab 时提交
@@ -137,8 +141,8 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       submitPendingUnlikes([...pendingUnlikes]);
     }
     if (activeTab === 'comments' && pendingCommentUnlikes.size > 0) {
-      console.log('[TabChange] Submitting comment unlikes:', [...pendingCommentUnlikes]);
-      submitPendingCommentUnlikes([...pendingCommentUnlikes]);
+      console.log('[TabChange] Submitting comment unlikes:', [...pendingCommentUnlikes.values()]);
+      submitPendingCommentUnlikes([...pendingCommentUnlikes.values()]);
     }
     setActiveTab(newTab);
   };
@@ -181,14 +185,13 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       id: comment.item?.id,
       parentId: comment.parentCommentId || null,
     };
-    // 用 JSON 字符串作为 key
-    const itemKey = JSON.stringify(item);
+    const itemKey = `${item.type}-${item.id}`;
     setPendingCommentUnlikes((prev) => {
-      const next = new Set(prev);
+      const next = new Map(prev);
       if (next.has(itemKey)) {
         next.delete(itemKey);
       } else {
-        next.add(itemKey);
+        next.set(itemKey, item);
       }
       return next;
     });
@@ -200,12 +203,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     likes: pendingUnlikes.has(p.id) ? p.likes - 1 : p.likes,
   }));
   const comments = (likesData?.comments || []).map((c) => {
-    const item = {
-      type: c.type,
-      id: c.item?.id,
-      parentId: c.parentCommentId || null,
-    };
-    const itemKey = JSON.stringify(item);
+    const itemKey = `${c.type}-${c.item?.id}`;
     const isPendingUnlike = pendingCommentUnlikes.has(itemKey);
     return {
       ...c,
