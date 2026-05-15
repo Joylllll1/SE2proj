@@ -26,6 +26,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   // 提交帖子取消点赞
   const submitPendingUnlikes = async (unlikes) => {
     if (!unlikes || unlikes.length === 0) return;
+    // 清空状态
     setPendingUnlikes(new Set());
     for (const postId of unlikes) {
       try {
@@ -35,7 +36,6 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         }
       } catch (e) {
         console.error('Failed to unlike post:', postId, e);
-        setPendingUnlikes((prev) => new Set([...prev, postId]));
       }
     }
   };
@@ -43,6 +43,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   // 提交评论取消点赞
   const submitPendingCommentUnlikes = async (unlikes, commentsData) => {
     if (!unlikes || unlikes.length === 0) return;
+    // 清空状态
     setPendingCommentUnlikes(new Set());
     for (const commentKey of unlikes) {
       const comment = commentsData.find((c) => `${c.type}-${c.item?.id}` === commentKey);
@@ -55,7 +56,6 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         }
       } catch (e) {
         console.error('Failed to unlike comment:', commentKey, e);
-        setPendingCommentUnlikes((prev) => new Set([...prev, commentKey]));
       }
     }
   };
@@ -104,17 +104,28 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [likesData]);
 
-  // 离开组件时提交
+  // 离开组件时提交（根据当前 Tab）
   useEffect(() => {
     return () => {
-      if (pendingUnlikesRef.current.size > 0) {
+      if (activeTab === 'posts' && pendingUnlikesRef.current.size > 0) {
         submitPendingUnlikes([...pendingUnlikesRef.current]);
       }
-      if (pendingCommentUnlikesRef.current.size > 0 && likesData?.comments) {
+      if (activeTab === 'comments' && pendingCommentUnlikesRef.current.size > 0 && likesData?.comments) {
         submitPendingCommentUnlikes([...pendingCommentUnlikesRef.current], likesData.comments);
       }
     };
-  }, [likesData]);
+  }, [activeTab, likesData]);
+
+  const handleTabChange = (newTab) => {
+    // 切出当前 Tab 时提交
+    if (activeTab === 'posts' && pendingUnlikes.size > 0) {
+      submitPendingUnlikes([...pendingUnlikes]);
+    }
+    if (activeTab === 'comments' && pendingCommentUnlikes.size > 0 && likesData?.comments) {
+      submitPendingCommentUnlikes([...pendingCommentUnlikes], likesData.comments);
+    }
+    setActiveTab(newTab);
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -136,14 +147,13 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       });
   }, []);
 
-  const handleTabChange = async (newTab) => {
-    // 切出帖子 Tab 时提交帖子取消点赞
-    if (activeTab === 'posts' && newTab !== 'posts') {
-      await submitPendingUnlikes([...pendingUnlikes]);
+  const handleTabChange = (newTab) => {
+    // 切出当前 Tab 时提交
+    if (activeTab === 'posts' && pendingUnlikes.size > 0) {
+      submitPendingUnlikes([...pendingUnlikes]);
     }
-    // 切出评论 Tab 时提交评论取消点赞
-    if (activeTab === 'comments' && newTab !== 'comments') {
-      await submitPendingCommentUnlikes([...pendingCommentUnlikes], likesData?.comments || []);
+    if (activeTab === 'comments' && pendingCommentUnlikes.size > 0 && likesData?.comments) {
+      submitPendingCommentUnlikes([...pendingCommentUnlikes], likesData.comments);
     }
     setActiveTab(newTab);
   };
