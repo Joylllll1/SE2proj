@@ -53,16 +53,20 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   // 提交评论取消点赞（带重试）
   const submitPendingCommentUnlikes = async (unlikes, commentsData, retries = 2) => {
     if (!unlikes || unlikes.length === 0) return;
+    console.log('[SubmitCommentUnlikes] Starting with:', unlikes, 'commentsData:', commentsData?.length);
     setPendingCommentUnlikes(new Set());
     for (const commentKey of unlikes) {
       const comment = commentsData?.find((c) => `${c.type}-${c.item?.id}` === commentKey);
+      console.log('[SubmitCommentUnlikes] Processing:', commentKey, 'found:', !!comment);
       if (!comment) continue;
       let lastError;
       for (let i = 0; i < retries; i++) {
         try {
           if (comment.type === 'reply') {
+            console.log('[SubmitCommentUnlikes] Calling toggleReplyLike:', comment.parentCommentId, comment.item?.id);
             await toggleReplyLike(comment.parentCommentId, comment.item?.id);
           } else {
+            console.log('[SubmitCommentUnlikes] Calling toggleCommentLike:', comment.item?.id);
             await toggleCommentLike(comment.item?.id);
           }
           lastError = null;
@@ -137,9 +141,11 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const handleTabChange = (newTab) => {
     // 切出当前 Tab 时提交
     if (activeTab === 'posts' && pendingUnlikes.size > 0) {
+      console.log('[TabChange] Submitting post unlikes:', [...pendingUnlikes]);
       submitPendingUnlikes([...pendingUnlikes]);
     }
     if (activeTab === 'comments' && pendingCommentUnlikes.size > 0 && likesData?.comments) {
+      console.log('[TabChange] Submitting comment unlikes:', [...pendingCommentUnlikes]);
       submitPendingCommentUnlikes([...pendingCommentUnlikes], likesData.comments);
     }
     setActiveTab(newTab);
