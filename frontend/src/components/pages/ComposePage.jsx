@@ -33,10 +33,11 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   // Load draft when editing
   useEffect(() => {
-    if (!draftId) return;
+    if (!initialDraftId) return;
     const loadDraft = async () => {
       try {
-        const draft = await draftService.fetchDraftById(draftId);
+        const draft = await draftService.fetchDraftById(initialDraftId);
+        setDraftId(draft.id);
         setTitle(draft.title || '');
         setContent(draft.content || '');
         setMoodType(draft.moodType || null);
@@ -44,11 +45,11 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
         setImageUrl(draft.image || '');
         setLastSavedAt(draft.updatedAt);
       } catch (err) {
-        showToast('加载草稿失败');
+        console.error('加载草稿失败:', err);
       }
     };
     loadDraft();
-  }, [draftId, showToast]);
+  }, [initialDraftId]);
 
   const addTag = (t) => {
     const cleaned = t.trim().replace(/^#/, '');
