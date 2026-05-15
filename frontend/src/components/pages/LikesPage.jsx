@@ -10,44 +10,86 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
-  const [commentLikes, setCommentLikes] = useState({});
+  const [pendingCommentUnlikes, setPendingCommentUnlikes] = useState(new Set());
   const pendingUnlikesRef = useRef(pendingUnlikes);
+  const pendingCommentUnlikesRef = useRef(pendingCommentUnlikes);
 
   // 保持 ref 同步
   useEffect(() => {
     pendingUnlikesRef.current = pendingUnlikes;
   }, [pendingUnlikes]);
 
-  // 切出帖子 Tab 时批量提交取消点赞
+  useEffect(() => {
+    pendingCommentUnlikesRef.current = pendingCommentUnlikes;
+  }, [pendingCommentUnlikes]);
+
+  // 提交帖子取消点赞
   const submitPendingUnlikes = async (unlikes) => {
     if (!unlikes || unlikes.length === 0) return;
-    // 先清空 UI 状态
     setPendingUnlikes(new Set());
-    // 然后逐个提交
     for (const postId of unlikes) {
       try {
         await toggleLikeApi(postId);
-        // 成功后通知父组件更新全局状态
         if (onUnlikeConfirm) {
           onUnlikeConfirm(postId);
         }
       } catch (e) {
         console.error('Failed to unlike post:', postId, e);
-        // 失败后恢复 UI 状态
         setPendingUnlikes((prev) => new Set([...prev, postId]));
       }
     }
   };
 
-  // 刷新/关闭页面时同步提交（使用 keepalive 确保发送）
+  // 提交评论取消点赞
+  const submitPendingCommentUnlikes = async (unlikes, commentsData) => {
+    if (!unlikes || unlikes.length === 0) return;
+    setPendingCommentUnlikes(new Set());
+    for (const commentKey of unlikes) {
+      const comment = commentsData.find((c) => `${c.type}-${c.item?.id}` === commentKey);
+      if (!comment) continue;
+      try {
+        if (comment.type === 'reply') {
+          await toggleReplyLike(comment.parentCommentId, comment.item?.id);
+        } else {
+          await toggleCommentLike(comment.item?.id);
+        }
+      } catch (e) {
+        console.error('Failed to unlike comment:', commentKey, e);
+        setPendingCommentUnlikes((prev) => new Set([...prev, commentKey]));
+      }
+    }
+  };
+
+  // 刷新/关闭页面时同步提交
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const unlikes = [...pendingUnlikesRef.current];
-      if (unlikes.length > 0 && activeTab === 'posts') {
-        // 使用 keepalive fetch 确保页面关闭时也能发送
-        for (const postId of unlikes) {
-          const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('accessToken');
+
+      // 提交帖子取消点赞
+      const postUnlikes = [...pendingUnlikesRef.current];
+      if (postUnlikes.length > 0) {
+        for (const postId of postUnlikes) {
           fetch(`/api/posts/${postId}/like`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            keepalive: true
+          }).catch(() => {});
+        }
+      }
+
+      // 提交评论取消点赞
+      const commentUnlikes = [...pendingCommentUnlikesRef.current];
+      if (commentUnlikes.length > 0 && likesData?.comments) {
+        for (const commentKey of commentUnlikes) {
+          const comment = likesData.comments.find((c) => `${c.type}-${c.item?.id}` === commentKey);
+          if (!comment) continue;
+          const url = comment.type === 'reply'
+            ? `/api/comments/${comment.parentCommentId}/reply/${comment.item?.id}/like`
+            : `/api/comments/${comment.item?.id}/like`;
+          fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -60,16 +102,19 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [activeTab]);
+  }, [likesData]);
 
-  // 离开组件时提交（切换到其他页面）
+  // 离开组件时提交
   useEffect(() => {
     return () => {
-      if (activeTab === 'posts' && pendingUnlikesRef.current.size > 0) {
+      if (pendingUnlikesRef.current.size > 0) {
         submitPendingUnlikes([...pendingUnlikesRef.current]);
       }
+      if (pendingCommentUnlikesRef.current.size > 0 && likesData?.comments) {
+        submitPendingCommentUnlikes([...pendingCommentUnlikesRef.current], likesData.comments);
+      }
     };
-  }, [activeTab]);
+  }, [likesData]);
 
   useEffect(() => {
     setLoading(true);
@@ -92,8 +137,13 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   }, []);
 
   const handleTabChange = async (newTab) => {
+    // 切出帖子 Tab 时提交帖子取消点赞
     if (activeTab === 'posts' && newTab !== 'posts') {
-      await submitPendingUnlikes();
+      await submitPendingUnlikes([...pendingUnlikes]);
+    }
+    // 切出评论 Tab 时提交评论取消点赞
+    if (activeTab === 'comments' && newTab !== 'comments') {
+      await submitPendingCommentUnlikes([...pendingCommentUnlikes], likesData?.comments || []);
     }
     setActiveTab(newTab);
   };
@@ -102,35 +152,25 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     setPendingUnlikes((prev) => {
       const next = new Set(prev);
       if (next.has(postId)) {
-        next.delete(postId); // 再次点击恢复点赞
+        next.delete(postId);
       } else {
-        next.add(postId); // 取消点赞
+        next.add(postId);
       }
       return next;
     });
   };
 
-  const handleCommentLike = async (comment) => {
-    const commentId = comment.item?.id || comment.itemId;
-
-    setCommentLikes((prev) => ({
-      ...prev,
-      [commentId]: !prev[commentId],
-    }));
-
-    try {
-      if (comment.type === 'reply') {
-        await toggleReplyLike(comment.parentCommentId, commentId);
+  const handleCommentUnlike = (comment) => {
+    const commentKey = `${comment.type}-${comment.item?.id}`;
+    setPendingCommentUnlikes((prev) => {
+      const next = new Set(prev);
+      if (next.has(commentKey)) {
+        next.delete(commentKey);
       } else {
-        await toggleCommentLike(commentId);
+        next.add(commentKey);
       }
-    } catch (e) {
-      console.error('toggle comment like error:', e);
-      setCommentLikes((prev) => ({
-        ...prev,
-        [commentId]: prev[commentId],
-      }));
-    }
+      return next;
+    });
   };
 
   const likedPostIds = allLikedPosts || [];
@@ -138,7 +178,18 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     ...p,
     likes: pendingUnlikes.has(p.id) ? p.likes - 1 : p.likes,
   }));
-  const comments = likesData?.comments || [];
+  const comments = (likesData?.comments || []).map((c) => {
+    const commentKey = `${c.type}-${c.item?.id}`;
+    const isPendingUnlike = pendingCommentUnlikes.has(commentKey);
+    return {
+      ...c,
+      item: {
+        ...c.item,
+        likes: isPendingUnlike ? (c.item?.likes || 1) - 1 : c.item?.likes,
+        isLiked: !isPendingUnlike,
+      },
+    };
+  });
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
@@ -207,8 +258,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
             {comments.map((comment) => {
               const postId = comment.postId;
               const post = postId ? allPosts.find((p) => p.id === postId) : null;
-              const commentId = comment.item?.id || comment.itemId;
-              const isLiked = commentLikes[commentId] ?? comment.item?.isLiked ?? false;
+              const isLiked = comment.item?.isLiked ?? false;
 
               return (
                 <div
@@ -230,7 +280,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
                   <div className="flex items-center gap-3 text-xs text-text-3">
                     <button
                       type="button"
-                      onClick={() => handleCommentLike(comment)}
+                      onClick={() => handleCommentUnlike(comment)}
                       className={`inline-flex items-center gap-1 transition-colors duration-150 ${isLiked ? 'text-red' : 'hover:text-red'}`}
                     >
                       <Icon name={isLiked ? 'favorite' : 'favorite_border'} />
