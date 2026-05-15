@@ -12,6 +12,7 @@ import ForgetPasswordPage from './components/pages/ForgetPasswordPage';
 import BookmarksPage from './components/pages/BookmarksPage';
 import DetailPage from './components/pages/DetailPage';
 import ComposePage from './components/pages/ComposePage';
+import DraftsPage from './components/pages/DraftsPage';
 import LikesPage from './components/pages/LikesPage';
 import UnderConstruction from './components/common/UnderConstruction';
 import useAuth from './hooks/useAuth';
@@ -141,6 +142,18 @@ function App() {
     }
   }, [activePage, selectedPost, showToast]);
 
+  // ── Get draftId from URL for compose page ──
+  const draftIdRef = React.useRef(null);
+  React.useEffect(() => {
+    if (activePage === 'compose') {
+      const params = new URLSearchParams(window.location.search);
+      const did = params.get('draftId');
+      if (did) {
+        draftIdRef.current = did;
+      }
+    }
+  }, [activePage]);
+
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
 
@@ -241,7 +254,8 @@ function App() {
               <UnderConstruction feature="帖子详情" />
             )
           )}
-          {activePage === 'compose' && <ComposePage onPublish={handlePublish} />}
+          {activePage === 'compose' && <ComposePage onPublish={handlePublish} draftId={draftIdRef.current} />}
+          {activePage === 'drafts' && <DraftsPage onNavigate={navigate} />}
           {activePage === 'bookmarks' && (
             <BookmarksPage
               posts={posts}

@@ -1,7 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Icon from '../common/Icon';
+import useUiStore from '../../store/uiStore';
 
-function ComposePage({ onPublish }) {
+const selectShowToast = (s) => s.showToast;
+
+function ComposePage({ onPublish, draftId }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [moodType, setMoodType] = useState(null);
@@ -9,6 +12,10 @@ function ComposePage({ onPublish }) {
   const [tagInput, setTagInput] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const showToast = useUiStore(selectShowToast);
   const fileInputRef = useRef(null);
 
   const moodOptions = [
@@ -21,6 +28,26 @@ function ComposePage({ onPublish }) {
   const suggestedTags = ['期末周碎碎念', '食堂新品测评', '南大星空', '科研日常', '校园猫', '保研', '求建议', '校园生活', '求职实习', '情绪树洞'];
 
   const moodLabel = moodOptions.find(([, , t]) => t === moodType)?.[0] || '';
+
+  // Load draft when editing
+  useEffect(() => {
+    if (!draftId) return;
+    const loadDraft = async () => {
+      try {
+        const { fetchDraftById } = await import('../../services/draftService');
+        const draft = await fetchDraftById(draftId);
+        setTitle(draft.title || '');
+        setContent(draft.content || '');
+        setMoodType(draft.moodType || null);
+        setTags(draft.tags || []);
+        setImageUrl(draft.image || '');
+        setLastSavedAt(draft.updatedAt);
+      } catch (err) {
+        showToast('加载草稿失败');
+      }
+    };
+    loadDraft();
+  }, [draftId, showToast]);
 
   const addTag = (t) => {
     const cleaned = t.trim().replace(/^#/, '');
@@ -44,24 +71,113 @@ function ComposePage({ onPublish }) {
 
   const canPublish = content.trim().length > 0;
 
-  const handlePublish = () => {
-    onPublish({
-      title: title.trim() || '无标题',
-      content: content.trim(),
-      mood: moodLabel || '平静',
-      moodType: moodType || 'calm',
-      tags: tags.length > 0 ? tags : ['树洞'],
-      image: imageUrl || undefined,
-    });
+  const handleSaveDraft = async () => {
+    if (!content.trim() && !title.trim()) {
+      showToast('请先填写内容');
+      return;
+    }
+    setSaving(true);
+    try {
+      const data = {
+        title: title.trim() || undefined,
+        content: content.trim(),
+        moodType,
+        mood: moodLabel || '平静',
+        tags: tags.length > 0 ? tags : undefined,
+        image: imageUrl || undefined,
+      };
+      const { createDraft, updateDraft } = await import('../../services/draftService');
+      if (draftId) {
+        await updateDraft(draftId, data);
+      } else {
+        const draft = await createDraft(data);
+        // Update URL and state to reflect we're now editing this draft
+        window.history.replaceState(null, '', `/compose?draftId=${draft.id}`);
+        useUiStore.getState().setComposeDraftId(draft.id);
+      }
+      setLastSavedAt(new Date().toISOString());
+      showToast('已保存');
+    } catch (err) {
+      showToast(err.message || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (draftId) {
+      // Publish from draft
+      setLoading(true);
+      try {
+        const { publishDraft } = await import('../../services/draftService');
+        const post = await publishDraft(draftId);
+        showToast('发布成功');
+        onPublish({ ...post, id: post.id });
+      } catch (err) {
+        showToast(err.message || '发布失败');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Normal publish
+      onPublish({
+        title: title.trim() || '无标题',
+        content: content.trim(),
+        mood: moodLabel || '平静',
+        moodType: moodType || 'calm',
+        tags: tags.length > 0 ? tags : ['树洞'],
+        image: imageUrl || undefined,
+      });
+    }
+  };
+
+  const handleGoToDrafts = () => {
+    useUiStore.getState().navigate('drafts');
+  };
+
+  const formatSavedTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${date.getFullYear()}/${month}/${day} ${hours}:${minutes}`;
   };
 
   return (
     <div className="compose-page max-w-[1180px] mx-auto">
-      <section className="compose-heading max-w-[760px] mb-6">
-        <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
-        <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
-        <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">分享你此刻的想法，或记录一段校园回忆。前台匿名展示，后台仅在合规审计中可追责。</p>
-      </section>
+      <div className="flex items-center justify-between mb-6">
+        <section className="compose-heading max-w-[760px] mb-0">
+          <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
+          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
+          {lastSavedAt && (
+            <p className="mt-[9px] mb-0 text-text-2">保存于 {formatSavedTime(lastSavedAt)}</p>
+          )}
+          {!lastSavedAt && (
+            <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">分享你此刻的想法，或记录一段校园回忆。前台匿名展示，后台仅在合规审计中可追责。</p>
+          )}
+        </section>
+        <div className="flex gap-2">
+          <button
+            className="inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150 hover:bg-surface-soft"
+            onClick={handleGoToDrafts}
+            type="button"
+          >
+            草稿箱
+          </button>
+          {draftId && (
+            <button
+              className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2"
+              onClick={handlePublish}
+              disabled={!canPublish || loading}
+              type="button"
+            >
+              {loading ? '发布中...' : '发布动态'}
+            </button>
+          )}
+        </div>
+      </div>
       <section className="editor-card overflow-hidden rounded-lg border border-line-soft bg-surface shadow-sm">
         <input
           className="w-full p-[18px_20px] border-b border-line-soft bg-transparent text-xl font-bold"
@@ -148,21 +264,39 @@ function ComposePage({ onPublish }) {
         <div className="publish-row flex flex-wrap items-center justify-between gap-3 p-[14px_20px] border-t border-line-soft bg-[#fafbfc]">
           <p className="publish-hint m-0 text-text-3 text-sm font-medium">将以匿名身份发布，身份在帖子内保持一致</p>
           <div className="flex flex-wrap gap-2.5">
-            <button className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150" type="button">保存草稿</button>
-            <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canPublish} onClick={handlePublish} type="button">发布动态</button>
+            <button
+              className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[10px] bg-white text-text-2 font-semibold transition-all duration-150"
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={saving}
+            >
+              {saving ? '保存中...' : '保存草稿'}
+            </button>
+            {!draftId && (
+              <button
+                className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!canPublish}
+                onClick={handlePublish}
+                type="button"
+              >
+                发布动态
+              </button>
+            )}
           </div>
         </div>
       </section>
-      <div className="guidance-grid grid grid-cols-2 gap-[18px] mt-[22px] max-sm:grid-cols-1">
-        <section className="dark-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-[#1e3a5f]">
-          <h3 className="m-0 mb-2 text-xl tracking-tight">发布贴士</h3>
-          <p className="m-0 text-white/76 leading-relaxed">友善发言是树洞的基石。请遵守社区公约，避免泄露自己或他人的真实身份。</p>
-        </section>
-        <section className="blue-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-gradient-to-br from-[#0e4a8a] to-blue">
-          <h3 className="m-0 mb-2 text-xl tracking-tight">话题推荐</h3>
-          <p className="m-0 text-white/76 leading-relaxed">#期末周碎碎念 #食堂新品测评 #南大星空 #科研日常</p>
-        </section>
-      </div>
+      {!lastSavedAt && (
+        <div className="guidance-grid grid grid-cols-2 gap-[18px] mt-[22px] max-sm:grid-cols-1">
+          <section className="dark-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-[#1e3a5f]">
+            <h3 className="m-0 mb-2 text-xl tracking-tight">发布贴士</h3>
+            <p className="m-0 text-white/76 leading-relaxed">友善发言是树洞的基石。请遵守社区公约，避免泄露自己或他人的真实身份。</p>
+          </section>
+          <section className="blue-callout overflow-hidden p-5 rounded-md text-white shadow-sm bg-gradient-to-br from-[#0e4a8a] to-blue">
+            <h3 className="m-0 mb-2 text-xl tracking-tight">话题推荐</h3>
+            <p className="m-0 text-white/76 leading-relaxed">#期末周碎碎念 #食堂新品测评 #南大星空 #科研日常</p>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

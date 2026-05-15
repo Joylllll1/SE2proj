@@ -8,6 +8,7 @@ const PAGE_URLS = {
   bookmarks: '/bookmarks',
   likes: '/likes',
   announcements: '/announcements',
+  drafts: '/drafts',
   admin: '/admin',
   settings: '/settings',
   compose: '/compose',
