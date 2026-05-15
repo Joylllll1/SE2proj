@@ -10,7 +10,6 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
-  const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
   const [pendingCommentUnlikes, setPendingCommentUnlikes] = useState(new Map());
   const pendingUnlikesRef = useRef(pendingUnlikes);
   const pendingCommentUnlikesRef = useRef(pendingCommentUnlikes);
