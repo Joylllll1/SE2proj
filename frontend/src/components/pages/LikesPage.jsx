@@ -32,13 +32,16 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
-      <section className="collection-hero">
-        <p className="eyebrow mb-[18px] text-blue text-xs font-bold tracking-widest uppercase">My Likes</p>
-        <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">我的喜爱</h1>
+      <section className="collection-hero flex items-center justify-between gap-5 max-sm:grid max-sm:grid-cols-1">
+        <div>
+          <p className="eyebrow mb-[18px] text-blue text-xs font-bold tracking-widest uppercase">My Likes</p>
+          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">我的喜爱</h1>
+          <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">回顾你在树洞中点赞过的精彩内容。</p>
+        </div>
       </section>
 
-      {/* Tab 切换 */}
-      <div className="category-row flex flex-wrap gap-3 my-[22px]">
+      {/* Tab 切换 + 排序 */}
+      <div className="category-row flex flex-wrap gap-3 my-[22px] items-center">
         <button
           className={`tab-btn px-4 py-[10px] text-sm font-semibold rounded-full border transition-all duration-200 ${
             activeTab === 'posts'
@@ -61,7 +64,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onL
         </button>
 
         {/* 排序选择 */}
-        <div className="ml-auto flex gap-1">
+        <div className="flex gap-1">
           <button
             className={`sort-btn px-3 py-[6px] text-xs font-medium rounded-full border transition-all ${
               (activeTab === 'posts' ? postsSort : commentsSort) === 'newest'
