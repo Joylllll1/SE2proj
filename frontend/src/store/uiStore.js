@@ -4,6 +4,13 @@ import { loadJSON, saveJSON } from '../utils';
 // ─── URL 映射表 ───
 const PAGE_URLS = {
   home: '/',
+  trending: '/trending',
+  bookmarks: '/bookmarks',
+  likes: '/likes',
+  announcements: '/announcements',
+  admin: '/admin',
+  settings: '/settings',
+  compose: '/compose',
   login: '/login',
   register: '/register',
   'forgot-password': '/forgot-password',
@@ -16,18 +23,16 @@ function urlToPage(url) {
   for (const [page, p] of Object.entries(PAGE_URLS)) {
     if (p === path) return page;
   }
+  // 匹配 detail 页：/detail/:id
+  if (/^\/detail\//.test(path)) return 'detail';
   return null;
 }
 
-// 从当前 URL 恢复 activePage（独立函数，不依赖 PAGE_URLS，避免模块初始化顺序问题）
+// 从当前 URL 恢复 activePage
 function getInitialPage() {
   if (typeof window === 'undefined') return 'home';
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
-  if (path === '/login') return 'login';
-  if (path === '/register') return 'register';
-  if (path === '/forgot-password') return 'forgot-password';
-  if (path === '/reset-password') return 'reset-password';
-  return 'home';
+  return urlToPage(path) || 'home';
 }
 
 const SEED_NOTIFS = [
@@ -75,7 +80,12 @@ const useUiStore = create((set, get) => ({
 
   // Routing
   navigate: (page, params) => {
-    const url = PAGE_URLS[page];
+    let url;
+    if (page === 'detail' && params?.selectedPost) {
+      url = `/detail/${params.selectedPost.id}`;
+    } else {
+      url = PAGE_URLS[page];
+    }
     if (url) {
       window.history.pushState({ page, params }, '', url);
     }
