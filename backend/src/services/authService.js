@@ -1,5 +1,7 @@
 import User from '../models/User.js';
 import VerificationCode from '../models/VerificationCode.js';
+import Ban from '../models/Ban.js';
+import { sendUnbanNotification } from './emailService.js';
 import AppError from '../utils/AppError.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 
@@ -59,12 +61,28 @@ export const login = async (email, password) => {
     throw new AppError('邮箱或密码错误', 401, 'INVALID_CREDENTIALS');
   }
 
+  // Check for expired bans and auto-unban
+  const expiredBan = await Ban.findOne({ userId: user._id, isActive: true, expiresAt: { $lte: new Date() } });
+  if (expiredBan) {
+    expiredBan.isActive = false;
+    await expiredBan.save();
+    sendUnbanNotification(email, { reason: '禁言期已结束', isManual: false }).catch(console.error);
+  }
+
+  // Check active ban
+  const activeBan = await Ban.findOne({ userId: user._id, isActive: true, expiresAt: { $gt: new Date() } });
+  const banInfo = activeBan ? {
+    isBanned: true,
+    banExpiresAt: activeBan.expiresAt,
+    banReason: activeBan.reason,
+  } : { isBanned: false };
+
   // Generate tokens
   const accessToken = signAccessToken(user.id);
   const refreshToken = signRefreshToken(user.id);
 
   return {
-    user: user.toJSON(),
+    user: { ...user.toJSON(), ...banInfo },
     accessToken,
     refreshToken,
   };

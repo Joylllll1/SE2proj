@@ -6,7 +6,7 @@ const useAuthStore = create((set, get) => ({
   accessToken: null,
   isAuthenticated: false,
   loading: false,
-  initialized: false, // ← NEW: session restore complete (separate from API loading)
+  initialized: false,
   error: null,
 
   clearError: () => set({ error: null }),
@@ -23,6 +23,7 @@ const useAuthStore = create((set, get) => ({
         isAuthenticated: true,
         loading: false,
       });
+      return data;
     } catch (err) {
       set({ error: err.message, loading: false });
       throw err;
@@ -41,6 +42,7 @@ const useAuthStore = create((set, get) => ({
         isAuthenticated: true,
         loading: false,
       });
+      return data;
     } catch (err) {
       set({ error: err.message, loading: false });
       throw err;
@@ -82,14 +84,12 @@ const useAuthStore = create((set, get) => ({
         initialized: true,
       });
     } catch (err) {
-      // Access token expired — try refresh
       if (err.status === 401) {
         try {
           const refreshData = await authService.refreshToken();
           localStorage.setItem('accessToken', refreshData.accessToken);
           localStorage.setItem('refreshToken', refreshData.refreshToken);
 
-          // Retry fetching user with new token
           const data = await authService.getMe();
           set({
             user: data.user,
@@ -100,7 +100,6 @@ const useAuthStore = create((set, get) => ({
           });
           return;
         } catch {
-          // Refresh also failed — clear everything
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
         }
@@ -117,6 +116,9 @@ const useAuthStore = create((set, get) => ({
       });
     }
   },
+
+  isAdmin: () => get().user?.role === 'admin',
+  isBanned: () => get().user?.isBanned === true,
 }));
 
 export default useAuthStore;

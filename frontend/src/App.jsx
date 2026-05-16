@@ -15,6 +15,7 @@ import DetailPage from './components/pages/DetailPage';
 import ComposePage from './components/pages/ComposePage';
 import DraftsPage from './components/pages/DraftsPage';
 import LikesPage from './components/pages/LikesPage';
+import AdminDashboard from './components/pages/AdminDashboard';
 import UnderConstruction from './components/common/UnderConstruction';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
@@ -165,6 +166,9 @@ function App() {
     }
   }, [activePage, uiDraftId]);
 
+  // ── Admin check ──
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
 
@@ -181,6 +185,26 @@ function App() {
     return (
       <LandingPage
         onGetStarted={() => {
+          if (!localStorage.getItem('nju_user_id')) {
+            getUserId();
+          }
+          navigate('login');
+        }}
+        onLogin={() => navigate('login')}
+        onRegister={() => navigate('register')}
+      />
+    );
+  }
+
+  // ── Admin: show AdminDashboard instead of regular app ──
+  if (isAdmin) {
+    return (
+      <>
+        <AdminDashboard />
+        {toast && <Toast message={toast} onDone={clearToast} />}
+      </>
+    );
+  }
           if (!localStorage.getItem('nju_user_id')) {
             getUserId();
           }
