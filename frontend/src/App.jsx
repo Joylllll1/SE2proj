@@ -31,6 +31,7 @@ import useUiStore from './store/uiStore';
 import useLikeBookmark from './hooks/useLikeBookmark';
 import usePostActions from './hooks/usePostActions';
 import * as postService from './services/postService';
+import * as reportService from './services/reportService';
 
 // ─── Stable store selectors (prevents zustand getSnapshot churn) ───
 const selectInitialized = (s) => s.initialized;
@@ -241,8 +242,13 @@ function App() {
     }
   };
 
-  const handleReport = () => {
-    showToast('举报功能即将上线');
+  const handleReport = async (postId, reason) => {
+    try {
+      await reportService.createReport(postId, reason);
+      showToast('举报已提交');
+    } catch (err) {
+      showToast(err.message || '举报失败');
+    }
   };
 
   // ── Render ──

@@ -10,7 +10,6 @@ const navItems = [
   { id: 'drafts', label: '草稿箱', icon: 'edit_note' },
   { id: 'likes', label: '我的喜爱', icon: 'favorite' },
   { id: 'bookmarks', label: '我的收藏', icon: 'bookmark' },
-  { id: 'admin', label: '管理后台', icon: 'admin_panel_settings' },
   { id: 'settings', label: '个人设置', icon: 'person' },
 ];
 
