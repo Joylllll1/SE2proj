@@ -6,8 +6,8 @@ import useUiStore from '../../store/uiStore';
 const adminNavItems = [
   { id: 'events', label: '公告审核', icon: 'campaign' },
   { id: 'reports', label: '举报管理', icon: 'report_problem' },
-  { id: 'bans', label: '封禁记录', icon: 'block' },
-  { id: 'audit', label: '审计日志', icon: 'history' },
+  { id: 'bans', label: '封禁记录', icon: 'gavel' },
+  { id: 'audit', label: '审计日志', icon: 'receipt_long' },
 ];
 
 const selectLogout = (s) => s.logout;
