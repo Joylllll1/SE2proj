@@ -442,9 +442,6 @@ export async function deleteComment(commentId, adminId, reason) {
   return reply;
 }
 
-  return comment;
-}
-
 // ─── Audit Logs ───
 
 export async function getAuditLogs({ action, limit = 100 } = {}) {
