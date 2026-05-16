@@ -9,7 +9,7 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
   const authorName = getDisplayName(post.ownerUserId, post.id);
 
   const handleReport = (targetId, reason) => {
-    onReport(targetId, reason);
+    onReport(targetId, reason, 'post');
     setShowReportModal(false);
   };
 

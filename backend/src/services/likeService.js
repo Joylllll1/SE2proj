@@ -35,7 +35,7 @@ export const getUserLikes = async (userId) => {
       { 'replies.likedBy': userId },
     ],
   })
-    .populate('postId', 'title')
+    .populate('postId', 'title isDeleted')
     .sort({ updatedAt: -1 })
     .lean();
 
@@ -43,6 +43,7 @@ export const getUserLikes = async (userId) => {
 
   for (const c of likedComments) {
     const postTitle = c.postId?.title || '';
+    const postIsDeleted = c.postId?.isDeleted || false;
 
     // 用户点赞了此评论本身
     if (c.likedBy?.some((id) => id.toString() === userId)) {
@@ -58,6 +59,7 @@ export const getUserLikes = async (userId) => {
         },
         postId: c.postId?._id?.toString() || c.postId?.toString(),
         postTitle,
+        postIsDeleted,
       });
     }
 
@@ -77,6 +79,7 @@ export const getUserLikes = async (userId) => {
             },
             postId: c.postId?._id?.toString() || c.postId?.toString(),
             postTitle,
+            postIsDeleted,
             parentCommentId: c._id.toString(),
           });
         }

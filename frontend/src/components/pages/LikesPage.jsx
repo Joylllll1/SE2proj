@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
+import useUiStore from '../../store/uiStore';
 import { fetchLikes, toggleCommentLike, toggleReplyLike, toggleLike as toggleLikeApi } from '../../services/postService';
 
 function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport, onUnlikeConfirm }) {
@@ -13,6 +14,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const [pendingCommentUnlikes, setPendingCommentUnlikes] = useState(new Map());
   const pendingUnlikesRef = useRef(pendingUnlikes);
   const pendingCommentUnlikesRef = useRef(pendingCommentUnlikes);
+  const showToast = useUiStore((s) => s.showToast);
 
   // 保持 ref 同步
   useEffect(() => {
@@ -298,6 +300,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
               const postId = comment.postId;
               const post = postId ? allPosts.find((p) => p.id === postId) : null;
               const isLiked = comment.item?.isLiked ?? false;
+              const postIsDeleted = comment.postIsDeleted || post?.isDeleted || false;
 
               return (
                 <div
@@ -306,10 +309,18 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span
-                      className="text-xs text-text-3 font-medium cursor-pointer hover:text-blue"
-                      onClick={() => post && onOpenPost(post)}
+                      className={`text-xs font-medium cursor-pointer hover:text-blue ${postIsDeleted ? 'text-text-3 line-through' : 'text-text-3'}`}
+                      onClick={() => {
+                        if (postIsDeleted) {
+                          showToast('该帖子已被删除');
+                        } else if (post) {
+                          onOpenPost(post);
+                        } else {
+                          showToast('该帖子不存在或已被删除');
+                        }
+                      }}
                     >
-                      来自：{post?.title || comment.postTitle || '无标题'}
+                      来自：{postIsDeleted ? '[已删除]' : (post?.title || comment.postTitle || '无标题')}
                     </span>
                   </div>
                   <p className="text-sm text-text-2 mb-2">

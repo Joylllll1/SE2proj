@@ -390,25 +390,57 @@ export async function deletePost(postId, adminId, reason) {
 // ─── Comments Moderation ───
 
 export async function deleteComment(commentId, adminId, reason) {
-  const comment = await Comment.findById(commentId);
-  if (!comment) {
+  // 先尝试作为普通评论删除
+  let comment = await Comment.findById(commentId);
+
+  if (comment) {
+    comment.isDeleted = true;
+    await comment.save();
+
+    // Mark related reports as processed
+    await Report.deleteMany({ targetId: commentId, targetType: { $in: ['comment', 'reply'] }, status: 'pending' });
+
+    // Create audit log
+    await AuditLog.create({
+      action: 'delete_comment',
+      adminId,
+      targetUserId: comment.ownerUserId,
+      targetCommentId: commentId,
+      reason,
+    });
+
+    return comment;
+  }
+
+  // 如果不是独立评论，可能是嵌入的回复
+  const parentComment = await Comment.findOne({ 'replies._id': commentId });
+  if (!parentComment) {
     throw new Error('评论不存在');
   }
 
-  comment.isDeleted = true;
-  await comment.save();
+  // 找到并标记回复为已删除
+  const reply = parentComment.replies.id(commentId);
+  if (!reply) {
+    throw new Error('回复不存在');
+  }
+
+  reply.isDeleted = true;
+  await parentComment.save();
 
   // Mark related reports as processed
-  await Report.deleteMany({ targetId: commentId, targetType: { $in: ['comment', 'reply'] }, status: 'pending' });
+  await Report.deleteMany({ targetId: commentId, targetType: 'reply', status: 'pending' });
 
   // Create audit log
   await AuditLog.create({
     action: 'delete_comment',
     adminId,
-    targetUserId: comment.ownerUserId,
+    targetUserId: reply.ownerUserId,
     targetCommentId: commentId,
     reason,
   });
+
+  return reply;
+}
 
   return comment;
 }
