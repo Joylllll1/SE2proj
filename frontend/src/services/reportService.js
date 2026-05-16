@@ -12,8 +12,8 @@ async function fetchWithAuth(url, options = {}) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: '请求失败' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || error.message || `HTTP ${response.status}`);
   }
 
   return response.json();

@@ -4,7 +4,7 @@ const auditLogSchema = new mongoose.Schema(
   {
     action: {
       type: String,
-      enum: ['trace', 'ban', 'unban', 'delete_post'],
+      enum: ['trace', 'ban', 'unban', 'delete_post', 'delete_comment'],
       required: true,
       index: true,
     },
