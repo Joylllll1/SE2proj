@@ -9,29 +9,47 @@ import { sendBanNotification, sendUnbanNotification } from './emailService.js';
 // ─── Reports ───
 
 export async function getPendingReports() {
+  // 获取待处理举报
   const reports = await Report.find({ status: 'pending' })
-    .populate('targetId') // Will be post, comment, or reply
     .populate('postId', 'title content ownerUserId isDeleted mood moodType createdAt')
     .populate('reasons.reportedBy', 'email')
     .sort({ reportCount: -1, createdAt: -1 })
     .lean();
 
-  // For comment/reply reports, we need to get the target's content
+  // 丰富化举报数据
   const enrichedReports = await Promise.all(reports.map(async (report) => {
-    if (report.targetType === 'post') {
-      return report;
+    // 处理旧数据：没有 targetType 的默认为 'post'
+    const targetType = report.targetType || 'post';
+
+    if (targetType === 'post') {
+      // 旧数据：postId 为空时，targetId 就是帖子 ID
+      let post = report.postId;
+      if (!post && report.targetId) {
+        post = await Post.findById(report.targetId)
+          .select('title content ownerUserId isDeleted mood moodType createdAt')
+          .lean();
+      }
+      return { ...report, targetType: 'post', postId: post };
     }
 
-    // For comment/reply, fetch the target content
-    const target = await Comment.findById(report.targetId._id || report.targetId)
-      .select('content ownerUserId createdAt')
+    // 评论/回复举报，获取评论内容
+    const target = await Comment.findById(report.targetId)
+      .select('content ownerUserId createdAt postId')
       .lean();
+
+    // 获取所属帖子信息
+    let postInfo = report.postId;
+    if (!postInfo && target?.postId) {
+      postInfo = await Post.findById(target.postId).select('title').lean();
+    }
 
     return {
       ...report,
+      targetType,
       targetContent: target?.content || '[已删除]',
       targetOwnerUserId: target?.ownerUserId,
       targetCreatedAt: target?.createdAt,
+      postId: postInfo,
     };
   }));
 
