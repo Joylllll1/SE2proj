@@ -321,7 +321,7 @@ export async function deletePost(postId, adminId, reason) {
   await post.save();
 
   // Also mark related report as processed (delete it)
-  await Report.deleteMany({ postId, status: 'pending' });
+  await Report.deleteMany({ targetId: postId, targetType: 'post', status: 'pending' });
 
   // Create audit log
   await AuditLog.create({
@@ -333,6 +333,32 @@ export async function deletePost(postId, adminId, reason) {
   });
 
   return post;
+}
+
+// ─── Comments Moderation ───
+
+export async function deleteComment(commentId, adminId, reason) {
+  const comment = await Comment.findById(commentId);
+  if (!comment) {
+    throw new Error('评论不存在');
+  }
+
+  comment.isDeleted = true;
+  await comment.save();
+
+  // Mark related reports as processed
+  await Report.deleteMany({ targetId: commentId, targetType: { $in: ['comment', 'reply'] }, status: 'pending' });
+
+  // Create audit log
+  await AuditLog.create({
+    action: 'delete_comment',
+    adminId,
+    targetUserId: comment.ownerUserId,
+    targetCommentId: commentId,
+    reason,
+  });
+
+  return comment;
 }
 
 // ─── Audit Logs ───

@@ -248,7 +248,7 @@ function AdminDashboard() {
   const showToast = useUiStore((s) => s.showToast);
 
   const {
-    reports, reportsLoading, fetchReports, dismissReport, deletePost,
+    reports, reportsLoading, fetchReports, dismissReport, deletePost, deleteComment,
     bans, bansLoading, fetchBans, banUser, unbanUser,
     traceResult, traceLoading, tracePost, clearTraceResult,
     auditLogs, auditLogsLoading, fetchAuditLogs,
@@ -308,6 +308,17 @@ function AdminDashboard() {
     }
   };
 
+  // Handle delete comment
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('确定要删除这条评论吗？此操作不可逆。')) return;
+    try {
+      await deleteComment(commentId, '管理员删除违规内容');
+      showToast('评论已删除');
+    } catch (err) {
+      showToast(err.message || '删除失败');
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -335,13 +346,18 @@ function AdminDashboard() {
                           {report.targetType === 'post' ? '帖子举报' :
                            report.targetType === 'comment' ? '评论举报' : '回复举报'}
                         </span>
-                        <span className="text-xs text-gray-500">
-                          举报 {report.reportCount} 次
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                          {report.reasons?.[0]?.reason || '举报'}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-400">
-                        {new Date(report.createdAt).toLocaleString('zh-CN')}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500">
+                          举报 {report.reportCount || report.reasons?.length || 1} 次
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(report.createdAt).toLocaleString('zh-CN')}
+                        </span>
+                      </div>
                     </div>
 
                     {/* 帖子举报显示帖子内容 */}
@@ -374,7 +390,7 @@ function AdminDashboard() {
                       </button>
                       <button
                         className="px-3 py-1.5 text-xs font-semibold border border-blue-200 rounded-full text-blue-600 hover:bg-blue-50"
-                        onClick={() => setTraceModalPost({ _id: report.targetId._id || report.targetId, targetType: report.targetType })}
+                        onClick={() => setTraceModalPost({ _id: report.targetId, targetType: report.targetType })}
                         type="button"
                       >
                         追溯身份
@@ -382,10 +398,19 @@ function AdminDashboard() {
                       {report.targetType === 'post' && (
                         <button
                           className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
-                          onClick={() => handleDeletePost(report.postId?._id)}
+                          onClick={() => handleDeletePost(report.postId?._id || report.targetId)}
                           type="button"
                         >
                           删除帖子
+                        </button>
+                      )}
+                      {(report.targetType === 'comment' || report.targetType === 'reply') && (
+                        <button
+                          className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
+                          onClick={() => handleDeleteComment(report.targetId)}
+                          type="button"
+                        >
+                          删除评论
                         </button>
                       )}
                       <button

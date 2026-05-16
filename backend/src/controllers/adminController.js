@@ -39,6 +39,15 @@ export async function deletePost(req, res) {
   res.json({ message: '帖子已删除' });
 }
 
+export async function deleteComment(req, res) {
+  const { id: commentId } = req.params;
+  const { reason } = req.body;
+  const adminId = req.user._id;
+
+  await adminService.deleteComment(commentId, adminId, reason);
+  res.json({ message: '评论已删除' });
+}
+
 // ─── Users ───
 
 export async function banUser(req, res) {

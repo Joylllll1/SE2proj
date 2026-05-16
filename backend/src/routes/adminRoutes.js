@@ -14,8 +14,11 @@ router.post('/reports/:id/dismiss', adminController.dismissReport);
 
 // Posts moderation
 router.post('/posts/:id/trace', adminController.tracePost);
-router.post('/comments/:id/trace', adminController.tracePost);
 router.delete('/posts/:id', adminController.deletePost);
+
+// Comments moderation
+router.post('/comments/:id/trace', adminController.tracePost);
+router.delete('/comments/:id', adminController.deleteComment);
 
 // Users banning
 router.post('/users/:id/ban', adminController.banUser);

@@ -109,7 +109,21 @@ const useAdminStore = create((set, get) => ({
       await adminService.deletePost(postId, reason);
       // Remove related report from list
       set((state) => ({
-        reports: state.reports.filter((r) => r.postId?._id !== postId),
+        reports: state.reports.filter((r) => r.postId?._id !== postId && r.targetId !== postId),
+      }));
+    } catch (err) {
+      set({ reportsError: err.message });
+      throw err;
+    }
+  },
+
+  // Comments
+  deleteComment: async (commentId, reason) => {
+    try {
+      await adminService.deleteComment(commentId, reason);
+      // Remove related report from list
+      set((state) => ({
+        reports: state.reports.filter((r) => r.targetId !== commentId),
       }));
     } catch (err) {
       set({ reportsError: err.message });

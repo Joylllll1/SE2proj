@@ -25,7 +25,7 @@ export const getReports = () => fetchWithAuth(`${API_BASE}/reports`);
 export const dismissReport = (reportId) =>
   fetchWithAuth(`${API_BASE}/reports/${reportId}/dismiss`, { method: 'POST' });
 
-// Posts/Comments
+// Posts
 export const tracePost = (targetId, targetType, reason) => {
   const endpoint = targetType === 'comment' || targetType === 'reply'
     ? `${API_BASE}/comments/${targetId}/trace`
@@ -38,6 +38,13 @@ export const tracePost = (targetId, targetType, reason) => {
 
 export const deletePost = (postId, reason) =>
   fetchWithAuth(`${API_BASE}/posts/${postId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  });
+
+// Comments
+export const deleteComment = (commentId, reason) =>
+  fetchWithAuth(`${API_BASE}/comments/${commentId}`, {
     method: 'DELETE',
     body: JSON.stringify({ reason }),
   });
