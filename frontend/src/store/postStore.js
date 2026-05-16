@@ -1,11 +1,28 @@
 import { create } from 'zustand';
 import * as postService from '../services/postService';
 
+function applyPostLikeState(state, postId, { liked, likes }) {
+  return {
+    likedPosts: liked
+      ? [...new Set([...state.likedPosts, postId])]
+      : state.likedPosts.filter((id) => id !== postId),
+    posts: state.posts.map((p) =>
+      p.id === postId ? { ...p, isLiked: liked, likes } : p,
+    ),
+    selectedPost:
+      state.selectedPost?.id === postId
+        ? { ...state.selectedPost, isLiked: liked, likes }
+        : state.selectedPost,
+  };
+}
+
 const usePostStore = create((set, get) => ({
   posts: [],
   likedPosts: [],
   selectedPost: null,
   loading: false,
+  pendingUnlikePostIds: [],
+  submittingUnlikePostIds: [],
 
   fetchPosts: async (page = 1, query = '') => {
     set({ loading: true });
@@ -28,7 +45,88 @@ const usePostStore = create((set, get) => ({
     return normalized;
   },
 
+  isPostPendingUnlike: (postId) => {
+    const { pendingUnlikePostIds, submittingUnlikePostIds } = get();
+    return pendingUnlikePostIds.includes(postId) || submittingUnlikePostIds.includes(postId);
+  },
+
+  isPostLiked: (postId) => {
+    const { likedPosts } = get();
+    return likedPosts.includes(postId) && !get().isPostPendingUnlike(postId);
+  },
+
+  getPostLikeView: (post) => {
+    if (!post) return post;
+    const isPendingUnlike = get().isPostPendingUnlike(post.id);
+    return {
+      ...post,
+      isLiked: get().isPostLiked(post.id),
+      likes: isPendingUnlike ? Math.max(0, (post.likes || 0) - 1) : (post.likes || 0),
+    };
+  },
+
+  togglePendingUnlike: (postId) => {
+    set((state) => ({
+      pendingUnlikePostIds: state.pendingUnlikePostIds.includes(postId)
+        ? state.pendingUnlikePostIds.filter((id) => id !== postId)
+        : [...state.pendingUnlikePostIds, postId],
+    }));
+  },
+
+  submitPendingUnlikes: async (postIds) => {
+    const currentPending = get().pendingUnlikePostIds;
+    const targetIds = [...new Set((postIds || currentPending).filter((id) => currentPending.includes(id)))];
+    if (targetIds.length === 0) {
+      return { succeeded: [], failed: [] };
+    }
+
+    set((state) => ({
+      pendingUnlikePostIds: state.pendingUnlikePostIds.filter((id) => !targetIds.includes(id)),
+      submittingUnlikePostIds: [...new Set([...state.submittingUnlikePostIds, ...targetIds])],
+    }));
+
+    const succeeded = [];
+    const failed = [];
+
+    for (const postId of targetIds) {
+      try {
+        const result = await postService.toggleLike(postId);
+        succeeded.push({ postId, result });
+      } catch (error) {
+        failed.push({ postId, error });
+      }
+    }
+
+    set((state) => {
+      let nextState = {
+        ...state,
+        submittingUnlikePostIds: state.submittingUnlikePostIds.filter((id) => !targetIds.includes(id)),
+      };
+
+      for (const { postId, result } of succeeded) {
+        nextState = {
+          ...nextState,
+          ...applyPostLikeState(nextState, postId, result),
+        };
+      }
+
+      return nextState;
+    });
+
+    return {
+      succeeded: succeeded.map(({ postId }) => postId),
+      failed: failed.map(({ postId }) => postId),
+    };
+  },
+
   toggleLike: async (postId) => {
+    if (get().isPostPendingUnlike(postId)) {
+      set((state) => ({
+        pendingUnlikePostIds: state.pendingUnlikePostIds.filter((id) => id !== postId),
+      }));
+      return;
+    }
+
     const previousPosts = get().posts;
     const previousSelected = get().selectedPost;
     const previousLiked = get().likedPosts;
@@ -58,20 +156,7 @@ const usePostStore = create((set, get) => ({
     });
     try {
       const result = await postService.toggleLike(postId);
-      // 用服务器返回的真实状态覆盖，确保同步
-      const { liked, likes } = result;
-      set((state) => ({
-        likedPosts: liked
-          ? [...new Set([...state.likedPosts, postId])]
-          : state.likedPosts.filter((id) => id !== postId),
-        posts: state.posts.map((p) =>
-          p.id === postId ? { ...p, isLiked: liked, likes } : p,
-        ),
-        selectedPost:
-          state.selectedPost?.id === postId
-            ? { ...state.selectedPost, isLiked: liked, likes }
-            : state.selectedPost,
-      }));
+      set((state) => applyPostLikeState(state, postId, result));
     } catch {
       // 完整回滚：防止 API 失败时 likedPosts 和 posts 不同步导致的计数偏移
       set({ posts: previousPosts, selectedPost: previousSelected, likedPosts: previousLiked });
@@ -133,8 +218,8 @@ const usePostStore = create((set, get) => ({
   },
 
   setSelectedPost: (post) => {
-    const likedPosts = get().likedPosts;
-    set({ selectedPost: { ...post, isLiked: likedPosts.includes(post.id) } });
+    const postView = get().getPostLikeView(post);
+    set({ selectedPost: postView });
   },
 
   getFilteredPosts: (query) => {

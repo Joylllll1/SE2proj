@@ -188,7 +188,7 @@ function PostDetailModal({ post, onClose }) {
                 {post.targetType === 'comment' ? '评论内容' : '回复内容'}
               </span>
               <div className="flex items-center gap-3 text-gray-500 text-sm">
-                <span>{new Date(post.targetCreatedAt).toLocaleString('zh-CN')}</span>
+                <span>{post.targetCreatedAt ? new Date(post.targetCreatedAt).toLocaleString('zh-CN') : '时间未知'}</span>
               </div>
             </div>
           </div>

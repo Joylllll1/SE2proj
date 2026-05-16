@@ -57,6 +57,7 @@ const selectQuery = (s) => s.query;
 const selectSetQuery = (s) => s.setQuery;
 const selectSelectedPost = (s) => s.selectedPost;
 const selectLikedPosts = (s) => s.likedPosts;
+const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectBookmarks = (s) => s.bookmarks;
 const selectCommentsMap = (s) => s.commentsMap;
 const selectFetchComments = (s) => s.fetchComments;
@@ -119,11 +120,13 @@ function App() {
   // ── Detail Page ──
   const selectedPost = usePostStore(selectSelectedPost);
   const likedPosts = usePostStore(selectLikedPosts);
+  const getPostLikeView = usePostStore(selectGetPostLikeView);
   const bookmarks = useBookmarkStore(selectBookmarks);
   const commentsMap = useCommentStore(selectCommentsMap);
   const comments = commentsMap[selectedPost?.id] || [];
   const fetchComments = useCommentStore(selectFetchComments);
   const addComment = useCommentStore(selectAddComment);
+  const detailPost = selectedPost ? getPostLikeView(selectedPost) : null;
 
   // ── Hooks ──
   const { toggleLike, toggleBookmark, selectFolder: handleSelectFolder } = useLikeBookmark();
@@ -270,10 +273,10 @@ function App() {
           {activePage === 'detail' && (
             selectedPost ? (
               <DetailPage
-                post={selectedPost}
+                post={detailPost}
                 comments={comments}
-                liked={likedPosts.includes(selectedPost.id)}
-                bookmarked={selectedPost.isSaved}
+                liked={detailPost?.isLiked}
+                bookmarked={detailPost?.isSaved}
                 onLike={() => toggleLike(selectedPost.id)}
                 onBookmark={() => toggleBookmark(selectedPost.id)}
                 onComment={handleComment}
@@ -308,15 +311,6 @@ function App() {
               likedPosts={likedPosts}
               onOpenPost={openPost}
               onReport={handleReport}
-              onUnlikeConfirm={(postId) => {
-                // 直接更新 store 的 likedPosts，不再次调用 API
-                usePostStore.setState((state) => ({
-                  likedPosts: state.likedPosts.filter((id) => id !== postId),
-                  posts: state.posts.map((p) =>
-                    p.id === postId ? { ...p, isLiked: false } : p
-                  ),
-                }));
-              }}
             />
           )}
           {activePage === 'announcements' && <UnderConstruction feature="公告活动" />}

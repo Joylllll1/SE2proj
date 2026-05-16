@@ -66,7 +66,7 @@ export const getUserLikes = async (userId) => {
     // 用户点赞了此评论下的回复
     if (c.replies?.length > 0) {
       for (const r of c.replies) {
-        if (r.likedBy?.some((id) => id.toString() === userId)) {
+        if (!r.isDeleted && r.likedBy?.some((id) => id.toString() === userId)) {
           comments.push({
             type: 'reply',
             item: {

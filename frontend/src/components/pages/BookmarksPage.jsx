@@ -3,8 +3,11 @@ import Icon from '../common/Icon';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import * as postService from '../../services/postService';
+import usePostStore from '../../store/postStore';
 
-function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
+const selectGetPostLikeView = (s) => s.getPostLikeView;
+
+function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
   const [activeFolder, setActiveFolder] = useState('all');
   const [showFolderMenu, setShowFolderMenu] = useState(null);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
@@ -14,6 +17,7 @@ function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBoo
   const [savedPosts, setSavedPosts] = useState([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
   const menuRefs = useRef({});
+  const getPostLikeView = usePostStore(selectGetPostLikeView);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -189,22 +193,25 @@ function BookmarksPage({ posts, bookmarks, likedPosts, onOpenPost, onLike, onBoo
       {totalItems === 0 ? (
         <EmptyState title={activeFolder === 'all' ? '还没有收藏内容' : `"${collectionFolders.find((f) => f.id === activeFolder)?.name || '此文件夹'}" 暂无收藏`} description="浏览树洞时点击书签图标即可收藏。" />
       ) : (
-        <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
-          {folderPosts.map((post) => (
-            <div key={post.id} className="inline-block w-full mb-[18px]">
-              <PostCard
-                compact
-                post={post}
-                onOpen={() => onOpenPost(post)}
-                liked={likedPosts.includes(post.id)}
-                bookmarked
-                onLike={() => onLike(post.id)}
-                onBookmark={() => onBookmark(post.id)}
-                onReport={onReport}
-              />
-            </div>
-          ))}
-        </section>
+          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
+            {folderPosts.map((post) => {
+              const postView = getPostLikeView(post);
+              return (
+                <div key={postView.id} className="inline-block w-full mb-[18px]">
+                  <PostCard
+                    compact
+                    post={postView}
+                    onOpen={() => onOpenPost(post)}
+                    liked={postView.isLiked}
+                    bookmarked
+                    onLike={() => onLike(post.id)}
+                    onBookmark={() => onBookmark(post.id)}
+                    onReport={onReport}
+                  />
+                </div>
+              );
+            })}
+          </section>
       )}
 
       {/* New Folder Modal */}

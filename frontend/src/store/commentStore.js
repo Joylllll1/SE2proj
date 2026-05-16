@@ -1,8 +1,46 @@
 import { create } from 'zustand';
 import * as commentService from '../services/commentService';
 
+function getPendingUnlikeKey(type, id) {
+  return `${type}-${id}`;
+}
+
+function applyCommentLikeState(commentsMap, commentId, patch) {
+  const updated = { ...commentsMap };
+  for (const postId of Object.keys(updated)) {
+    updated[postId] = updated[postId].map((comment) =>
+      comment.id === commentId || comment._id === commentId
+        ? { ...comment, ...patch }
+        : comment,
+    );
+  }
+  return updated;
+}
+
+function applyReplyLikeState(commentsMap, commentId, replyId, patch) {
+  const updated = { ...commentsMap };
+  for (const postId of Object.keys(updated)) {
+    updated[postId] = updated[postId].map((comment) => {
+      if (comment.id !== commentId && comment._id !== commentId) {
+        return comment;
+      }
+      return {
+        ...comment,
+        replies: (comment.replies || []).map((reply) =>
+          reply.id === replyId || reply._id === replyId
+            ? { ...reply, ...patch }
+            : reply,
+        ),
+      };
+    });
+  }
+  return updated;
+}
+
 const useCommentStore = create((set, get) => ({
   commentsMap: {},
+  pendingCommentUnlikes: [],
+  submittingCommentUnlikes: [],
 
   fetchComments: async (postId) => {
     try {
@@ -18,14 +56,29 @@ const useCommentStore = create((set, get) => ({
   // 获取扁平化的评论列表（评论和回复平级）
   getFlatComments: (postId) => {
     const comments = get().commentsMap[postId] || [];
+    const pendingKeys = new Set(
+      [...get().pendingCommentUnlikes, ...get().submittingCommentUnlikes].map((item) =>
+        getPendingUnlikeKey(item.type, item.id),
+      ),
+    );
     const flatList = [];
 
     comments.forEach((comment) => {
+      const commentPendingKey = getPendingUnlikeKey('comment', comment.id || comment._id);
+      const isCommentPendingUnlike = pendingKeys.has(commentPendingKey);
+
       // 添加评论
-      flatList.push({ ...comment, itemType: 'comment' });
+      flatList.push({
+        ...comment,
+        itemType: 'comment',
+        isLiked: isCommentPendingUnlike ? false : comment.isLiked,
+        likes: isCommentPendingUnlike ? Math.max(0, (comment.likes || 0) - 1) : (comment.likes || 0),
+      });
       // 添加评论下的所有回复
       if (comment.replies && comment.replies.length > 0) {
         comment.replies.forEach((reply) => {
+          const replyPendingKey = getPendingUnlikeKey('reply', reply.id || reply._id);
+          const isReplyPendingUnlike = pendingKeys.has(replyPendingKey);
           // 查找被回复的内容（可能是评论或另一个回复）
           let parentContent = comment.content;
           let parentAuthorId = comment.ownerUserId;
@@ -48,6 +101,8 @@ const useCommentStore = create((set, get) => ({
           flatList.push({
             ...reply,
             itemType: 'reply',
+            isLiked: isReplyPendingUnlike ? false : reply.isLiked,
+            likes: isReplyPendingUnlike ? Math.max(0, (reply.likes || 0) - 1) : (reply.likes || 0),
             parentId: comment.id || comment._id,
             parentContent,
             parentAuthorId,
@@ -59,6 +114,96 @@ const useCommentStore = create((set, get) => ({
     });
 
     return flatList;
+  },
+
+  isPendingUnlike: (type, id) => {
+    const key = getPendingUnlikeKey(type, id);
+    return [...get().pendingCommentUnlikes, ...get().submittingCommentUnlikes]
+      .some((item) => getPendingUnlikeKey(item.type, item.id) === key);
+  },
+
+  togglePendingUnlike: (item) => {
+    const itemKey = getPendingUnlikeKey(item.type, item.id);
+    set((state) => ({
+      pendingCommentUnlikes: state.pendingCommentUnlikes.some(
+        (pendingItem) => getPendingUnlikeKey(pendingItem.type, pendingItem.id) === itemKey,
+      )
+        ? state.pendingCommentUnlikes.filter(
+            (pendingItem) => getPendingUnlikeKey(pendingItem.type, pendingItem.id) !== itemKey,
+          )
+        : [...state.pendingCommentUnlikes, item],
+    }));
+  },
+
+  submitPendingCommentUnlikes: async (items) => {
+    const currentPending = get().pendingCommentUnlikes;
+    const targetItems = (items || currentPending).filter((item) =>
+      currentPending.some((pendingItem) => getPendingUnlikeKey(pendingItem.type, pendingItem.id) === getPendingUnlikeKey(item.type, item.id)),
+    );
+    const uniqueTargets = Array.from(
+      new Map(targetItems.map((item) => [getPendingUnlikeKey(item.type, item.id), item])).values(),
+    );
+
+    if (uniqueTargets.length === 0) {
+      return { succeeded: [], failed: [] };
+    }
+
+    const targetKeys = uniqueTargets.map((item) => getPendingUnlikeKey(item.type, item.id));
+
+    set((state) => ({
+      pendingCommentUnlikes: state.pendingCommentUnlikes.filter(
+        (item) => !targetKeys.includes(getPendingUnlikeKey(item.type, item.id)),
+      ),
+      submittingCommentUnlikes: [
+        ...state.submittingCommentUnlikes.filter(
+          (item) => !targetKeys.includes(getPendingUnlikeKey(item.type, item.id)),
+        ),
+        ...uniqueTargets,
+      ],
+    }));
+
+    const succeeded = [];
+    const failed = [];
+
+    for (const item of uniqueTargets) {
+      try {
+        const result = item.type === 'reply'
+          ? await commentService.toggleReplyLike(item.parentId, item.id)
+          : await commentService.toggleLike(item.id);
+        succeeded.push({ item, result });
+      } catch (error) {
+        failed.push({ item, error });
+      }
+    }
+
+    set((state) => {
+      let nextCommentsMap = state.commentsMap;
+      for (const { item, result } of succeeded) {
+        if (item.type === 'reply') {
+          nextCommentsMap = applyReplyLikeState(nextCommentsMap, item.parentId, item.id, {
+            isLiked: result.liked,
+            likes: result.likes,
+          });
+        } else {
+          nextCommentsMap = applyCommentLikeState(nextCommentsMap, item.id, {
+            isLiked: result.liked,
+            likes: result.likes,
+          });
+        }
+      }
+
+      return {
+        commentsMap: nextCommentsMap,
+        submittingCommentUnlikes: state.submittingCommentUnlikes.filter(
+          (item) => !targetKeys.includes(getPendingUnlikeKey(item.type, item.id)),
+        ),
+      };
+    });
+
+    return {
+      succeeded: succeeded.map(({ item }) => getPendingUnlikeKey(item.type, item.id)),
+      failed: failed.map(({ item }) => getPendingUnlikeKey(item.type, item.id)),
+    };
   },
 
   addComment: async (postId, content, official = false) => {
@@ -73,6 +218,15 @@ const useCommentStore = create((set, get) => ({
   },
 
   toggleLike: async (commentId) => {
+    if (get().isPendingUnlike('comment', commentId)) {
+      set((state) => ({
+        pendingCommentUnlikes: state.pendingCommentUnlikes.filter(
+          (item) => getPendingUnlikeKey(item.type, item.id) !== getPendingUnlikeKey('comment', commentId),
+        ),
+      }));
+      return;
+    }
+
     const previous = get().commentsMap;
     // Optimistic update: toggle isLiked immediately
     set((state) => {
@@ -96,6 +250,15 @@ const useCommentStore = create((set, get) => ({
   },
 
   toggleReplyLike: async (commentId, replyId) => {
+    if (get().isPendingUnlike('reply', replyId)) {
+      set((state) => ({
+        pendingCommentUnlikes: state.pendingCommentUnlikes.filter(
+          (item) => getPendingUnlikeKey(item.type, item.id) !== getPendingUnlikeKey('reply', replyId),
+        ),
+      }));
+      return;
+    }
+
     const previous = get().commentsMap;
     // Optimistic update
     set((state) => {

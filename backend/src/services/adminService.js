@@ -6,6 +6,76 @@ import Comment from '../models/Comment.js';
 import User from '../models/User.js';
 import { sendBanNotification, sendUnbanNotification } from './emailService.js';
 
+async function resolveAssociatedPostId(targetId, targetType) {
+  if (targetType === 'post') {
+    return targetId;
+  }
+
+  if (targetType === 'comment') {
+    const comment = await Comment.findOne({ _id: targetId, isDeleted: false }).select('postId').lean();
+    return comment?.postId || null;
+  }
+
+  if (targetType === 'reply') {
+    const parentComment = await Comment.findOne({
+      isDeleted: false,
+      replies: { $elemMatch: { _id: targetId, isDeleted: { $ne: true } } },
+    }).select('postId').lean();
+    return parentComment?.postId || null;
+  }
+
+  return null;
+}
+
+async function getReplyIdsByUser(userId) {
+  const replies = await Comment.aggregate([
+    { $unwind: '$replies' },
+    { $match: { 'replies.ownerUserId': userId } },
+    { $project: { _id: '$replies._id' } },
+  ]);
+
+  return replies.map((reply) => reply._id);
+}
+
+async function countReportsAgainstUserContent(userId) {
+  const [postIds, commentIds, replyIds] = await Promise.all([
+    Post.find({ ownerUserId: userId }).distinct('_id'),
+    Comment.find({ ownerUserId: userId }).distinct('_id'),
+    getReplyIdsByUser(userId),
+  ]);
+
+  const reportTargets = [];
+
+  if (postIds.length > 0) {
+    reportTargets.push({ targetType: 'post', targetId: { $in: postIds } });
+    reportTargets.push({ targetType: { $exists: false }, postId: { $in: postIds } });
+  }
+
+  if (commentIds.length > 0) {
+    reportTargets.push({ targetType: 'comment', targetId: { $in: commentIds } });
+  }
+
+  if (replyIds.length > 0) {
+    reportTargets.push({ targetType: 'reply', targetId: { $in: replyIds } });
+  }
+
+  if (reportTargets.length === 0) {
+    return 0;
+  }
+
+  const [summary] = await Report.aggregate([
+    { $match: { $or: reportTargets } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: { $ifNull: ['$reportCount', 1] } },
+      },
+    },
+  ]);
+
+  return summary?.total || 0;
+}
+
 // ─── Reports ───
 
 export async function getPendingReports() {
@@ -39,10 +109,10 @@ export async function getPendingReports() {
     if (targetType === 'reply') {
       // 回复是嵌入文档，需要找到包含该回复的评论
       const parentComment = await Comment.findOne({ 'replies._id': targetId }).lean();
-      if (parentComment) {
+      if (parentComment && !parentComment.isDeleted) {
         target = parentComment.replies.find(r => r._id.toString() === targetId.toString());
         // 将回复的 ownerUserId 等信息标准化
-        if (target) {
+        if (target && !target.isDeleted) {
           target.ownerUserId = target.ownerUserId;
           target.content = target.content;
           target.createdAt = target.createdAt;
@@ -52,8 +122,11 @@ export async function getPendingReports() {
     } else {
       // 普通评论
       target = targetId ? await Comment.findById(targetId)
-        .select('content ownerUserId createdAt postId')
+        .select('content ownerUserId createdAt postId isDeleted')
         .lean() : null;
+      if (target?.isDeleted) {
+        target = null;
+      }
     }
 
     // 获取所属帖子信息
@@ -92,15 +165,7 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
   }
 
   // For comments/replies, find the associated post
-  let postId = null;
-  if (targetType === 'post') {
-    postId = targetId;
-  } else {
-    const comment = await Comment.findById(targetId).select('postId').lean();
-    if (comment) {
-      postId = comment.postId;
-    }
-  }
+  const postId = await resolveAssociatedPostId(targetId, targetType);
 
   let report = await Report.findOne({ targetId, targetType, status: 'pending' });
 
@@ -147,7 +212,7 @@ export async function tracePostAuthor(postId, adminId, reason) {
   const [postCount, commentCount, reportCount] = await Promise.all([
     Post.countDocuments({ ownerUserId: userId, isDeleted: false }),
     Comment.countDocuments({ ownerUserId: userId, isDeleted: false }),
-    Report.countDocuments({ postId: { $in: await Post.find({ ownerUserId: userId }).distinct('_id') } }),
+    countReportsAgainstUserContent(userId),
   ]);
 
   // Check current ban status
@@ -205,7 +270,7 @@ export async function traceCommentAuthor(commentId, targetType, adminId, reason)
   const [postCount, commentCount, reportCount] = await Promise.all([
     Post.countDocuments({ ownerUserId: userId, isDeleted: false }),
     Comment.countDocuments({ ownerUserId: userId, isDeleted: false }),
-    Report.countDocuments({ targetId: { $in: await Comment.find({ ownerUserId: userId }).distinct('_id') } }),
+    countReportsAgainstUserContent(userId),
   ]);
 
   const activeBan = await Ban.findOne({ userId, isActive: true, expiresAt: { $gt: new Date() } });
@@ -391,14 +456,26 @@ export async function deletePost(postId, adminId, reason) {
 
 export async function deleteComment(commentId, adminId, reason) {
   // 先尝试作为普通评论删除
-  let comment = await Comment.findById(commentId);
+  let comment = await Comment.findOne({ _id: commentId, isDeleted: false });
 
   if (comment) {
     comment.isDeleted = true;
     await comment.save();
 
+    const replyIds = (comment.replies || [])
+      .filter((reply) => !reply.isDeleted)
+      .map((reply) => reply._id);
+
     // Mark related reports as processed
-    await Report.deleteMany({ targetId: commentId, targetType: { $in: ['comment', 'reply'] }, status: 'pending' });
+    await Report.deleteMany({
+      status: 'pending',
+      $or: [
+        { targetId: commentId, targetType: 'comment' },
+        ...(replyIds.length > 0 ? [{ targetId: { $in: replyIds }, targetType: 'reply' }] : []),
+      ],
+    });
+
+    await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -(1 + replyIds.length) } });
 
     // Create audit log
     await AuditLog.create({
@@ -413,7 +490,10 @@ export async function deleteComment(commentId, adminId, reason) {
   }
 
   // 如果不是独立评论，可能是嵌入的回复
-  const parentComment = await Comment.findOne({ 'replies._id': commentId });
+  const parentComment = await Comment.findOne({
+    isDeleted: false,
+    replies: { $elemMatch: { _id: commentId, isDeleted: { $ne: true } } },
+  });
   if (!parentComment) {
     throw new Error('评论不存在');
   }
@@ -429,6 +509,8 @@ export async function deleteComment(commentId, adminId, reason) {
 
   // Mark related reports as processed
   await Report.deleteMany({ targetId: commentId, targetType: 'reply', status: 'pending' });
+
+  await Post.findByIdAndUpdate(parentComment.postId, { $inc: { comments: -1 } });
 
   // Create audit log
   await AuditLog.create({

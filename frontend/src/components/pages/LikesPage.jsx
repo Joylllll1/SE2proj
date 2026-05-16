@@ -1,101 +1,76 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
-import { fetchLikes, toggleCommentLike, toggleReplyLike, toggleLike as toggleLikeApi } from '../../services/postService';
+import usePostStore from '../../store/postStore';
+import useCommentStore from '../../store/commentStore';
+import { fetchLikes } from '../../services/postService';
 
-function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport, onUnlikeConfirm }) {
+const selectTogglePendingPostUnlike = (s) => s.togglePendingUnlike;
+const selectSubmitPendingPostUnlikes = (s) => s.submitPendingUnlikes;
+const selectGetPostLikeView = (s) => s.getPostLikeView;
+const selectPendingPostUnlikes = (s) => s.pendingUnlikePostIds;
+
+const selectTogglePendingCommentUnlike = (s) => s.togglePendingUnlike;
+const selectSubmitPendingCommentUnlikes = (s) => s.submitPendingCommentUnlikes;
+const selectIsCommentPendingUnlike = (s) => s.isPendingUnlike;
+const selectPendingCommentUnlikes = (s) => s.pendingCommentUnlikes;
+
+function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport }) {
   const [activeTab, setActiveTab] = useState('posts');
   const [likesData, setLikesData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [pendingUnlikes, setPendingUnlikes] = useState(new Set());
-  const [pendingCommentUnlikes, setPendingCommentUnlikes] = useState(new Map());
-  const pendingUnlikesRef = useRef(pendingUnlikes);
-  const pendingCommentUnlikesRef = useRef(pendingCommentUnlikes);
   const showToast = useUiStore((s) => s.showToast);
-
-  // 保持 ref 同步
-  useEffect(() => {
-    pendingUnlikesRef.current = pendingUnlikes;
-  }, [pendingUnlikes]);
-
-  useEffect(() => {
-    pendingCommentUnlikesRef.current = pendingCommentUnlikes;
-  }, [pendingCommentUnlikes]);
+  const pendingPostUnlikes = usePostStore(selectPendingPostUnlikes);
+  const togglePendingPostUnlike = usePostStore(selectTogglePendingPostUnlike);
+  const submitPendingPostUnlikes = usePostStore(selectSubmitPendingPostUnlikes);
+  const getPostLikeView = usePostStore(selectGetPostLikeView);
+  const pendingCommentUnlikes = useCommentStore(selectPendingCommentUnlikes);
+  const togglePendingCommentUnlike = useCommentStore(selectTogglePendingCommentUnlike);
+  const submitPendingCommentUnlikes = useCommentStore(selectSubmitPendingCommentUnlikes);
+  const isCommentPendingUnlike = useCommentStore(selectIsCommentPendingUnlike);
 
   // 提交帖子取消点赞（带重试）
-  const submitPendingUnlikes = async (unlikes, retries = 2) => {
-    if (!unlikes || unlikes.length === 0) return;
-    const toSubmit = [...unlikes];
-    // 清空状态
-    setPendingUnlikes(new Set());
-    for (const postId of toSubmit) {
-      let lastError;
-      for (let i = 0; i < retries; i++) {
-        try {
-          await toggleLikeApi(postId);
-          if (onUnlikeConfirm) {
-            onUnlikeConfirm(postId);
-          }
-          lastError = null;
-          break;
-        } catch (e) {
-          console.error('Retry unlike post:', postId, i, e);
-          lastError = e;
-        }
-      }
-      if (lastError) {
-        console.error('Failed to unlike post after retries:', postId, lastError);
-      }
+  const flushPendingPostUnlikes = async (postIds) => {
+    const { succeeded, failed } = await submitPendingPostUnlikes(postIds);
+    if (succeeded.length > 0) {
+      setLikesData((prev) => {
+        if (!prev) return prev;
+        const removedIds = new Set(succeeded);
+        return {
+          ...prev,
+          posts: prev.posts.filter((post) => !removedIds.has(post.id)),
+        };
+      });
     }
-    setLikesData((prev) => {
-      if (!prev) return prev;
-      const removedIds = new Set(toSubmit);
-      return {
-        ...prev,
-        posts: prev.posts.filter((post) => !removedIds.has(post.id)),
-      };
-    });
+    if (failed.length > 0) {
+      showToast('部分帖子取消点赞失败，已恢复原状态');
+    }
   };
 
   // 提交评论取消点赞（带重试）
-  const submitPendingCommentUnlikes = async (unlikes, retries = 2) => {
-    if (!unlikes || unlikes.length === 0) return;
-    console.log('[SubmitCommentUnlikes] Starting with:', unlikes);
-    setPendingCommentUnlikes(new Map());
-    for (const item of unlikes) {
-      let lastError;
-      for (let i = 0; i < retries; i++) {
-        try {
-          if (item.type === 'reply') {
-            console.log('[SubmitCommentUnlikes] Calling toggleReplyLike:', item.parentId, item.id);
-            await toggleReplyLike(item.parentId, item.id);
-          } else {
-            console.log('[SubmitCommentUnlikes] Calling toggleCommentLike:', item.id);
-            await toggleCommentLike(item.id);
-          }
-          lastError = null;
-          break;
-        } catch (e) {
-          console.error('Retry unlike comment:', item, i, e);
-          lastError = e;
-        }
-      }
-      if (lastError) {
-        console.error('Failed to unlike comment after retries:', item, lastError);
-      }
+  const flushPendingCommentUnlikes = async (items) => {
+    const { succeeded, failed } = await submitPendingCommentUnlikes(items);
+    if (succeeded.length > 0) {
+      const succeededKeys = new Set(succeeded);
+      setLikesData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          comments: prev.comments.filter((comment) => !succeededKeys.has(`${comment.type}-${comment.item?.id}`)),
+        };
+      });
     }
-    // 从 likesData 中移除已取消点赞的评论
-    const keys = new Set(unlikes.map((item) => `${item.type}-${item.id}`));
-    setLikesData((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        comments: prev.comments.filter((c) => !keys.has(`${c.type}-${c.item?.id}`)),
-      };
-    });
+    if (failed.length > 0) {
+      showToast('部分评论取消点赞失败，已恢复原状态');
+    }
+  };
+
+  const flushAllPendingUnlikes = async () => {
+    await flushPendingPostUnlikes(usePostStore.getState().pendingUnlikePostIds);
+    await flushPendingCommentUnlikes(useCommentStore.getState().pendingCommentUnlikes);
   };
 
   // 刷新/关闭页面时同步提交
@@ -104,7 +79,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       const token = localStorage.getItem('accessToken');
 
       // 提交帖子取消点赞
-      const postUnlikes = [...pendingUnlikesRef.current];
+      const postUnlikes = usePostStore.getState().pendingUnlikePostIds;
       if (postUnlikes.length > 0) {
         for (const postId of postUnlikes) {
           fetch(`/api/posts/${postId}/like`, {
@@ -119,7 +94,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       }
 
       // 提交评论取消点赞
-      const commentUnlikes = [...pendingCommentUnlikesRef.current.values()];
+      const commentUnlikes = useCommentStore.getState().pendingCommentUnlikes;
       if (commentUnlikes.length > 0) {
         for (const item of commentUnlikes) {
           const url = item.type === 'reply'
@@ -143,24 +118,24 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   // 离开组件时提交所有待取消的点赞（帖子 + 评论）
   useEffect(() => {
     return () => {
-      if (pendingUnlikesRef.current.size > 0) {
-        submitPendingUnlikes([...pendingUnlikesRef.current]);
+      const { pendingUnlikePostIds } = usePostStore.getState();
+      const { pendingCommentUnlikes: currentPendingCommentUnlikes } = useCommentStore.getState();
+      if (pendingUnlikePostIds.length > 0) {
+        usePostStore.getState().submitPendingUnlikes(pendingUnlikePostIds);
       }
-      if (pendingCommentUnlikesRef.current.size > 0) {
-        submitPendingCommentUnlikes([...pendingCommentUnlikesRef.current.values()]);
+      if (currentPendingCommentUnlikes.length > 0) {
+        useCommentStore.getState().submitPendingCommentUnlikes(currentPendingCommentUnlikes);
       }
     };
   }, []);
 
   const handleTabChange = async (newTab) => {
     // 切出当前 Tab 时提交
-    if (activeTab === 'posts' && pendingUnlikes.size > 0) {
-      console.log('[TabChange] Submitting post unlikes:', [...pendingUnlikes]);
-      await submitPendingUnlikes([...pendingUnlikes]);
+    if (activeTab === 'posts' && pendingPostUnlikes.length > 0) {
+      await flushPendingPostUnlikes(pendingPostUnlikes);
     }
-    if (activeTab === 'comments' && pendingCommentUnlikes.size > 0) {
-      console.log('[TabChange] Submitting comment unlikes:', [...pendingCommentUnlikes.values()]);
-      await submitPendingCommentUnlikes([...pendingCommentUnlikes.values()]);
+    if (activeTab === 'comments' && pendingCommentUnlikes.length > 0) {
+      await flushPendingCommentUnlikes(pendingCommentUnlikes);
     }
     setActiveTab(newTab);
   };
@@ -186,47 +161,27 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   }, []);
 
   const handlePostUnlike = (postId) => {
-    setPendingUnlikes((prev) => {
-      const next = new Set(prev);
-      if (next.has(postId)) {
-        next.delete(postId);
-      } else {
-        next.add(postId);
-      }
-      return next;
-    });
+    togglePendingPostUnlike(postId);
   };
 
   const handleCommentUnlike = (comment) => {
-    const item = {
+    togglePendingCommentUnlike({
       type: comment.type,
       id: comment.item?.id,
       parentId: comment.parentCommentId || null,
-    };
-    const itemKey = `${item.type}-${item.id}`;
-    setPendingCommentUnlikes((prev) => {
-      const next = new Map(prev);
-      if (next.has(itemKey)) {
-        next.delete(itemKey);
-      } else {
-        next.set(itemKey, item);
-      }
-      return next;
     });
   };
 
-  const posts = (likesData?.posts || (allPosts || []).filter((p) => (allLikedPosts || []).includes(p.id))).map((p) => ({
-    ...p,
-    likes: pendingUnlikes.has(p.id) ? p.likes - 1 : p.likes,
-  }));
+  const posts = (likesData?.posts || (allPosts || []).filter((p) => (allLikedPosts || []).includes(p.id))).map((post) =>
+    getPostLikeView(post),
+  );
   const comments = (likesData?.comments || []).map((c) => {
-    const itemKey = `${c.type}-${c.item?.id}`;
-    const isPendingUnlike = pendingCommentUnlikes.has(itemKey);
+    const isPendingUnlike = isCommentPendingUnlike(c.type, c.item?.id);
     return {
       ...c,
       item: {
         ...c.item,
-        likes: isPendingUnlike ? (c.item?.likes || 1) - 1 : c.item?.likes,
+        likes: isPendingUnlike ? Math.max(0, (c.item?.likes || 0) - 1) : c.item?.likes,
         isLiked: !isPendingUnlike,
       },
     };
@@ -275,14 +230,16 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         ) : (
           <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
             {posts.map((post) => {
-              const isPendingUnlike = pendingUnlikes.has(post.id);
               return (
                 <div key={post.id} className="inline-block w-full mb-[18px]">
                   <PostCard
                     compact
                     post={post}
-                    onOpen={() => onOpenPost(post)}
-                    liked={!isPendingUnlike}
+                    onOpen={async () => {
+                      await flushAllPendingUnlikes();
+                      onOpenPost(post);
+                    }}
+                    liked={post.isLiked}
                     onLike={() => handlePostUnlike(post.id)}
                     onReport={onReport}
                   />
@@ -310,10 +267,11 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
                   <div className="flex justify-between items-start mb-2">
                     <span
                       className={`text-xs font-medium cursor-pointer hover:text-blue ${postIsDeleted ? 'text-text-3 line-through' : 'text-text-3'}`}
-                      onClick={() => {
+                      onClick={async () => {
                         if (postIsDeleted) {
                           showToast('该帖子已被删除');
                         } else if (post) {
+                          await flushAllPendingUnlikes();
                           onOpenPost(post);
                         } else {
                           showToast('该帖子不存在或已被删除');

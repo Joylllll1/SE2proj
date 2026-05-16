@@ -26,7 +26,7 @@ export const addReply = async (userId, commentId, content, official = false, rep
   // 如果 replyToId 存在，验证被回复的回复是否存在
   if (replyToId) {
     const parentReply = comment.replies.id(replyToId);
-    if (!parentReply) throw new AppError('被回复的回复不存在', 404, 'REPLY_NOT_FOUND');
+    if (!parentReply || parentReply.isDeleted) throw new AppError('被回复的回复不存在', 404, 'REPLY_NOT_FOUND');
   }
 
   const reply = { ownerUserId: userId, content, official, likes: 0, likedBy: [], replyToId };
@@ -59,14 +59,16 @@ export const getComments = async (postId, userId) => {
     ...c,
     id: c._id.toString(),
     time: formatRelativeTime(c.createdAt),
-    replies: (c.replies || []).map((r) => ({
-      ...r,
-      id: r._id.toString(),
-      ownerUserId: typeof r.ownerUserId === 'object' ? r.ownerUserId.toString() : r.ownerUserId,
-      replyToId: r.replyToId ? (typeof r.replyToId === 'object' ? r.replyToId.toString() : r.replyToId) : null,
-      time: formatRelativeTime(r.createdAt),
-      isLiked: userId ? r.likedBy?.some((id) => id.toString() === userId) : false,
-    })),
+    replies: (c.replies || [])
+      .filter((r) => !r.isDeleted)
+      .map((r) => ({
+        ...r,
+        id: r._id.toString(),
+        ownerUserId: typeof r.ownerUserId === 'object' ? r.ownerUserId.toString() : r.ownerUserId,
+        replyToId: r.replyToId ? (typeof r.replyToId === 'object' ? r.replyToId.toString() : r.replyToId) : null,
+        time: formatRelativeTime(r.createdAt),
+        isLiked: userId ? r.likedBy?.some((id) => id.toString() === userId) : false,
+      })),
     isLiked: userId ? c.likedBy?.some((id) => id.toString() === userId) : false,
   }));
 };
@@ -81,7 +83,8 @@ export const deleteComment = async (userId, commentId) => {
   comment.isDeleted = true;
   await comment.save();
 
-  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -1 } });
+  const hiddenReplyCount = (comment.replies || []).filter((reply) => !reply.isDeleted).length;
+  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -(1 + hiddenReplyCount) } });
 };
 
 export const deleteReply = async (userId, commentId, replyId) => {
@@ -89,12 +92,12 @@ export const deleteReply = async (userId, commentId, replyId) => {
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
 
   const reply = comment.replies.id(replyId);
-  if (!reply) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
+  if (!reply || reply.isDeleted) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
   if (reply.ownerUserId.toString() !== userId) {
     throw new AppError('无权删除此回复', 403, 'FORBIDDEN');
   }
 
-  reply.deleteOne();
+  reply.isDeleted = true;
   await comment.save();
 
   await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -1 } });
@@ -128,7 +131,7 @@ export const toggleReplyLike = async (userId, commentId, replyId) => {
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
 
   const reply = comment.replies.id(replyId);
-  if (!reply) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
+  if (!reply || reply.isDeleted) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
 
   const isLiked = reply.likedBy.some((id) => id.toString() === userId);
 

@@ -5,7 +5,6 @@ import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import DailyFortune from '../features/DailyFortune';
 import usePostStore from '../../store/postStore';
-import useBookmarkStore from '../../store/bookmarkStore';
 import useUiStore from '../../store/uiStore';
 import useAuthStore from '../../store/authStore';
 import usePostActions from '../../hooks/usePostActions';
@@ -13,30 +12,26 @@ import useLikeBookmark from '../../hooks/useLikeBookmark';
 import * as reportService from '../../services/reportService';
 
 // ─── Stable store selectors ───
-const selectPosts = (s) => s.posts;
-const selectLikedPosts = (s) => s.likedPosts;
 const selectLoading = (s) => s.loading;
 const selectFetchPosts = (s) => s.fetchPosts;
 const selectGetFilteredPosts = (s) => s.getFilteredPosts;
+const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectQuery = (s) => s.query;
 const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
-const selectBookmarks = (s) => s.bookmarks;
 const selectUser = (s) => s.user;
 
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
 
   // ── Stores ──
-  const posts = usePostStore(selectPosts);
-  const likedPosts = usePostStore(selectLikedPosts);
   const loading = usePostStore(selectLoading);
   const fetchPosts = usePostStore(selectFetchPosts);
   const getFilteredPosts = usePostStore(selectGetFilteredPosts);
+  const getPostLikeView = usePostStore(selectGetPostLikeView);
   const query = useUiStore(selectQuery);
   const navigate = useUiStore(selectNavigate);
   const showToast = useUiStore(selectShowToast);
-  const bookmarks = useBookmarkStore(selectBookmarks);
   const user = useAuthStore(selectUser);
 
   // ── Hooks ──
@@ -134,18 +129,21 @@ export default function HomePage() {
               加载中...
             </div>
           ) : sorted.length > 0 ? (
-            sorted.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onOpen={() => openPost(post)}
-                liked={likedPosts.includes(post.id)}
-                bookmarked={post.isSaved}
-                onLike={() => toggleLike(post.id)}
-                onBookmark={() => toggleBookmark(post.id)}
-                onReport={handleReport}
-              />
-            ))
+            sorted.map((post) => {
+              const postView = getPostLikeView(post);
+              return (
+                <PostCard
+                  key={postView.id}
+                  post={postView}
+                  onOpen={() => openPost(post)}
+                  liked={postView.isLiked}
+                  bookmarked={postView.isSaved}
+                  onLike={() => toggleLike(post.id)}
+                  onBookmark={() => toggleBookmark(post.id)}
+                  onReport={handleReport}
+                />
+              );
+            })
           ) : (
             <EmptyState title="树洞里暂时没有相关话题" description="发布第一条树洞吧！" />
           )}
