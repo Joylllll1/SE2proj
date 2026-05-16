@@ -10,6 +10,13 @@ export async function create(req, res) {
     throw new AppError('请选择或输入举报原因', 400, 'MISSING_REASON');
   }
 
-  const report = await adminService.createReport(targetId, targetType, reason, userId);
-  res.status(201).json({ message: '举报已提交', report });
+  try {
+    const report = await adminService.createReport(targetId, targetType, reason, userId);
+    res.status(201).json({ message: '举报已提交', report });
+  } catch (err) {
+    if (err.code === 'ALREADY_REPORTED') {
+      throw new AppError(err.message, 400, 'ALREADY_REPORTED');
+    }
+    throw err;
+  }
 }

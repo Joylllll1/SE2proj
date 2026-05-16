@@ -86,7 +86,9 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
   });
 
   if (existingReportByUser) {
-    throw new Error('您已经举报过该内容，请等待管理员处理');
+    const error = new Error('您已经举报过该内容，请等待管理员处理');
+    error.code = 'ALREADY_REPORTED';
+    throw error;
   }
 
   // For comments/replies, find the associated post
