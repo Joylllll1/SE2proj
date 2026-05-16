@@ -14,6 +14,7 @@ router.post('/reports/:id/dismiss', adminController.dismissReport);
 
 // Posts moderation
 router.post('/posts/:id/trace', adminController.tracePost);
+router.post('/comments/:id/trace', adminController.tracePost);
 router.delete('/posts/:id', adminController.deletePost);
 
 // Users banning

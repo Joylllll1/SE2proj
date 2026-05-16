@@ -10,16 +10,47 @@ import { sendBanNotification, sendUnbanNotification } from './emailService.js';
 
 export async function getPendingReports() {
   const reports = await Report.find({ status: 'pending' })
+    .populate('targetId') // Will be post, comment, or reply
     .populate('postId', 'title content ownerUserId isDeleted mood moodType createdAt')
     .populate('reasons.reportedBy', 'email')
     .sort({ reportCount: -1, createdAt: -1 })
     .lean();
 
-  return reports;
+  // For comment/reply reports, we need to get the target's content
+  const enrichedReports = await Promise.all(reports.map(async (report) => {
+    if (report.targetType === 'post') {
+      return report;
+    }
+
+    // For comment/reply, fetch the target content
+    const target = await Comment.findById(report.targetId._id || report.targetId)
+      .select('content ownerUserId createdAt')
+      .lean();
+
+    return {
+      ...report,
+      targetContent: target?.content || '[已删除]',
+      targetOwnerUserId: target?.ownerUserId,
+      targetCreatedAt: target?.createdAt,
+    };
+  }));
+
+  return enrichedReports;
 }
 
-export async function createReport(postId, reason, reportedBy) {
-  let report = await Report.findOne({ postId, status: 'pending' });
+export async function createReport(targetId, targetType, reason, reportedBy) {
+  // For comments/replies, find the associated post
+  let postId = null;
+  if (targetType === 'post') {
+    postId = targetId;
+  } else {
+    const comment = await Comment.findById(targetId).select('postId').lean();
+    if (comment) {
+      postId = comment.postId;
+    }
+  }
+
+  let report = await Report.findOne({ targetId, targetType, status: 'pending' });
 
   if (report) {
     // Aggregate: increment count and add new reason
@@ -28,6 +59,8 @@ export async function createReport(postId, reason, reportedBy) {
     await report.save();
   } else {
     report = await Report.create({
+      targetType,
+      targetId,
       postId,
       reportCount: 1,
       reasons: [{ reason, reportedBy }],
@@ -84,6 +117,45 @@ export async function tracePostAuthor(postId, adminId, reason) {
     reportCount,
     isBanned: !!activeBan,
     banExpiresAt: activeBan?.expiresAt,
+    userId,
+  };
+}
+
+export async function traceCommentAuthor(commentId, adminId, reason) {
+  if (!reason || !reason.trim()) {
+    throw new Error('请输入追溯原因');
+  }
+
+  const comment = await Comment.findById(commentId).populate('ownerUserId', 'email');
+  if (!comment) {
+    throw new Error('评论不存在');
+  }
+
+  const userId = comment.ownerUserId._id;
+  const [postCount, commentCount, reportCount] = await Promise.all([
+    Post.countDocuments({ ownerUserId: userId, isDeleted: false }),
+    Comment.countDocuments({ ownerUserId: userId, isDeleted: false }),
+    Report.countDocuments({ targetId: { $in: await Comment.find({ ownerUserId: userId }).distinct('_id') } }),
+  ]);
+
+  const activeBan = await Ban.findOne({ userId, isActive: true, expiresAt: { $gt: new Date() } });
+
+  await AuditLog.create({
+    action: 'trace',
+    adminId,
+    targetUserId: userId,
+    targetCommentId: commentId,
+    reason,
+  });
+
+  return {
+    email: comment.ownerUserId.email,
+    postCount,
+    commentCount,
+    reportCount,
+    isBanned: !!activeBan,
+    banExpiresAt: activeBan?.expiresAt,
+    userId,
   };
 }
 

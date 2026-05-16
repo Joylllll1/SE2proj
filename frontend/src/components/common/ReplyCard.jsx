@@ -25,7 +25,7 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
   };
 
   const handleReport = (targetId, reason) => {
-    onReport(targetId, reason);
+    onReport(targetId, reason, 'reply');
     setShowReportModal(false);
   };
 

@@ -2,7 +2,9 @@ import mongoose from 'mongoose';
 
 const reportSchema = new mongoose.Schema(
   {
-    postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true, index: true },
+    targetType: { type: String, enum: ['post', 'comment', 'reply'], default: 'post', required: true, index: true },
+    targetId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true }, // postId 或 commentId/replyId
+    postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', index: true }, // 所属帖子（评论/回复时填充）
     reportCount: { type: Number, default: 1 },
     reasons: [
       {
@@ -17,7 +19,7 @@ const reportSchema = new mongoose.Schema(
 );
 
 // Compound index for efficient query
-reportSchema.index({ status: 1, reportCount: -1, createdAt: -1 });
+reportSchema.index({ status: 1, targetType: 1, reportCount: -1, createdAt: -1 });
 
 const Report = mongoose.model('Report', reportSchema);
 export default Report;

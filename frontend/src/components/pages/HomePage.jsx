@@ -10,6 +10,7 @@ import useUiStore from '../../store/uiStore';
 import useAuthStore from '../../store/authStore';
 import usePostActions from '../../hooks/usePostActions';
 import useLikeBookmark from '../../hooks/useLikeBookmark';
+import * as reportService from '../../services/reportService';
 
 // ─── Stable store selectors ───
 const selectPosts = (s) => s.posts;
@@ -66,8 +67,13 @@ export default function HomePage() {
     return 0;
   });
 
-  const handleReport = () => {
-    showToast('举报功能即将上线');
+  const handleReport = async (postId, reason, targetType = 'post') => {
+    try {
+      await reportService.createReport(postId, reason, targetType);
+      showToast('举报已提交');
+    } catch (err) {
+      showToast(err.message || '举报失败');
+    }
   };
 
   return (

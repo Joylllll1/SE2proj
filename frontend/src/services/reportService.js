@@ -19,10 +19,10 @@ async function fetchWithAuth(url, options = {}) {
   return response.json();
 }
 
-// Create a report for a post
-export async function createReport(postId, reason) {
-  return fetchWithAuth(`${API_BASE}/${postId}/report`, {
+// Create a report for a post, comment, or reply
+export async function createReport(targetId, reason, targetType = 'post') {
+  return fetchWithAuth(`${API_BASE}/${targetId}/report`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({ reason, targetType }),
   });
 }

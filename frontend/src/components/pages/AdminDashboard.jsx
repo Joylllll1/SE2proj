@@ -176,6 +176,39 @@ function UnbanModal({ ban, onConfirm, onClose }) {
 function PostDetailModal({ post, onClose }) {
   if (!post) return null;
 
+  // 评论/回复详情
+  if (post.targetType === 'comment' || post.targetType === 'reply') {
+    return (
+      <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+        <div className="modal-content w-[min(640px,90vw)] max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex-1">
+              <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 mb-2">
+                {post.targetType === 'comment' ? '评论内容' : '回复内容'}
+              </span>
+              <div className="flex items-center gap-3 text-gray-500 text-sm">
+                <span>{new Date(post.targetCreatedAt).toLocaleString('zh-CN')}</span>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 bg-gray-50 rounded-xl mb-4">
+            <p className="text-gray-700 leading-relaxed">{post.content || '[内容已删除]'}</p>
+          </div>
+          {post.postId && (
+            <div className="p-3 bg-gray-100 rounded-lg text-sm">
+              <span className="text-gray-500">所属帖子：</span>
+              <span className="text-gray-700">{post.postId.title || '[已删除]'}</span>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <button className="px-6 py-2 text-sm font-medium text-white bg-gray-800 rounded-full hover:bg-gray-900" onClick={onClose}>关闭</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 帖子详情
   return (
     <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
       <div className="modal-content w-[min(640px,90vw)] max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
@@ -232,7 +265,7 @@ function AdminDashboard() {
   const handleTrace = async (reason) => {
     if (!traceModalPost) return;
     try {
-      await tracePost(traceModalPost._id, reason);
+      await tracePost(traceModalPost._id, traceModalPost.targetType || 'post', reason);
       showToast('追溯成功');
     } catch (err) {
       showToast(err.message || '追溯失败');
@@ -294,8 +327,13 @@ function AdminDashboard() {
                   <div key={report._id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700">
-                          {report.reasons?.[0]?.reason || '举报'}
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          report.targetType === 'post' ? 'bg-orange-100 text-orange-700' :
+                          report.targetType === 'comment' ? 'bg-blue-100 text-blue-700' :
+                          'bg-purple-100 text-purple-700'
+                        }`}>
+                          {report.targetType === 'post' ? '帖子举报' :
+                           report.targetType === 'comment' ? '评论举报' : '回复举报'}
                         </span>
                         <span className="text-xs text-gray-500">
                           举报 {report.reportCount} 次
@@ -306,35 +344,50 @@ function AdminDashboard() {
                       </span>
                     </div>
 
-                    {report.postId && (
+                    {/* 帖子举报显示帖子内容 */}
+                    {report.targetType === 'post' && report.postId && (
                       <div className="p-3 bg-gray-50 rounded-lg mb-4">
                         <h3 className="font-semibold text-gray-800 mb-1">{report.postId.title}</h3>
                         <p className="text-sm text-gray-600 line-clamp-2">{report.postId.content}</p>
                       </div>
                     )}
 
+                    {/* 评论/回复举报只显示内容本身 */}
+                    {(report.targetType === 'comment' || report.targetType === 'reply') && (
+                      <div className="p-3 bg-gray-50 rounded-lg mb-4">
+                        <p className="text-sm text-gray-600">{report.targetContent || '[内容已删除]'}</p>
+                        {report.postId && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            所属帖子：{report.postId.title || '[已删除]'}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap gap-2">
                       <button
                         className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50"
-                        onClick={() => setSelectedPost(report.postId)}
+                        onClick={() => setSelectedPost(report.targetType === 'post' ? report.postId : { content: report.targetContent, postId: report.postId, targetType: report.targetType })}
                         type="button"
                       >
                         查看详情
                       </button>
                       <button
                         className="px-3 py-1.5 text-xs font-semibold border border-blue-200 rounded-full text-blue-600 hover:bg-blue-50"
-                        onClick={() => setTraceModalPost(report.postId)}
+                        onClick={() => setTraceModalPost({ _id: report.targetId._id || report.targetId, targetType: report.targetType })}
                         type="button"
                       >
                         追溯身份
                       </button>
-                      <button
-                        className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
-                        onClick={() => handleDeletePost(report.postId?._id)}
-                        type="button"
-                      >
-                        删除帖子
-                      </button>
+                      {report.targetType === 'post' && (
+                        <button
+                          className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
+                          onClick={() => handleDeletePost(report.postId?._id)}
+                          type="button"
+                        >
+                          删除帖子
+                        </button>
+                      )}
                       <button
                         className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-full text-gray-500 hover:bg-gray-50"
                         onClick={() => dismissReport(report._id)}

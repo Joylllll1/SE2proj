@@ -54,10 +54,10 @@ const useAdminStore = create((set, get) => ({
   },
 
   // Tracing
-  tracePost: async (postId, reason) => {
+  tracePost: async (targetId, targetType, reason) => {
     set({ traceLoading: true, traceError: null, traceResult: null });
     try {
-      const result = await adminService.tracePost(postId, reason);
+      const result = await adminService.tracePost(targetId, targetType, reason);
       set({ traceResult: result, traceLoading: false });
       return result;
     } catch (err) {

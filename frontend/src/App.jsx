@@ -242,9 +242,9 @@ function App() {
     }
   };
 
-  const handleReport = async (postId, reason) => {
+  const handleReport = async (targetId, reason, targetType = 'post') => {
     try {
-      await reportService.createReport(postId, reason);
+      await reportService.createReport(targetId, reason, targetType);
       showToast('举报已提交');
     } catch (err) {
       showToast(err.message || '举报失败');

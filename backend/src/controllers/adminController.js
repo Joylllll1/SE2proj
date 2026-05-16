@@ -17,12 +17,17 @@ export async function dismissReport(req, res) {
 // ─── Posts ───
 
 export async function tracePost(req, res) {
-  const { id: postId } = req.params;
-  const { reason } = req.body;
+  const { id: targetId } = req.params;
+  const { reason, targetType = 'post' } = req.body;
   const adminId = req.user._id;
 
-  const result = await adminService.tracePostAuthor(postId, adminId, reason);
-  res.json(result);
+  if (targetType === 'comment' || targetType === 'reply') {
+    const result = await adminService.traceCommentAuthor(targetId, adminId, reason);
+    res.json(result);
+  } else {
+    const result = await adminService.tracePostAuthor(targetId, adminId, reason);
+    res.json(result);
+  }
 }
 
 export async function deletePost(req, res) {

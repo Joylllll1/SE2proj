@@ -25,12 +25,16 @@ export const getReports = () => fetchWithAuth(`${API_BASE}/reports`);
 export const dismissReport = (reportId) =>
   fetchWithAuth(`${API_BASE}/reports/${reportId}/dismiss`, { method: 'POST' });
 
-// Posts
-export const tracePost = (postId, reason) =>
-  fetchWithAuth(`${API_BASE}/posts/${postId}/trace`, {
+// Posts/Comments
+export const tracePost = (targetId, targetType, reason) => {
+  const endpoint = targetType === 'comment' || targetType === 'reply'
+    ? `${API_BASE}/comments/${targetId}/trace`
+    : `${API_BASE}/posts/${targetId}/trace`;
+  return fetchWithAuth(endpoint, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({ reason, targetType }),
   });
+};
 
 export const deletePost = (postId, reason) =>
   fetchWithAuth(`${API_BASE}/posts/${postId}`, {

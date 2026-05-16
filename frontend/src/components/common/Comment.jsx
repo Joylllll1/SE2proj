@@ -21,7 +21,7 @@ function Comment({ comment, postId, onReply, onReport }) {
   };
 
   const handleReport = (targetId, reason) => {
-    onReport(targetId, reason);
+    onReport(targetId, reason, 'comment');
     setShowReportModal(false);
   };
 
