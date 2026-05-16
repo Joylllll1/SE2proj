@@ -22,7 +22,7 @@ export async function tracePost(req, res) {
   const adminId = req.user._id;
 
   if (targetType === 'comment' || targetType === 'reply') {
-    const result = await adminService.traceCommentAuthor(targetId, adminId, reason);
+    const result = await adminService.traceCommentAuthor(targetId, targetType, adminId, reason);
     res.json(result);
   } else {
     const result = await adminService.tracePostAuthor(targetId, adminId, reason);

@@ -20,22 +20,41 @@ export async function getPendingReports() {
   const enrichedReports = await Promise.all(reports.map(async (report) => {
     // 处理旧数据：没有 targetType 的默认为 'post'
     const targetType = report.targetType || 'post';
+    // 旧数据：没有 targetId 时，使用 postId 作为 targetId
+    const targetId = report.targetId || report.postId?._id || report.postId;
 
     if (targetType === 'post') {
       // 旧数据：postId 为空时，targetId 就是帖子 ID
       let post = report.postId;
-      if (!post && report.targetId) {
-        post = await Post.findById(report.targetId)
+      if (!post && targetId) {
+        post = await Post.findById(targetId)
           .select('title content ownerUserId isDeleted mood moodType createdAt')
           .lean();
       }
-      return { ...report, targetType: 'post', postId: post };
+      return { ...report, targetType: 'post', targetId, postId: post };
     }
 
-    // 评论/回复举报，获取评论内容
-    const target = await Comment.findById(report.targetId)
-      .select('content ownerUserId createdAt postId')
-      .lean();
+    // 评论/回复举报，获取评论/回复内容
+    let target = null;
+    if (targetType === 'reply') {
+      // 回复是嵌入文档，需要找到包含该回复的评论
+      const parentComment = await Comment.findOne({ 'replies._id': targetId }).lean();
+      if (parentComment) {
+        target = parentComment.replies.find(r => r._id.toString() === targetId.toString());
+        // 将回复的 ownerUserId 等信息标准化
+        if (target) {
+          target.ownerUserId = target.ownerUserId;
+          target.content = target.content;
+          target.createdAt = target.createdAt;
+          target.postId = parentComment.postId; // 从父评论获取 postId
+        }
+      }
+    } else {
+      // 普通评论
+      target = targetId ? await Comment.findById(targetId)
+        .select('content ownerUserId createdAt postId')
+        .lean() : null;
+    }
 
     // 获取所属帖子信息
     let postInfo = report.postId;
@@ -46,6 +65,7 @@ export async function getPendingReports() {
     return {
       ...report,
       targetType,
+      targetId,
       targetContent: target?.content || '[已删除]',
       targetOwnerUserId: target?.ownerUserId,
       targetCreatedAt: target?.createdAt,
@@ -57,6 +77,18 @@ export async function getPendingReports() {
 }
 
 export async function createReport(targetId, targetType, reason, reportedBy) {
+  // 检查该用户是否已经举报过这个目标
+  const existingReportByUser = await Report.findOne({
+    targetId,
+    targetType,
+    status: 'pending',
+    'reasons.reportedBy': reportedBy
+  });
+
+  if (existingReportByUser) {
+    throw new Error('您已经举报过该内容，请等待管理员处理');
+  }
+
   // For comments/replies, find the associated post
   let postId = null;
   if (targetType === 'post') {
@@ -139,17 +171,35 @@ export async function tracePostAuthor(postId, adminId, reason) {
   };
 }
 
-export async function traceCommentAuthor(commentId, adminId, reason) {
+export async function traceCommentAuthor(commentId, targetType, adminId, reason) {
   if (!reason || !reason.trim()) {
     throw new Error('请输入追溯原因');
   }
 
-  const comment = await Comment.findById(commentId).populate('ownerUserId', 'email');
-  if (!comment) {
-    throw new Error('评论不存在');
+  let comment = null;
+  let targetOwnerUserId = null;
+
+  if (targetType === 'reply') {
+    // 回复是嵌入文档，需要找到包含该回复的评论
+    comment = await Comment.findOne({ 'replies._id': commentId }).populate('replies.ownerUserId', 'email');
+    if (!comment) {
+      throw new Error('回复不存在');
+    }
+    const reply = comment.replies.find(r => r._id.toString() === commentId.toString());
+    if (!reply) {
+      throw new Error('回复不存在');
+    }
+    targetOwnerUserId = reply.ownerUserId;
+  } else {
+    // 普通评论
+    comment = await Comment.findById(commentId).populate('ownerUserId', 'email');
+    if (!comment) {
+      throw new Error('评论不存在');
+    }
+    targetOwnerUserId = comment.ownerUserId;
   }
 
-  const userId = comment.ownerUserId._id;
+  const userId = targetOwnerUserId._id;
   const [postCount, commentCount, reportCount] = await Promise.all([
     Post.countDocuments({ ownerUserId: userId, isDeleted: false }),
     Comment.countDocuments({ ownerUserId: userId, isDeleted: false }),
@@ -167,7 +217,7 @@ export async function traceCommentAuthor(commentId, adminId, reason) {
   });
 
   return {
-    email: comment.ownerUserId.email,
+    email: targetOwnerUserId.email,
     postCount,
     commentCount,
     reportCount,
