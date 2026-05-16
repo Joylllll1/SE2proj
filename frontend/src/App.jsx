@@ -205,16 +205,6 @@ function App() {
       </>
     );
   }
-          if (!localStorage.getItem('nju_user_id')) {
-            getUserId();
-          }
-          navigate('login');
-        }}
-        onLogin={() => navigate('login')}
-        onRegister={() => navigate('register')}
-      />
-    );
-  }
 
   // ── Handlers ──
   const handleToggleAi = () => {
