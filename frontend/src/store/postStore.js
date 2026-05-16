@@ -1,6 +1,23 @@
 import { create } from 'zustand';
 import * as postService from '../services/postService';
 
+function getKnownPostLikeState(state, postId) {
+  if (state.likedPosts.includes(postId)) {
+    return true;
+  }
+
+  const matchedPost = state.posts.find((post) => post.id === postId);
+  if (matchedPost && typeof matchedPost.isLiked === 'boolean') {
+    return matchedPost.isLiked;
+  }
+
+  if (state.selectedPost?.id === postId && typeof state.selectedPost.isLiked === 'boolean') {
+    return state.selectedPost.isLiked;
+  }
+
+  return undefined;
+}
+
 function applyPostLikeState(state, postId, { liked, likes }) {
   return {
     likedPosts: liked
@@ -58,9 +75,13 @@ const usePostStore = create((set, get) => ({
   getPostLikeView: (post) => {
     if (!post) return post;
     const isPendingUnlike = get().isPostPendingUnlike(post.id);
+    const knownLikeState = getKnownPostLikeState(get(), post.id);
+    const isLiked = typeof knownLikeState === 'boolean'
+      ? knownLikeState
+      : !!post.isLiked;
     return {
       ...post,
-      isLiked: get().isPostLiked(post.id),
+      isLiked: isPendingUnlike ? false : isLiked,
       likes: isPendingUnlike ? Math.max(0, (post.likes || 0) - 1) : (post.likes || 0),
     };
   },

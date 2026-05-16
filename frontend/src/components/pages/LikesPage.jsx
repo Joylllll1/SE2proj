@@ -5,7 +5,7 @@ import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
 import usePostStore from '../../store/postStore';
 import useCommentStore from '../../store/commentStore';
-import { fetchLikes } from '../../services/postService';
+import { fetchLikes, fetchPostById } from '../../services/postService';
 
 const selectTogglePendingPostUnlike = (s) => s.togglePendingUnlike;
 const selectSubmitPendingPostUnlikes = (s) => s.submitPendingUnlikes;
@@ -172,6 +172,29 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
     });
   };
 
+  const handleOpenCommentPost = async (comment) => {
+    const postId = comment.postId;
+    if (!postId) {
+      showToast('该帖子不存在或已被删除');
+      return;
+    }
+
+    const localPost = allPosts.find((post) => post.id === postId);
+    const postIsDeleted = comment.postIsDeleted || localPost?.isDeleted || false;
+    if (postIsDeleted) {
+      showToast('该帖子已被删除');
+      return;
+    }
+
+    try {
+      await flushAllPendingUnlikes();
+      const post = localPost || await fetchPostById(postId);
+      onOpenPost(post);
+    } catch {
+      showToast('该帖子不存在或已被删除');
+    }
+  };
+
   const posts = (likesData?.posts || (allPosts || []).filter((p) => (allLikedPosts || []).includes(p.id))).map((post) =>
     getPostLikeView(post),
   );
@@ -267,16 +290,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
                   <div className="flex justify-between items-start mb-2">
                     <span
                       className={`text-xs font-medium cursor-pointer hover:text-blue ${postIsDeleted ? 'text-text-3 line-through' : 'text-text-3'}`}
-                      onClick={async () => {
-                        if (postIsDeleted) {
-                          showToast('该帖子已被删除');
-                        } else if (post) {
-                          await flushAllPendingUnlikes();
-                          onOpenPost(post);
-                        } else {
-                          showToast('该帖子不存在或已被删除');
-                        }
-                      }}
+                      onClick={() => handleOpenCommentPost(comment)}
                     >
                       来自：{postIsDeleted ? '[已删除]' : (post?.title || comment.postTitle || '无标题')}
                     </span>
