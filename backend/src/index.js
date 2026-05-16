@@ -12,6 +12,7 @@ import likeRoutes from './routes/likeRoutes.js';
 import fortuneRoutes from './routes/fortuneRoutes.js';
 import draftRoutes from './routes/draftRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 dotenv.config();
@@ -33,6 +34,7 @@ app.use('/api/likes', likeRoutes);
 app.use('/api/fortune', fortuneRoutes);
 app.use('/api/drafts', draftRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/events', eventRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

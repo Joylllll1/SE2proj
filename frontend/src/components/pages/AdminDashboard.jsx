@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
 import EmptyState from '../common/EmptyState';
 import AdminSidebar from '../layout/AdminSidebar';
+import { EventDetailModal, RejectionModal } from '../common/EventModals';
 import useAdminStore from '../../store/adminStore';
+import useEventStore from '../../store/eventStore';
 import useUiStore from '../../store/uiStore';
 
 // Ban duration options
@@ -240,11 +242,16 @@ function PostDetailModal({ post, onClose }) {
 // ─── Main Dashboard ───
 
 function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('reports');
+  const [activeTab, setActiveTab] = useState('events');
   const [selectedPost, setSelectedPost] = useState(null);
   const [traceModalPost, setTraceModalPost] = useState(null);
   const [banModalData, setBanModalData] = useState(null);
   const [unbanModalBan, setUnbanModalBan] = useState(null);
+
+  // Events tab state
+  const [eventTab, setEventTab] = useState('pending');
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [rejectionEvent, setRejectionEvent] = useState(null);
 
   const showToast = useUiStore((s) => s.showToast);
 
@@ -255,12 +262,24 @@ function AdminDashboard() {
     auditLogs, auditLogsLoading, fetchAuditLogs,
   } = useAdminStore();
 
+  const {
+    pendingEvents, approvedEvents, rejectedEvents,
+    pendingLoading, approvedLoading, rejectedLoading,
+    fetchPendingEvents, fetchApprovedEvents, fetchRejectedEvents,
+    approveEvent, rejectEvent, archiveEvent,
+  } = useEventStore();
+
   // Fetch data on mount and tab change
   useEffect(() => {
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'bans') fetchBans(true);
     if (activeTab === 'audit') fetchAuditLogs();
-  }, [activeTab, fetchReports, fetchBans, fetchAuditLogs]);
+    if (activeTab === 'events') {
+      if (eventTab === 'pending') fetchPendingEvents();
+      if (eventTab === 'approved') fetchApprovedEvents();
+      if (eventTab === 'rejected') fetchRejectedEvents();
+    }
+  }, [activeTab, eventTab, fetchReports, fetchBans, fetchAuditLogs, fetchPendingEvents, fetchApprovedEvents, fetchRejectedEvents]);
 
   // Handle trace
   const handleTrace = async (reason) => {
@@ -318,6 +337,52 @@ function AdminDashboard() {
     } catch (err) {
       showToast(err.message || '删除失败');
     }
+  };
+
+  // Handle event approval
+  const handleApproveEvent = async (eventId) => {
+    try {
+      await approveEvent(eventId);
+      showToast('活动已通过审核');
+    } catch (err) {
+      showToast(err.message || '审核失败');
+    }
+  };
+
+  // Handle event rejection
+  const handleRejectEvent = async (reason) => {
+    if (!rejectionEvent) return;
+    try {
+      await rejectEvent(rejectionEvent._id, reason);
+      showToast('活动已拒绝');
+      setRejectionEvent(null);
+    } catch (err) {
+      showToast(err.message || '拒绝失败');
+    }
+  };
+
+  // Handle event archive
+  const handleArchiveEvent = async (eventId) => {
+    if (!window.confirm('确定要归档这个活动吗？')) return;
+    try {
+      await archiveEvent(eventId);
+      showToast('活动已归档');
+    } catch (err) {
+      showToast(err.message || '归档失败');
+    }
+  };
+
+  // Format event time
+  const formatEventTime = (time) => {
+    if (!time) return '未指定';
+    const date = new Date(time);
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -518,11 +583,17 @@ function AdminDashboard() {
                             log.action === 'trace' ? 'bg-purple-100 text-purple-700' :
                             log.action === 'ban' ? 'bg-red-100 text-red-700' :
                             log.action === 'unban' ? 'bg-green-100 text-green-700' :
+                            log.action === 'approve_event' ? 'bg-blue-100 text-blue-700' :
+                            log.action === 'reject_event' ? 'bg-red-100 text-red-700' :
+                            log.action === 'archive_event' ? 'bg-gray-100 text-gray-700' :
                             'bg-gray-100 text-gray-700'
                           }`}>
                             {log.action === 'trace' ? '追溯' :
                              log.action === 'ban' ? '封禁' :
-                             log.action === 'unban' ? '解禁' : '删帖'}
+                             log.action === 'unban' ? '解禁' :
+                             log.action === 'approve_event' ? '通过活动' :
+                             log.action === 'reject_event' ? '拒绝活动' :
+                             log.action === 'archive_event' ? '归档活动' : '删帖'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-gray-600">
@@ -539,6 +610,188 @@ function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Events Tab */}
+        {activeTab === 'events' && (
+          <div>
+            <h1 className="text-2xl font-bold mb-6">公告审核</h1>
+
+            {/* Event sub-tabs */}
+            <div className="flex gap-2 mb-4 border-b border-gray-200">
+              <button
+                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors duration-150 ${
+                  eventTab === 'pending'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setEventTab('pending')}
+                type="button"
+              >
+                待审核 ({pendingEvents.length})
+              </button>
+              <button
+                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors duration-150 ${
+                  eventTab === 'approved'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setEventTab('approved')}
+                type="button"
+              >
+                已通过 ({approvedEvents.length})
+              </button>
+              <button
+                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors duration-150 ${
+                  eventTab === 'rejected'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setEventTab('rejected')}
+                type="button"
+              >
+                已拒绝 ({rejectedEvents.length})
+              </button>
+            </div>
+
+            {/* Pending Events */}
+            {eventTab === 'pending' && (
+              pendingLoading ? (
+                <div className="text-center py-12 text-gray-500">加载中...</div>
+              ) : pendingEvents.length === 0 ? (
+                <EmptyState title="暂无待审核活动" description="活动审核队列已清空" />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {pendingEvents.map((event) => (
+                    <div key={event._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                      {event.image && (
+                        <div className="aspect-video overflow-hidden bg-gray-100">
+                          <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 mb-2">{event.type}</span>
+                        <h3 className="font-bold text-gray-800 mb-2 line-clamp-2">{event.title}</h3>
+                        <div className="flex items-center gap-3 mb-3 text-gray-500 text-xs">
+                          <span className="flex items-center gap-1"><Icon name="schedule" /> {formatEventTime(event.time)}</span>
+                          <span className="flex items-center gap-1"><Icon name="location_on" /> {event.place}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <button
+                            className="text-blue-600 text-xs font-semibold hover:underline"
+                            onClick={() => setSelectedEvent(event)}
+                            type="button"
+                          >
+                            查看详情
+                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50"
+                              onClick={() => setRejectionEvent(event)}
+                              type="button"
+                            >
+                              拒绝
+                            </button>
+                            <button
+                              className="px-3 py-1.5 text-xs font-semibold border-0 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+                              onClick={() => handleApproveEvent(event._id)}
+                              type="button"
+                            >
+                              通过
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Approved Events */}
+            {eventTab === 'approved' && (
+              approvedLoading ? (
+                <div className="text-center py-12 text-gray-500">加载中...</div>
+              ) : approvedEvents.length === 0 ? (
+                <EmptyState title="暂无已通过活动" description="已通过的活动将显示在这里" />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {approvedEvents.map((event) => (
+                    <div key={event._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                      {event.image && (
+                        <div className="aspect-video overflow-hidden bg-gray-100">
+                          <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 mb-2">{event.type}</span>
+                        <h3 className="font-bold text-gray-800 mb-2 line-clamp-2">{event.title}</h3>
+                        <div className="flex items-center gap-3 mb-3 text-gray-500 text-xs">
+                          <span className="flex items-center gap-1"><Icon name="schedule" /> {formatEventTime(event.time)}</span>
+                          <span className="flex items-center gap-1"><Icon name="location_on" /> {event.place}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <button
+                            className="text-blue-600 text-xs font-semibold hover:underline"
+                            onClick={() => setSelectedEvent(event)}
+                            type="button"
+                          >
+                            查看详情
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-full text-orange-600 hover:bg-orange-50"
+                            onClick={() => handleArchiveEvent(event._id)}
+                            type="button"
+                          >
+                            归档
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Rejected Events */}
+            {eventTab === 'rejected' && (
+              rejectedLoading ? (
+                <div className="text-center py-12 text-gray-500">加载中...</div>
+              ) : rejectedEvents.length === 0 ? (
+                <EmptyState title="暂无已拒绝活动" description="被拒绝的活动将显示在这里" />
+              ) : (
+                <div className="space-y-4">
+                  {rejectedEvents.map((event) => (
+                    <div key={event._id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 mb-2">{event.type}</span>
+                          <h3 className="font-bold text-gray-800">{event.title}</h3>
+                        </div>
+                        <button
+                          className="text-blue-600 text-xs font-semibold hover:underline"
+                          onClick={() => setSelectedEvent(event)}
+                          type="button"
+                        >
+                          查看详情
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 mb-3 text-gray-500 text-xs">
+                        <span className="flex items-center gap-1"><Icon name="schedule" /> {formatEventTime(event.time)}</span>
+                        <span className="flex items-center gap-1"><Icon name="location_on" /> {event.place}</span>
+                      </div>
+                      {event.rejectionReason && (
+                        <div className="p-3 bg-red-50 rounded-lg text-sm">
+                          <span className="text-gray-500">拒绝原因：</span>
+                          <span className="text-red-700">{event.rejectionReason}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
             )}
           </div>
         )}
@@ -578,6 +831,8 @@ function AdminDashboard() {
       {traceModalPost && <TraceModal post={traceModalPost} onClose={() => setTraceModalPost(null)} onConfirm={handleTrace} />}
       {banModalData && <BanModal {...banModalData} onClose={() => setBanModalData(null)} onConfirm={handleBan} />}
       {unbanModalBan && <UnbanModal ban={unbanModalBan} onClose={() => setUnbanModalBan(null)} onConfirm={handleUnban} />}
+      {selectedEvent && <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
+      {rejectionEvent && <RejectionModal event={rejectionEvent} onClose={() => setRejectionEvent(null)} onSubmit={handleRejectEvent} />}
     </div>
   );
 }

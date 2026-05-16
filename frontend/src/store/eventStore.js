@@ -1,68 +1,152 @@
 import { create } from 'zustand';
-import { loadJSON, saveJSON } from '../utils';
+import * as eventService from '../services/eventService';
 
 const useEventStore = create((set, get) => ({
-  pendingEvents: loadJSON('nju_pending_events', []),
-  approvedEvents: loadJSON('nju_approved_events', []),
-  rejectedEvents: loadJSON('nju_rejected_events', []),
-  archivedEvents: loadJSON('nju_archived_events', []),
-  carouselItems: loadJSON('nju_carousel_items', []),
+  // State
+  pendingEvents: [],
+  approvedEvents: [],
+  rejectedEvents: [],
+  archivedEvents: [],
+  pendingLoading: false,
+  approvedLoading: false,
+  rejectedLoading: false,
+  error: null,
 
-  submitEvent: (event) => {
-    const updated = [event, ...get().pendingEvents];
-    set({ pendingEvents: updated });
-    saveJSON('nju_pending_events', updated);
+  // Fetch pending events (admin)
+  fetchPendingEvents: async () => {
+    set({ pendingLoading: true, error: null });
+    try {
+      const events = await eventService.getPendingEvents();
+      set({ pendingEvents: events, pendingLoading: false });
+    } catch (err) {
+      set({ error: err.message, pendingLoading: false });
+    }
   },
 
-  approveEvent: (event) => {
-    const approvedEvent = {
-      id: event.id,
-      title: event.title,
-      type: event.type,
-      place: event.place,
-      time: event.time,
-      image: event.poster,
-      description: event.description,
-      status: 'approved',
-      reviewedAt: new Date().toISOString(),
-    };
-    const newPending = get().pendingEvents.filter((e) => e.id !== event.id);
-    const newApproved = [approvedEvent, ...get().approvedEvents];
-    set({ pendingEvents: newPending, approvedEvents: newApproved });
-    saveJSON('nju_pending_events', newPending);
-    saveJSON('nju_approved_events', newApproved);
-    return approvedEvent;
+  // Fetch approved events (admin)
+  fetchApprovedEvents: async () => {
+    set({ approvedLoading: true, error: null });
+    try {
+      const events = await eventService.getApprovedEvents();
+      set({ approvedEvents: events, approvedLoading: false });
+    } catch (err) {
+      set({ error: err.message, approvedLoading: false });
+    }
   },
 
-  rejectEvent: (eventId, reason) => {
-    const event = get().pendingEvents.find((e) => e.id === eventId);
-    if (!event) return null;
-    const rejectedEvent = {
-      ...event,
-      status: 'rejected',
-      rejectionReason: reason,
-      reviewedAt: new Date().toISOString(),
-    };
-    const newPending = get().pendingEvents.filter((e) => e.id !== eventId);
-    const newRejected = [rejectedEvent, ...get().rejectedEvents];
-    set({ pendingEvents: newPending, rejectedEvents: newRejected });
-    saveJSON('nju_pending_events', newPending);
-    saveJSON('nju_rejected_events', newRejected);
-    return rejectedEvent;
+  // Fetch rejected events (admin)
+  fetchRejectedEvents: async () => {
+    set({ rejectedLoading: true, error: null });
+    try {
+      const events = await eventService.getRejectedEvents();
+      set({ rejectedEvents: events, rejectedLoading: false });
+    } catch (err) {
+      set({ error: err.message, rejectedLoading: false });
+    }
   },
 
-  archiveEvent: (event) => {
-    const newApproved = get().approvedEvents.filter((e) => e.id !== event.id);
-    const newArchived = [event, ...get().archivedEvents];
-    set({ approvedEvents: newApproved, archivedEvents: newArchived });
-    saveJSON('nju_approved_events', newApproved);
-    saveJSON('nju_archived_events', newArchived);
+  // Fetch all event lists (admin convenience)
+  fetchAllEvents: async () => {
+    const { fetchPendingEvents, fetchApprovedEvents, fetchRejectedEvents } = get();
+    await Promise.all([
+      fetchPendingEvents(),
+      fetchApprovedEvents(),
+      fetchRejectedEvents(),
+    ]);
   },
 
-  updateCarousel: (items) => {
-    set({ carouselItems: items });
-    saveJSON('nju_carousel_items', items);
+  // Submit new event (user)
+  submitEvent: async (eventData) => {
+    set({ error: null });
+    try {
+      const event = await eventService.createEvent(eventData);
+      // Add to pending list if admin is viewing
+      const { pendingEvents } = get();
+      set({ pendingEvents: [event, ...pendingEvents] });
+      return event;
+    } catch (err) {
+      set({ error: err.message });
+      throw err;
+    }
   },
+
+  // Approve event (admin)
+  approveEvent: async (eventId) => {
+    set({ error: null });
+    try {
+      await eventService.approveEvent(eventId);
+      // Move from pending to approved
+      const { pendingEvents, approvedEvents } = get();
+      const event = pendingEvents.find((e) => e._id === eventId);
+      if (event) {
+        const approvedEvent = {
+          ...event,
+          status: 'approved',
+          reviewedAt: new Date().toISOString(),
+        };
+        set({
+          pendingEvents: pendingEvents.filter((e) => e._id !== eventId),
+          approvedEvents: [approvedEvent, ...approvedEvents],
+        });
+      }
+    } catch (err) {
+      set({ error: err.message });
+      throw err;
+    }
+  },
+
+  // Reject event (admin)
+  rejectEvent: async (eventId, reason) => {
+    set({ error: null });
+    try {
+      await eventService.rejectEvent(eventId, reason);
+      // Move from pending to rejected
+      const { pendingEvents, rejectedEvents } = get();
+      const event = pendingEvents.find((e) => e._id === eventId);
+      if (event) {
+        const rejectedEvent = {
+          ...event,
+          status: 'rejected',
+          rejectionReason: reason,
+          reviewedAt: new Date().toISOString(),
+        };
+        set({
+          pendingEvents: pendingEvents.filter((e) => e._id !== eventId),
+          rejectedEvents: [rejectedEvent, ...rejectedEvents],
+        });
+      }
+    } catch (err) {
+      set({ error: err.message });
+      throw err;
+    }
+  },
+
+  // Archive event (admin)
+  archiveEvent: async (eventId) => {
+    set({ error: null });
+    try {
+      await eventService.archiveEvent(eventId);
+      // Move from approved to archived
+      const { approvedEvents, archivedEvents } = get();
+      const event = approvedEvents.find((e) => e._id === eventId);
+      if (event) {
+        const archivedEvent = {
+          ...event,
+          status: 'archived',
+        };
+        set({
+          approvedEvents: approvedEvents.filter((e) => e._id !== eventId),
+          archivedEvents: [archivedEvent, ...archivedEvents],
+        });
+      }
+    } catch (err) {
+      set({ error: err.message });
+      throw err;
+    }
+  },
+
+  // Clear error
+  clearError: () => set({ error: null }),
 }));
 
 export default useEventStore;
