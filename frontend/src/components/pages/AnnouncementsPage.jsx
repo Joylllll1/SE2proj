@@ -128,12 +128,10 @@ function AnnouncementsPage({ showToast }) {
       </section>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-1 mb-4 border-b border-line">
         <button
-          className={`rounded-full px-4 py-[10px] text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 ${
-            activeTab === 'all'
-              ? 'bg-blue-soft text-blue border border-blue'
-              : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
+          className={`px-4 py-3 text-sm font-semibold transition-colors duration-150 ${
+            activeTab === 'all' ? 'text-blue border-b-2 border-blue' : 'text-text-2 hover:text-text'
           }`}
           onClick={() => setActiveTab('all')}
           type="button"
@@ -141,10 +139,8 @@ function AnnouncementsPage({ showToast }) {
           校园活动
         </button>
         <button
-          className={`rounded-full px-4 py-[10px] text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 ${
-            activeTab === 'my'
-              ? 'bg-blue-soft text-blue border border-blue'
-              : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
+          className={`px-4 py-3 text-sm font-semibold transition-colors duration-150 ${
+            activeTab === 'my' ? 'text-blue border-b-2 border-blue' : 'text-text-2 hover:text-text'
           }`}
           onClick={() => setActiveTab('my')}
           type="button"
@@ -160,8 +156,10 @@ function AnnouncementsPage({ showToast }) {
           <div className="category-row flex flex-wrap gap-2 my-[22px]">
             {categories.map((cat) => (
               <button
-                className={`border border-line rounded-full bg-white text-text-2 font-semibold shadow-xs px-4 py-[10px] text-sm transition-colors duration-150 hover:border-[#b0c4de] hover:text-blue ${
-                  category === cat ? 'active text-white border-[#1d1d1f] bg-[#1d1d1f]' : ''
+                className={`rounded-full px-4 py-[10px] text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 ${
+                  category === cat
+                    ? 'bg-blue-soft text-blue border border-blue'
+                    : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
                 }`}
                 key={cat}
                 onClick={() => setCategory(cat)}
