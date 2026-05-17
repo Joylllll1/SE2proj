@@ -19,5 +19,6 @@ router.get('/rejected', auth, isAdmin, eventController.getRejectedEvents);
 router.post('/:id/approve', auth, isAdmin, eventController.approveEvent);
 router.post('/:id/reject', auth, isAdmin, eventController.rejectEvent);
 router.post('/:id/archive', auth, isAdmin, eventController.archiveEvent);
+router.delete('/:id', auth, isAdmin, eventController.deleteEvent);
 
 export default router;

@@ -265,8 +265,8 @@ function AdminDashboard() {
   const {
     pendingEvents, approvedEvents, rejectedEvents,
     pendingLoading, approvedLoading, rejectedLoading,
-    fetchPendingEvents, fetchApprovedEvents, fetchRejectedEvents,
-    approveEvent, rejectEvent, archiveEvent,
+    fetchAllEvents,
+    approveEvent, rejectEvent, archiveEvent, deleteEvent,
   } = useEventStore();
 
   // Fetch data on mount and tab change
@@ -274,12 +274,8 @@ function AdminDashboard() {
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'bans') fetchBans(true);
     if (activeTab === 'audit') fetchAuditLogs();
-    if (activeTab === 'events') {
-      if (eventTab === 'pending') fetchPendingEvents();
-      if (eventTab === 'approved') fetchApprovedEvents();
-      if (eventTab === 'rejected') fetchRejectedEvents();
-    }
-  }, [activeTab, eventTab, fetchReports, fetchBans, fetchAuditLogs, fetchPendingEvents, fetchApprovedEvents, fetchRejectedEvents]);
+    if (activeTab === 'events') fetchAllEvents();
+  }, [activeTab, fetchReports, fetchBans, fetchAuditLogs, fetchAllEvents]);
 
   // Handle trace
   const handleTrace = async (reason) => {
@@ -369,6 +365,16 @@ function AdminDashboard() {
       showToast('活动已归档');
     } catch (err) {
       showToast(err.message || '归档失败');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm('确定要下架并删除这个活动吗？下架后它将不再出现在校园公告中。')) return;
+    try {
+      await deleteEvent(eventId);
+      showToast('活动已下架');
+    } catch (err) {
+      showToast(err.message || '下架失败');
     }
   };
 
@@ -586,6 +592,7 @@ function AdminDashboard() {
                             log.action === 'approve_event' ? 'bg-blue-100 text-blue-700' :
                             log.action === 'reject_event' ? 'bg-red-100 text-red-700' :
                             log.action === 'archive_event' ? 'bg-gray-100 text-gray-700' :
+                            log.action === 'delete_event' ? 'bg-orange-100 text-orange-700' :
                             'bg-gray-100 text-gray-700'
                           }`}>
                             {log.action === 'trace' ? '追溯' :
@@ -593,7 +600,8 @@ function AdminDashboard() {
                              log.action === 'unban' ? '解禁' :
                              log.action === 'approve_event' ? '通过活动' :
                              log.action === 'reject_event' ? '拒绝活动' :
-                             log.action === 'archive_event' ? '归档活动' : '删帖'}
+                             log.action === 'archive_event' ? '归档活动' :
+                             log.action === 'delete_event' ? '下架活动' : '删帖'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-gray-600">
@@ -740,13 +748,22 @@ function AdminDashboard() {
                           >
                             查看详情
                           </button>
-                          <button
-                            className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-full text-orange-600 hover:bg-orange-50"
-                            onClick={() => handleArchiveEvent(event._id)}
-                            type="button"
-                          >
-                            归档
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-full text-orange-600 hover:bg-orange-50"
+                              onClick={() => handleArchiveEvent(event._id)}
+                              type="button"
+                            >
+                              归档
+                            </button>
+                            <button
+                              className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
+                              onClick={() => handleDeleteEvent(event._id)}
+                              type="button"
+                            >
+                              下架
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -63,3 +63,11 @@ export async function archiveEvent(req, res) {
   const event = await eventService.archiveEvent(eventId, adminId);
   res.json({ message: '活动已归档', event });
 }
+
+export async function deleteEvent(req, res) {
+  const { id: eventId } = req.params;
+  const adminId = req.user._id;
+
+  const event = await eventService.deleteEvent(eventId, adminId);
+  res.json({ message: '活动已删除', event });
+}

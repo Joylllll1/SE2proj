@@ -198,3 +198,25 @@ export async function archiveEvent(eventId, adminId) {
 
   return event;
 }
+
+export async function deleteEvent(eventId, adminId) {
+  const event = await Event.findOneAndUpdate(
+    { _id: eventId, status: 'approved' },
+    { status: 'deleted' },
+    { new: true, runValidators: true }
+  );
+
+  if (!event) {
+    await ensureEventExistsAndStatus(eventId, 'approved', '只能删除已通过的活动');
+  }
+
+  await AuditLog.create({
+    action: 'delete_event',
+    adminId,
+    targetUserId: event.submittedBy,
+    targetEventId: event._id,
+    reason: '活动下架删除',
+  });
+
+  return event;
+}

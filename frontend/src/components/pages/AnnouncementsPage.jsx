@@ -12,6 +12,7 @@ const statusMap = {
   approved: { label: '已通过', color: 'text-green-600 bg-green-100' },
   rejected: { label: '已拒绝', color: 'text-red-600 bg-red-100' },
   archived: { label: '已归档', color: 'text-gray-600 bg-gray-100' },
+  deleted: { label: '已下架', color: 'text-orange-700 bg-orange-100' },
 };
 
 function AnnouncementsPage({ showToast }) {

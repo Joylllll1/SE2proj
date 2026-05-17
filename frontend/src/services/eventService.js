@@ -60,3 +60,10 @@ export async function archiveEvent(eventId) {
   });
   return data;
 }
+
+export async function deleteEvent(eventId) {
+  const data = await request(`/api/events/${eventId}`, {
+    method: 'DELETE',
+  });
+  return data;
+}

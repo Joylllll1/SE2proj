@@ -8,9 +8,10 @@ const useEventStore = create((set, get) => ({
   pendingEvents: [],
   approvedEvents: [],
   rejectedEvents: [],
-  archivedEvents: [],
-  publicLoading: false,
-  myEventsLoading: false,
+    archivedEvents: [],
+    deletedEvents: [],
+    publicLoading: false,
+    myEventsLoading: false,
   pendingLoading: false,
   approvedLoading: false,
   rejectedLoading: false,
@@ -163,6 +164,30 @@ const useEventStore = create((set, get) => ({
         set({
           approvedEvents: approvedEvents.filter((e) => e._id !== eventId),
           archivedEvents: [archivedEvent, ...archivedEvents],
+        });
+      }
+    } catch (err) {
+      set({ error: err.message });
+      throw err;
+    }
+  },
+
+  // Delete approved event (admin takedown)
+  deleteEvent: async (eventId) => {
+    set({ error: null });
+    try {
+      await eventService.deleteEvent(eventId);
+      const { approvedEvents, deletedEvents, myEvents } = get();
+      const event = approvedEvents.find((e) => e._id === eventId);
+      if (event) {
+        const deletedEvent = {
+          ...event,
+          status: 'deleted',
+        };
+        set({
+          approvedEvents: approvedEvents.filter((e) => e._id !== eventId),
+          deletedEvents: [deletedEvent, ...deletedEvents],
+          myEvents: myEvents.map((item) => (item._id === eventId ? { ...item, status: 'deleted' } : item)),
         });
       }
     } catch (err) {
