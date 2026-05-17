@@ -35,8 +35,8 @@ function AdminSidebar({ activeTab, onTabChange }) {
             <button
               className={`nav-item relative flex items-center gap-2.5 w-full min-h-10 px-3 border border-transparent rounded-lg text-sm font-semibold text-left transition-colors duration-150 ${
                 activeTab === item.id
-                  ? 'active bg-blue-600 text-white font-bold'
-                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  ? 'active text-blue bg-blue-soft font-bold'
+                  : 'text-text-2 bg-transparent hover:text-text hover:bg-black/[0.04]'
               }`}
               key={item.id}
               onClick={() => onTabChange(item.id)}
@@ -44,13 +44,16 @@ function AdminSidebar({ activeTab, onTabChange }) {
             >
               <Icon name={item.icon} filled={activeTab === item.id} />
               <span>{item.label}</span>
+              {activeTab === item.id && (
+                <span className="absolute -left-[14px] w-[3px] h-5 rounded-r-full bg-blue" />
+              )}
             </button>
           ))}
         </nav>
       </div>
       <div className="mt-auto p-[14px]">
         <button
-          className="flex items-center gap-2 w-full px-3 py-2 border-0 rounded-lg text-gray-400 bg-transparent text-xs font-semibold transition-colors duration-150 hover:text-red-400 hover:bg-red-900/30"
+          className="flex items-center gap-2 w-full px-3 py-2 border-0 rounded-lg text-text-2 bg-transparent text-xs font-semibold transition-colors duration-150 hover:text-red-500 hover:bg-red-soft"
           onClick={handleLogout}
           type="button"
         >
