@@ -4,6 +4,7 @@ import AuditLog from '../models/AuditLog.js';
 import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
 import User from '../models/User.js';
+import AppError from '../utils/AppError.js';
 import { sendBanNotification, sendUnbanNotification } from './emailService.js';
 import { notifyBanned, notifyUnbanned } from './notificationService.js';
 
@@ -114,9 +115,6 @@ export async function getPendingReports() {
         target = parentComment.replies.find(r => r._id.toString() === targetId.toString());
         // 将回复的 ownerUserId 等信息标准化
         if (target && !target.isDeleted) {
-          target.ownerUserId = target.ownerUserId;
-          target.content = target.content;
-          target.createdAt = target.createdAt;
           target.postId = parentComment.postId; // 从父评论获取 postId
         }
       }
@@ -151,13 +149,13 @@ export async function getPendingReports() {
 }
 
 export async function createReport(targetId, targetType, reason, reportedBy) {
-  // 检查该用户是否已经举报过这个目标
+  // 快速路径：同一用户已举报过该目标
   const existingReportByUser = await Report.findOne({
     targetId,
     targetType,
     status: 'pending',
-    'reasons.reportedBy': reportedBy
-  });
+    'reasons.reportedBy': reportedBy,
+  }).lean();
 
   if (existingReportByUser) {
     const error = new Error('您已经举报过该内容，请等待管理员处理');
@@ -168,21 +166,59 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
   // For comments/replies, find the associated post
   const postId = await resolveAssociatedPostId(targetId, targetType);
 
-  let report = await Report.findOne({ targetId, targetType, status: 'pending' });
-
-  if (report) {
-    // Aggregate: increment count and add new reason
-    report.reportCount += 1;
-    report.reasons.push({ reason, reportedBy });
-    await report.save();
-  } else {
-    report = await Report.create({
+  const update = {
+    $inc: { reportCount: 1 },
+    $push: { reasons: { reason, reportedBy } },
+    $setOnInsert: {
       targetType,
       targetId,
       postId,
-      reportCount: 1,
-      reasons: [{ reason, reportedBy }],
-    });
+      status: 'pending',
+    },
+  };
+
+  try {
+    const report = await Report.findOneAndUpdate(
+      {
+        targetId,
+        targetType,
+        status: 'pending',
+        'reasons.reportedBy': { $ne: reportedBy },
+      },
+      update,
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    return report;
+  } catch (err) {
+    if (err.code !== 11000) {
+      throw err;
+    }
+  }
+
+  // 另一个并发请求已创建 pending 举报，重试聚合；若该用户已存在则视为重复举报
+  const report = await Report.findOneAndUpdate(
+    {
+      targetId,
+      targetType,
+      status: 'pending',
+      'reasons.reportedBy': { $ne: reportedBy },
+    },
+    {
+      $inc: { reportCount: 1 },
+      $push: { reasons: { reason, reportedBy } },
+    },
+    { new: true }
+  );
+
+  if (!report) {
+    const error = new Error('您已经举报过该内容，请等待管理员处理');
+    error.code = 'ALREADY_REPORTED';
+    throw error;
   }
 
   return report;
@@ -191,7 +227,7 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
 export async function dismissReport(reportId) {
   const report = await Report.findByIdAndDelete(reportId);
   if (!report) {
-    throw new Error('举报不存在');
+    throw new AppError('举报不存在', 404, 'REPORT_NOT_FOUND');
   }
   return report;
 }
@@ -200,12 +236,12 @@ export async function dismissReport(reportId) {
 
 export async function tracePostAuthor(postId, adminId, reason) {
   if (!reason || !reason.trim()) {
-    throw new Error('请输入追溯原因');
+    throw new AppError('请输入追溯原因', 400, 'MISSING_REASON');
   }
 
   const post = await Post.findById(postId).populate('ownerUserId', 'email');
   if (!post) {
-    throw new Error('帖子不存在');
+    throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
   }
 
   // Get user activity stats
@@ -236,12 +272,13 @@ export async function tracePostAuthor(postId, adminId, reason) {
     isBanned: !!activeBan,
     banExpiresAt: activeBan?.expiresAt,
     userId,
+    relatedPostId: post._id,
   };
 }
 
 export async function traceCommentAuthor(commentId, targetType, adminId, reason) {
   if (!reason || !reason.trim()) {
-    throw new Error('请输入追溯原因');
+    throw new AppError('请输入追溯原因', 400, 'MISSING_REASON');
   }
 
   let comment = null;
@@ -251,23 +288,24 @@ export async function traceCommentAuthor(commentId, targetType, adminId, reason)
     // 回复是嵌入文档，需要找到包含该回复的评论
     comment = await Comment.findOne({ 'replies._id': commentId }).populate('replies.ownerUserId', 'email');
     if (!comment) {
-      throw new Error('回复不存在');
+      throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
     }
     const reply = comment.replies.find(r => r._id.toString() === commentId.toString());
     if (!reply) {
-      throw new Error('回复不存在');
+      throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
     }
     targetOwnerUserId = reply.ownerUserId;
   } else {
     // 普通评论
     comment = await Comment.findById(commentId).populate('ownerUserId', 'email');
     if (!comment) {
-      throw new Error('评论不存在');
+      throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
     }
     targetOwnerUserId = comment.ownerUserId;
   }
 
   const userId = targetOwnerUserId._id;
+  const relatedPostId = comment.postId || null;
   const [postCount, commentCount, reportCount] = await Promise.all([
     Post.countDocuments({ ownerUserId: userId, isDeleted: false }),
     Comment.countDocuments({ ownerUserId: userId, isDeleted: false }),
@@ -292,6 +330,7 @@ export async function traceCommentAuthor(commentId, targetType, adminId, reason)
     isBanned: !!activeBan,
     banExpiresAt: activeBan?.expiresAt,
     userId,
+    relatedPostId,
   };
 }
 
@@ -299,15 +338,15 @@ export async function traceCommentAuthor(commentId, targetType, adminId, reason)
 
 export async function banUser(userId, { days, reason, relatedPostId, adminId }) {
   if (!reason || !reason.trim()) {
-    throw new Error('请输入封禁原因');
+    throw new AppError('请输入封禁原因', 400, 'MISSING_REASON');
   }
   if (!days || days < 1) {
-    throw new Error('封禁天数必须大于 0');
+    throw new AppError('封禁天数必须大于 0', 400, 'INVALID_BAN_DAYS');
   }
 
   const user = await User.findById(userId);
   if (!user) {
-    throw new Error('用户不存在');
+    throw new AppError('用户不存在', 404, 'USER_NOT_FOUND');
   }
 
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -369,11 +408,11 @@ export async function getBans({ includeInactive = false } = {}) {
 export async function unbanUser(banId, { reason, adminId, isManual = true }) {
   const ban = await Ban.findById(banId).populate('userId', 'email');
   if (!ban) {
-    throw new Error('封禁记录不存在');
+    throw new AppError('封禁记录不存在', 404, 'BAN_NOT_FOUND');
   }
 
   if (!ban.isActive) {
-    throw new Error('该用户已解禁');
+    throw new AppError('该用户已解禁', 400, 'BAN_ALREADY_INACTIVE');
   }
 
   ban.isActive = false;
@@ -438,7 +477,7 @@ export async function getActiveBan(userId) {
 export async function deletePost(postId, adminId, reason) {
   const post = await Post.findById(postId);
   if (!post) {
-    throw new Error('帖子不存在');
+    throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
   }
 
   post.isDeleted = true;
@@ -502,13 +541,13 @@ export async function deleteComment(commentId, adminId, reason) {
     replies: { $elemMatch: { _id: commentId, isDeleted: { $ne: true } } },
   });
   if (!parentComment) {
-    throw new Error('评论不存在');
+    throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
   }
 
   // 找到并标记回复为已删除
   const reply = parentComment.replies.id(commentId);
   if (!reply) {
-    throw new Error('回复不存在');
+    throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
   }
 
   reply.isDeleted = true;

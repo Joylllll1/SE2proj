@@ -5,9 +5,10 @@ import Comment from '../common/Comment';
 import ReplyCard from '../common/ReplyCard';
 import useCommentStore from '../../store/commentStore';
 
-function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onComment, onReply, onNavigate, onReport }) {
+function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, onReply, onNavigate, onReport }) {
   const [commentSort, setCommentSort] = useState('time');
   const getFlatComments = useCommentStore((s) => s.getFlatComments);
+  const primaryTag = Array.isArray(post.tags) && post.tags.length > 0 ? post.tags[0] : '未分类';
 
   // 主评论输入框
   const [commentText, setCommentText] = useState('');
@@ -54,7 +55,7 @@ function DetailPage({ post, comments, liked, bookmarked, onLike, onBookmark, onC
       <section className="detail-card p-[18px] rounded-lg border border-line-soft bg-surface shadow-sm">
         <div className="breadcrumb mb-[14px] text-text-3 text-[13px] font-semibold">
           <button className="breadcrumb-link px-0 py-0 border-0 bg-transparent text-text-3 text-inherit font-semibold cursor-pointer transition-colors duration-150 hover:text-blue" onClick={() => onNavigate('home')} type="button">动态首页</button>
-          <span>/ {post.tags[0]} / 帖子详情</span>
+          <span>/ {primaryTag} / 帖子详情</span>
         </div>
         <div className="detail-heading flex items-end justify-between gap-[18px] mb-4 max-sm:flex-col max-sm:items-stretch">
           <div>

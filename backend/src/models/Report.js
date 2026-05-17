@@ -20,6 +20,13 @@ const reportSchema = new mongoose.Schema(
 
 // Compound index for efficient query
 reportSchema.index({ status: 1, targetType: 1, reportCount: -1, createdAt: -1 });
+reportSchema.index(
+  { targetType: 1, targetId: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: 'pending' },
+  }
+);
 
 const Report = mongoose.model('Report', reportSchema);
 export default Report;

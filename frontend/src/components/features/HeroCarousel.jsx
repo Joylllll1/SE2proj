@@ -19,7 +19,7 @@ const WELCOME_SLIDES = [
   },
 ];
 
-function SlideContent({ slide, onNavigate, handleSlideClick }) {
+function SlideContent({ slide, handleSlideClick }) {
   return (
     <>
       <div className="relative z-[1] self-center">
@@ -107,7 +107,7 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
         >
           {slides.map((slide, i) => (
             <div key={i} className="min-h-[280px] w-full flex-shrink-0 grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5">
-              <SlideContent slide={slide} onNavigate={onNavigate} handleSlideClick={handleSlideClick} />
+              <SlideContent slide={slide} handleSlideClick={handleSlideClick} />
             </div>
           ))}
         </div>

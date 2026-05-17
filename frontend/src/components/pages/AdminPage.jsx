@@ -54,7 +54,7 @@ function EventDetailModal({ event, onClose }) {
 }
 
 // 拒绝理由弹窗组件
-function RejectionModal({ event, onClose, onSubmit }) {
+function RejectionModal({ onClose, onSubmit }) {
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
 

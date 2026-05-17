@@ -30,6 +30,10 @@ export const register = async (email, password) => {
   if (!verifiedCode) {
     throw new AppError('请先完成邮箱验证', 400, 'CODE_NOT_VERIFIED');
   }
+  if (verifiedCode.expiresAt <= new Date()) {
+    await VerificationCode.deleteMany({ email, type: 'register' });
+    throw new AppError('验证码已过期，请重新验证', 400, 'CODE_EXPIRED');
+  }
 
   // Create user
   const user = await User.create({ email, password });

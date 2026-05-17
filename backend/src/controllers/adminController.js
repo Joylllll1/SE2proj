@@ -1,5 +1,4 @@
 import * as adminService from '../services/adminService.js';
-import AppError from '../utils/AppError.js';
 
 // ─── Reports ───
 

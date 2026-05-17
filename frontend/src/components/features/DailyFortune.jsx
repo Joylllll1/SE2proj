@@ -11,11 +11,6 @@ const FORTUNE_LEVELS = [
   { level: '大凶', color: 'var(--color-blue-2)', icon: 'warning', desc: '韬光养晦，静待时机' },
 ];
 
-function getToday() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function getMonthDay() {
   const d = new Date();
   return { month: d.getMonth() + 1, day: d.getDate() };
@@ -26,7 +21,7 @@ function getWeekday() {
   return weekdays[new Date().getDay()];
 }
 
-function DailyFortune({ showToast, userId: _userId }) {
+function DailyFortune({ showToast }) {
   const [fortune, setFortune] = useState(null);
   const [streak, setStreak] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);

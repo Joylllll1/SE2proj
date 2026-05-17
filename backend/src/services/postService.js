@@ -2,14 +2,24 @@ import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
 import { notifyLike } from './notificationService.js';
 
-export const createPost = async (userId, data) => {
-  const post = await Post.create({ ownerUserId: userId, ...data });
+function toPostDto(post, userId) {
   return {
-    ...post.toObject(),
+    ...post,
+    tags: Array.isArray(post.tags) ? post.tags : [],
+    images: Array.isArray(post.images) ? post.images : [],
     id: post._id.toString(),
     time: formatRelativeTime(post.createdAt),
-    isLiked: false,
+    likes: post.likes || 0,
+    comments: post.comments || 0,
+    saves: post.saves || 0,
+    isLiked: userId ? post.likedBy?.some((id) => id.toString() === userId) : false,
+    isSaved: userId ? post.savedBy?.some((id) => id.toString() === userId) : false,
   };
+}
+
+export const createPost = async (userId, data) => {
+  const post = await Post.create({ ownerUserId: userId, ...data });
+  return toPostDto(post.toObject(), userId);
 };
 
 export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => {
@@ -24,15 +34,7 @@ export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => 
     Post.countDocuments(filter),
   ]);
 
-  const postsWithLikeStatus = posts.map((p) => ({
-    ...p,
-    id: p._id.toString(),
-    time: formatRelativeTime(p.createdAt),
-    likes: p.likes || 0,
-    saves: p.saves || 0,
-    isLiked: userId ? p.likedBy?.some((id) => id.toString() === userId) : false,
-    isSaved: userId ? p.savedBy?.some((id) => id.toString() === userId) : false,
-  }));
+  const postsWithLikeStatus = posts.map((p) => toPostDto(p, userId));
 
   return {
     posts: postsWithLikeStatus,
@@ -46,15 +48,7 @@ export const getPostById = async (postId, userId) => {
   const post = await Post.findOne({ _id: postId, isDeleted: false }).lean();
   if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
 
-  return {
-    ...post,
-    id: post._id.toString(),
-    time: formatRelativeTime(post.createdAt),
-    likes: post.likes || 0,
-    saves: post.saves || 0,
-    isLiked: userId ? post.likedBy?.some((id) => id.toString() === userId) : false,
-    isSaved: userId ? post.savedBy?.some((id) => id.toString() === userId) : false,
-  };
+  return toPostDto(post, userId);
 };
 
 export const deletePost = async (userId, postId) => {
@@ -68,40 +62,66 @@ export const deletePost = async (userId, postId) => {
 };
 
 export const toggleLike = async (userId, postId) => {
-  const post = await Post.findOne({ _id: postId, isDeleted: false });
+  const unlikedPost = await Post.findOneAndUpdate(
+    { _id: postId, isDeleted: false, likedBy: userId },
+    { $pull: { likedBy: userId }, $inc: { likes: -1 } },
+    { new: true }
+  ).lean();
+
+  if (unlikedPost) {
+    return { liked: false, likes: Math.max(0, unlikedPost.likes || 0) };
+  }
+
+  const likedPost = await Post.findOneAndUpdate(
+    { _id: postId, isDeleted: false, likedBy: { $ne: userId } },
+    { $addToSet: { likedBy: userId }, $inc: { likes: 1 } },
+    { new: true }
+  ).lean();
+
+  if (likedPost) {
+    if (likedPost.ownerUserId.toString() !== userId) {
+      notifyLike(likedPost.ownerUserId, likedPost.title, postId).catch(() => {});
+    }
+    return { liked: true, likes: likedPost.likes || 0 };
+  }
+
+  const post = await Post.findOne({ _id: postId, isDeleted: false }).lean();
   if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
 
-  const idx = post.likedBy.findIndex((id) => id.toString() === userId);
-  if (idx > -1) {
-    post.likedBy.splice(idx, 1);
-    post.likes = Math.max(0, post.likes - 1);
-  } else {
-    post.likedBy.push(userId);
-    post.likes += 1;
-
-    // 触发点赞通知（不等待完成）
-    if (post.ownerUserId.toString() !== userId) {
-      notifyLike(post.ownerUserId, post.title, postId).catch(() => {});
-    }
-  }
-  await post.save();
-  return { liked: idx === -1, likes: post.likes };
+  return {
+    liked: post.likedBy?.some((id) => id.toString() === userId) || false,
+    likes: post.likes || 0,
+  };
 };
 
 export const toggleSave = async (userId, postId) => {
-  const post = await Post.findOne({ _id: postId, isDeleted: false });
+  const unsavedPost = await Post.findOneAndUpdate(
+    { _id: postId, isDeleted: false, savedBy: userId },
+    { $pull: { savedBy: userId }, $inc: { saves: -1 } },
+    { new: true }
+  ).lean();
+
+  if (unsavedPost) {
+    return { saved: false, saves: Math.max(0, unsavedPost.saves || 0) };
+  }
+
+  const savedPost = await Post.findOneAndUpdate(
+    { _id: postId, isDeleted: false, savedBy: { $ne: userId } },
+    { $addToSet: { savedBy: userId }, $inc: { saves: 1 } },
+    { new: true }
+  ).lean();
+
+  if (savedPost) {
+    return { saved: true, saves: savedPost.saves || 0 };
+  }
+
+  const post = await Post.findOne({ _id: postId, isDeleted: false }).lean();
   if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
 
-  const idx = post.savedBy.findIndex((id) => id.toString() === userId);
-  if (idx > -1) {
-    post.savedBy.splice(idx, 1);
-    post.saves = Math.max(0, post.saves - 1);
-  } else {
-    post.savedBy.push(userId);
-    post.saves += 1;
-  }
-  await post.save();
-  return { saved: idx === -1, saves: post.saves };
+  return {
+    saved: post.savedBy?.some((id) => id.toString() === userId) || false,
+    saves: post.saves || 0,
+  };
 };
 
 export const getSavedPosts = async (userId) => {
@@ -110,12 +130,7 @@ export const getSavedPosts = async (userId) => {
     .lean();
 
   return posts.map((p) => ({
-    ...p,
-    id: p._id.toString(),
-    time: formatRelativeTime(p.createdAt),
-    likes: p.likes || 0,
-    saves: p.saves || 0,
-    isLiked: userId ? p.likedBy?.some((id) => id.toString() === userId) : false,
+    ...toPostDto(p, userId),
     isSaved: true,
   }));
 };

@@ -842,7 +842,10 @@ function AdminDashboard() {
           <button
             className="w-full mt-4 py-2 text-sm font-semibold text-white bg-red rounded-lg hover:bg-red-2 transition-colors duration-150"
             onClick={() => {
-              setBanModalData({ userId: traceResult.userId || traceResult._id, postId: traceModalPost?._id });
+              setBanModalData({
+                userId: traceResult.userId || traceResult._id,
+                postId: traceResult.relatedPostId || null,
+              });
               clearTraceResult();
             }}
             type="button"

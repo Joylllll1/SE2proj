@@ -19,7 +19,7 @@ function DraftsPage({ onNavigate }) {
       return;
     }
     loadDrafts();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, onNavigate]);
 
   const loadDrafts = async () => {
     try {
@@ -42,14 +42,6 @@ function DraftsPage({ onNavigate }) {
       }
       return next;
     });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedIds.size === drafts.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(drafts.map((d) => d.id)));
-    }
   };
 
   const handleDeleteSelected = async () => {

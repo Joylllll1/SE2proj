@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
 import * as draftService from '../../services/draftService';
@@ -47,7 +47,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   const moodLabel = moodOptions.find(([, , t]) => t === moodType)?.[0] || '';
 
-  const applyDraftToForm = (draft) => {
+  const applyDraftToForm = useCallback((draft) => {
     setTitle(draft.title || '');
     setContent(draft.content || '');
     setMoodType(draft.moodType || null);
@@ -61,16 +61,16 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       image: draft.image || '',
     });
     setIsDirty(false);
-  };
+  }, []);
 
-  const buildDraftPayload = () => ({
+  const buildDraftPayload = useCallback(() => ({
     title: title.trim() || undefined,
     content: content.trim(),
     moodType,
     mood: moodLabel || '平静',
     tags: tags.length > 0 ? tags : undefined,
     image: imageUrl || undefined,
-  });
+  }), [content, imageUrl, moodLabel, moodType, tags, title]);
 
   // Sync draftId when initialDraftId changes
   useEffect(() => {
@@ -81,7 +81,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     setDraftId(null);
     setLastSavedAt(null);
     applyDraftToForm(EMPTY_DRAFT);
-  }, [initialDraftId]);
+  }, [applyDraftToForm, initialDraftId]);
 
   // Load draft when editing
   useEffect(() => {
@@ -108,7 +108,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     return () => {
       cancelled = true;
     };
-  }, [initialDraftId, navigate, showToast]);
+  }, [applyDraftToForm, initialDraftId, navigate, showToast]);
 
   // Track dirty state
   useEffect(() => {
@@ -144,7 +144,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   const canPublish = content.trim().length > 0;
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = useCallback(async () => {
     if (!content.trim() && !title.trim()) {
       showToast('请先填写内容');
       return;
@@ -173,7 +173,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     } finally {
       setSaving(false);
     }
-  };
+  }, [applyDraftToForm, buildDraftPayload, content, draftId, showToast, title]);
 
   useEffect(() => {
     saveDraftRef.current = handleSaveDraft;

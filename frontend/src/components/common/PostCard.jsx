@@ -7,6 +7,7 @@ import { getDisplayName, formatCount } from '../../utils';
 function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, onBookmark, onReport }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const authorName = getDisplayName(post.ownerUserId, post.id);
+  const tags = Array.isArray(post.tags) ? post.tags : [];
 
   const handleReport = (targetId, reason) => {
     onReport(targetId, reason, 'post');
@@ -48,7 +49,7 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
         </div>
         <div className="post-footer flex items-center justify-between gap-3.5 px-5 py-[10px_20px_14px] border-t border-line-soft bg-[#fafbfc]">
           <div className="tag-row flex flex-wrap gap-2.5 text-text-3 text-xs font-semibold">
-            {post.tags.map((tag) => (
+            {tags.map((tag) => (
               <span key={tag} className="text-blue">#{tag}</span>
             ))}
           </div>

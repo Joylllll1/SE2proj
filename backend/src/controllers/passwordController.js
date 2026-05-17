@@ -32,6 +32,10 @@ export const reset = async (req, res) => {
   if (!record) {
     throw new AppError('请先完成邮箱验证', 400, 'CODE_NOT_VERIFIED');
   }
+  if (record.expiresAt <= new Date()) {
+    await VerificationCode.deleteMany({ email, type: 'reset_password' });
+    throw new AppError('验证码已过期，请重新发送', 400, 'CODE_EXPIRED');
+  }
 
   // Validate password strength
   if (password.length < 8) {

@@ -118,57 +118,94 @@ export const deleteReply = async (userId, commentId, replyId) => {
 };
 
 export const toggleLike = async (userId, commentId) => {
-  const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
-  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+  const unlikedComment = await Comment.findOneAndUpdate(
+    { _id: commentId, isDeleted: false, likedBy: userId },
+    { $pull: { likedBy: userId }, $inc: { likes: -1 } },
+    { new: true }
+  ).lean();
 
-  const isLiked = comment.likedBy.some((id) => id.toString() === userId);
-
-  // 使用原子操作更新，避免版本冲突
-  if (isLiked) {
-    await Comment.updateOne(
-      { _id: commentId },
-      { $pull: { likedBy: userId }, $inc: { likes: -1 } }
-    );
-  } else {
-    await Comment.updateOne(
-      { _id: commentId },
-      { $addToSet: { likedBy: userId }, $inc: { likes: 1 } }
-    );
+  if (unlikedComment) {
+    return { liked: false, likes: Math.max(0, unlikedComment.likes || 0) };
   }
 
-  return { liked: !isLiked, likes: isLiked ? comment.likes - 1 : comment.likes + 1 };
+  const likedComment = await Comment.findOneAndUpdate(
+    { _id: commentId, isDeleted: false, likedBy: { $ne: userId } },
+    { $addToSet: { likedBy: userId }, $inc: { likes: 1 } },
+    { new: true }
+  ).lean();
+
+  if (likedComment) {
+    return { liked: true, likes: likedComment.likes || 0 };
+  }
+
+  const comment = await Comment.findOne({ _id: commentId, isDeleted: false }).lean();
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+
+  return {
+    liked: comment.likedBy?.some((id) => id.toString() === userId) || false,
+    likes: comment.likes || 0,
+  };
 };
 
 export const toggleReplyLike = async (userId, commentId, replyId) => {
-  // 先检查评论是否存在
-  const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
-  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+  const unlikedComment = await Comment.findOneAndUpdate(
+    {
+      _id: commentId,
+      isDeleted: false,
+      replies: {
+        $elemMatch: {
+          _id: replyId,
+          isDeleted: { $ne: true },
+          likedBy: userId,
+        },
+      },
+    },
+    {
+      $pull: { 'replies.$.likedBy': userId },
+      $inc: { 'replies.$.likes': -1 },
+    },
+    { new: true }
+  ).lean();
 
-  const reply = comment.replies.id(replyId);
-  if (!reply || reply.isDeleted) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
-
-  const isLiked = reply.likedBy.some((id) => id.toString() === userId);
-
-  // 使用原子操作更新，避免版本冲突
-  if (isLiked) {
-    await Comment.updateOne(
-      { _id: commentId, 'replies._id': replyId },
-      {
-        $pull: { 'replies.$.likedBy': userId },
-        $inc: { 'replies.$.likes': -1 }
-      }
-    );
-  } else {
-    await Comment.updateOne(
-      { _id: commentId, 'replies._id': replyId },
-      {
-        $addToSet: { 'replies.$.likedBy': userId },
-        $inc: { 'replies.$.likes': 1 }
-      }
-    );
+  if (unlikedComment) {
+    const reply = unlikedComment.replies?.find((item) => item._id.toString() === replyId.toString());
+    return { liked: false, likes: Math.max(0, reply?.likes || 0) };
   }
 
-  return { liked: !isLiked, likes: isLiked ? reply.likes - 1 : reply.likes + 1 };
+  const likedComment = await Comment.findOneAndUpdate(
+    {
+      _id: commentId,
+      isDeleted: false,
+      replies: {
+        $elemMatch: {
+          _id: replyId,
+          isDeleted: { $ne: true },
+          likedBy: { $ne: userId },
+        },
+      },
+    },
+    {
+      $addToSet: { 'replies.$.likedBy': userId },
+      $inc: { 'replies.$.likes': 1 },
+    },
+    { new: true }
+  ).lean();
+
+  if (likedComment) {
+    const reply = likedComment.replies?.find((item) => item._id.toString() === replyId.toString());
+    return { liked: true, likes: reply?.likes || 0 };
+  }
+
+  const comment = await Comment.findOne({ _id: commentId, isDeleted: false }).lean();
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+
+  const reply = comment.replies?.find((item) => item._id.toString() === replyId.toString());
+  if (!reply || reply.isDeleted) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
+
+  return {
+    liked: reply.likedBy?.some((id) => id.toString() === userId) || false,
+    likes: reply.likes || 0,
+  };
 };
 
 // ─── Helpers ───

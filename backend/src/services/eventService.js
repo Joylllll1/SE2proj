@@ -3,7 +3,7 @@ import AuditLog from '../models/AuditLog.js';
 import AppError from '../utils/AppError.js';
 import { notifyEventApproved, notifyEventRejected } from './notificationService.js';
 
-const MAX_EVENT_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_EVENT_IMAGE_BYTES = 3 * 1024 * 1024;
 
 function ensureApplicantField(value, message, errorCode) {
   if (!value || !value.trim()) {

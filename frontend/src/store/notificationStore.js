@@ -14,6 +14,7 @@ function mergeLikeNotifications(notifications) {
           ...n,
           _likeCount: 1,
           _likeIds: [n._id],
+          _unreadLikeCount: n.read ? 0 : 1,
         });
       } else {
         const group = likeGroups.get(key);
@@ -27,6 +28,7 @@ function mergeLikeNotifications(notifications) {
         // If any is unread, group is unread
         if (!n.read) {
           group.read = false;
+          group._unreadLikeCount += 1;
         }
       }
     } else {
@@ -42,6 +44,7 @@ function mergeLikeNotifications(notifications) {
       content: `${group._likeCount}人赞了你的帖子《${group.relatedData?.postTitle || '未知帖子'}》`,
       _isMerged: true,
       _likeIds: group._likeIds,
+      _unreadLikeCount: group._unreadLikeCount,
     });
   });
 
@@ -96,13 +99,13 @@ const useNotificationStore = create((set, get) => ({
       if (notification && !notification.read) {
         // Handle merged likes
         if (notification._isMerged && notification._likeIds) {
-          const unreadLikeCount = notifications.filter(
-            (n) => notification._likeIds.includes(n._id) && !n.read
-          ).length;
+          const unreadLikeCount = notification._unreadLikeCount || 0;
           // Mark all likes in this group as read
           set({
             notifications: notifications.map((n) =>
-              n._id === notificationId ? { ...n, read: true } : n
+              n._id === notificationId
+                ? { ...n, read: true, _unreadLikeCount: 0 }
+                : n
             ),
             unreadCount: Math.max(0, get().unreadCount - unreadLikeCount),
           });

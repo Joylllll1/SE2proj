@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../common/Icon';
 
-function TrendingPage({ onOpenPost }) {
+function TrendingPage() {
   const [category, setCategory] = useState('全部');
   const trendingPosts = [
     { id: 'T-001', tag: '期末周碎碎念', count: '1.2w 讨论', heat: 95, description: '期末复习的压力与吐槽，大家互帮互助一起扛过去。' },

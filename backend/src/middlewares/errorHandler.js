@@ -1,6 +1,10 @@
-const errorHandler = (err, req, res, _next) => {
+const errorHandler = (err, _req, res, _next) => {
   if (err.isOperational) {
-    return res.status(err.statusCode).json({ error: err.message });
+    return res.status(err.statusCode).json({
+      error: err.message,
+      errorCode: err.errorCode,
+      ...(err.details || {}),
+    });
   }
 
   // Mongoose duplicate key

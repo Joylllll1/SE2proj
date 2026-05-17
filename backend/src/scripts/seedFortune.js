@@ -1,7 +1,4 @@
-import mongoose from 'mongoose';
 import FortuneItem from '../models/FortuneItem.js';
-
-const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/treehole';
 
 const dos = [
   // ── 学习求知 ──

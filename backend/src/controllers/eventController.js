@@ -1,5 +1,4 @@
 import * as eventService from '../services/eventService.js';
-import AppError from '../utils/AppError.js';
 
 // ─── Public Routes ───
 
