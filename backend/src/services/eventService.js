@@ -76,6 +76,13 @@ export async function getPublicEvents() {
     .lean();
 }
 
+export async function getMyEvents(userId) {
+  return Event.find({ submittedBy: userId })
+    .select('title type place time description image status reviewedAt rejectionReason createdAt')
+    .sort({ createdAt: -1 })
+    .lean();
+}
+
 // ─── Event Actions ───
 
 export async function approveEvent(eventId, adminId) {

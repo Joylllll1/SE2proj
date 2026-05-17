@@ -16,6 +16,12 @@ export async function createEvent(req, res) {
   res.status(201).json({ event });
 }
 
+export async function getMyEvents(req, res) {
+  const userId = req.user._id;
+  const events = await eventService.getMyEvents(userId);
+  res.json({ events });
+}
+
 // ─── Admin Routes ───
 
 export async function getPendingEvents(_req, res) {

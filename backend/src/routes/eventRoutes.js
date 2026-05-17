@@ -10,6 +10,7 @@ router.get('/', eventController.getPublicEvents);
 
 // Authenticated routes (any logged-in user)
 router.post('/', auth, eventController.createEvent);
+router.get('/my', auth, eventController.getMyEvents);
 
 // Admin only routes
 router.get('/pending', auth, isAdmin, eventController.getPendingEvents);

@@ -16,6 +16,7 @@ import ComposePage from './components/pages/ComposePage';
 import DraftsPage from './components/pages/DraftsPage';
 import LikesPage from './components/pages/LikesPage';
 import AdminDashboard from './components/pages/AdminDashboard';
+import AnnouncementsPage from './components/pages/AnnouncementsPage';
 import UnderConstruction from './components/common/UnderConstruction';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
@@ -313,7 +314,7 @@ function App() {
               onReport={handleReport}
             />
           )}
-          {activePage === 'announcements' && <UnderConstruction feature="公告活动" />}
+          {activePage === 'announcements' && <AnnouncementsPage showToast={showToast} />}
           {activePage === 'admin' && <UnderConstruction feature="管理后台" />}
           {activePage === 'settings' && <SettingsPage />}
         </main>

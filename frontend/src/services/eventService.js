@@ -17,6 +17,11 @@ export async function createEvent(eventData) {
   return data?.event;
 }
 
+export async function getMyEvents() {
+  const data = await request('/api/events/my');
+  return data?.events || [];
+}
+
 // ─── Admin API ───
 
 export async function getPendingEvents() {

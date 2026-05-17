@@ -3,14 +3,40 @@ import * as eventService from '../services/eventService';
 
 const useEventStore = create((set, get) => ({
   // State
+  publicEvents: [],
+  myEvents: [],
   pendingEvents: [],
   approvedEvents: [],
   rejectedEvents: [],
   archivedEvents: [],
+  publicLoading: false,
+  myEventsLoading: false,
   pendingLoading: false,
   approvedLoading: false,
   rejectedLoading: false,
   error: null,
+
+  // Fetch public events (all users)
+  fetchPublicEvents: async () => {
+    set({ publicLoading: true, error: null });
+    try {
+      const events = await eventService.getPublicEvents();
+      set({ publicEvents: events, publicLoading: false });
+    } catch (err) {
+      set({ error: err.message, publicLoading: false });
+    }
+  },
+
+  // Fetch my events (current user's submissions)
+  fetchMyEvents: async () => {
+    set({ myEventsLoading: true, error: null });
+    try {
+      const events = await eventService.getMyEvents();
+      set({ myEvents: events, myEventsLoading: false });
+    } catch (err) {
+      set({ error: err.message, myEventsLoading: false });
+    }
+  },
 
   // Fetch pending events (admin)
   fetchPendingEvents: async () => {
