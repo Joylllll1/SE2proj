@@ -80,6 +80,10 @@ export async function unbanUser(req, res) {
 
 export async function getAuditLogs(req, res) {
   const { action, limit } = req.query;
-  const logs = await adminService.getAuditLogs({ action, limit: parseInt(limit, 10) });
+  const parsedLimit = Number.parseInt(limit, 10);
+  const logs = await adminService.getAuditLogs({
+    action,
+    limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+  });
   res.json({ logs });
 }

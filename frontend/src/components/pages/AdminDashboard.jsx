@@ -597,7 +597,7 @@ function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-gray-600">
-                          {log.targetUserId?.email || log.targetPostId?.title?.slice(0, 20) || '-'}
+                          {log.targetEventId?.title || log.targetUserId?.email || log.targetPostId?.title?.slice(0, 20) || '-'}
                         </td>
                         <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
                           {log.reason || '-'}

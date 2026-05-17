@@ -532,6 +532,7 @@ export async function getAuditLogs({ action, limit = 100 } = {}) {
     .populate('adminId', 'email')
     .populate('targetUserId', 'email')
     .populate('targetPostId', 'title')
+    .populate('targetEventId', 'title')
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean();

@@ -2,6 +2,26 @@ import Event from '../models/Event.js';
 import AuditLog from '../models/AuditLog.js';
 import AppError from '../utils/AppError.js';
 
+const MAX_EVENT_IMAGE_BYTES = 4 * 1024 * 1024;
+
+function ensureApplicantField(value, message, errorCode) {
+  if (!value || !value.trim()) {
+    throw new AppError(message, 400, errorCode);
+  }
+}
+
+async function ensureEventExistsAndStatus(eventId, expectedStatus, invalidStatusMessage) {
+  const event = await Event.findById(eventId).select('status');
+
+  if (!event) {
+    throw new AppError('活动不存在', 404, 'EVENT_NOT_FOUND');
+  }
+
+  if (event.status !== expectedStatus) {
+    throw new AppError(invalidStatusMessage, 400, 'INVALID_STATUS');
+  }
+}
+
 // ─── Event Creation ───
 
 export async function createEvent(eventData, userId) {
@@ -19,6 +39,13 @@ export async function createEvent(eventData, userId) {
   }
   if (!time) {
     throw new AppError('请选择活动时间', 400, 'MISSING_TIME');
+  }
+  ensureApplicantField(applicantName, '请输入申请人姓名', 'MISSING_APPLICANT_NAME');
+  ensureApplicantField(applicantStudentId, '请输入申请人学号', 'MISSING_APPLICANT_STUDENT_ID');
+  ensureApplicantField(applicantPhone, '请输入申请人手机号', 'MISSING_APPLICANT_PHONE');
+  ensureApplicantField(applicantQQ, '请输入申请人QQ号', 'MISSING_APPLICANT_QQ');
+  if (image && Buffer.byteLength(image, 'utf8') > MAX_EVENT_IMAGE_BYTES) {
+    throw new AppError('活动海报过大，请上传 3MB 以内图片', 400, 'IMAGE_TOO_LARGE');
   }
 
   const event = await Event.create({
@@ -73,9 +100,9 @@ export async function getArchivedEvents() {
 }
 
 export async function getPublicEvents() {
-  // Public events: only approved, not archived
-  return Event.find({ status: 'approved' })
-    .select('title type place time description image reviewedAt')
+  // Public events include archived items so the announcement page can render "past events".
+  return Event.find({ status: { $in: ['approved', 'archived'] } })
+    .select('title type place time description image reviewedAt status')
     .sort({ reviewedAt: -1 })
     .lean();
 }
@@ -90,26 +117,27 @@ export async function getMyEvents(userId) {
 // ─── Event Actions ───
 
 export async function approveEvent(eventId, adminId) {
-  const event = await Event.findById(eventId);
+  const event = await Event.findOneAndUpdate(
+    { _id: eventId, status: 'pending' },
+    {
+      status: 'approved',
+      reviewedBy: adminId,
+      reviewedAt: new Date(),
+      rejectionReason: '',
+    },
+    { new: true, runValidators: true }
+  );
 
   if (!event) {
-    throw new AppError('活动不存在', 404, 'EVENT_NOT_FOUND');
+    await ensureEventExistsAndStatus(eventId, 'pending', '只能审核待处理的活动');
   }
-
-  if (event.status !== 'pending') {
-    throw new AppError('只能审核待处理的活动', 400, 'INVALID_STATUS');
-  }
-
-  event.status = 'approved';
-  event.reviewedBy = adminId;
-  event.reviewedAt = new Date();
-  await event.save();
 
   // Create audit log
   await AuditLog.create({
     action: 'approve_event',
     adminId,
     targetUserId: event.submittedBy,
+    targetEventId: event._id,
     reason: '活动审核通过',
   });
 
@@ -121,27 +149,27 @@ export async function rejectEvent(eventId, adminId, reason) {
     throw new AppError('请填写拒绝原因', 400, 'MISSING_REASON');
   }
 
-  const event = await Event.findById(eventId);
+  const event = await Event.findOneAndUpdate(
+    { _id: eventId, status: 'pending' },
+    {
+      status: 'rejected',
+      reviewedBy: adminId,
+      reviewedAt: new Date(),
+      rejectionReason: reason.trim(),
+    },
+    { new: true, runValidators: true }
+  );
 
   if (!event) {
-    throw new AppError('活动不存在', 404, 'EVENT_NOT_FOUND');
+    await ensureEventExistsAndStatus(eventId, 'pending', '只能审核待处理的活动');
   }
-
-  if (event.status !== 'pending') {
-    throw new AppError('只能审核待处理的活动', 400, 'INVALID_STATUS');
-  }
-
-  event.status = 'rejected';
-  event.reviewedBy = adminId;
-  event.reviewedAt = new Date();
-  event.rejectionReason = reason.trim();
-  await event.save();
 
   // Create audit log
   await AuditLog.create({
     action: 'reject_event',
     adminId,
     targetUserId: event.submittedBy,
+    targetEventId: event._id,
     reason: reason.trim(),
   });
 
@@ -149,24 +177,22 @@ export async function rejectEvent(eventId, adminId, reason) {
 }
 
 export async function archiveEvent(eventId, adminId) {
-  const event = await Event.findById(eventId);
+  const event = await Event.findOneAndUpdate(
+    { _id: eventId, status: 'approved' },
+    { status: 'archived' },
+    { new: true, runValidators: true }
+  );
 
   if (!event) {
-    throw new AppError('活动不存在', 404, 'EVENT_NOT_FOUND');
+    await ensureEventExistsAndStatus(eventId, 'approved', '只能归档已通过的活动');
   }
-
-  if (event.status !== 'approved') {
-    throw new AppError('只能归档已通过的活动', 400, 'INVALID_STATUS');
-  }
-
-  event.status = 'archived';
-  await event.save();
 
   // Create audit log
   await AuditLog.create({
     action: 'archive_event',
     adminId,
     targetUserId: event.submittedBy,
+    targetEventId: event._id,
     reason: '活动归档',
   });
 

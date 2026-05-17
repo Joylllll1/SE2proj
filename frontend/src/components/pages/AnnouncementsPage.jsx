@@ -5,6 +5,7 @@ import useAuthStore from '../../store/authStore';
 import { formatEventTime } from '../../utils';
 
 const categories = ['全部活动', '官方活动', '学术讲座', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招'];
+const MAX_POSTER_SIZE_BYTES = 3 * 1024 * 1024;
 
 const statusMap = {
   pending: { label: '待审核', color: 'text-amber-600 bg-amber-100' },
@@ -39,6 +40,7 @@ function AnnouncementsPage({ showToast }) {
   });
   const [posterPreview, setPosterPreview] = useState('');
   const posterInputRef = useRef(null);
+  const posterPreviewUrlRef = useRef('');
 
   // Past events fold
   const [showPastEvents, setShowPastEvents] = useState(false);
@@ -61,10 +63,16 @@ function AnnouncementsPage({ showToast }) {
     }
   }, [fetchPublicEvents, fetchMyEvents, isAuthenticated]);
 
+  useEffect(() => () => {
+    if (posterPreviewUrlRef.current) {
+      URL.revokeObjectURL(posterPreviewUrlRef.current);
+    }
+  }, []);
+
   // Separate current and past events
   const now = new Date();
-  const currentEvents = publicEvents.filter((e) => new Date(e.time) > now);
-  const pastEvents = publicEvents.filter((e) => new Date(e.time) <= now);
+  const currentEvents = publicEvents.filter((e) => e.status !== 'archived' && new Date(e.time) > now);
+  const pastEvents = publicEvents.filter((e) => e.status === 'archived' || new Date(e.time) <= now);
 
   // Filter by category for current events
   const filteredCurrentEvents =
@@ -76,7 +84,18 @@ function AnnouncementsPage({ showToast }) {
   const handlePosterSelect = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_POSTER_SIZE_BYTES) {
+        showToast?.('活动海报过大，请上传 3MB 以内图片');
+        e.target.value = '';
+        return;
+      }
+
+      if (posterPreviewUrlRef.current) {
+        URL.revokeObjectURL(posterPreviewUrlRef.current);
+      }
+
       const url = URL.createObjectURL(file);
+      posterPreviewUrlRef.current = url;
       setPosterPreview(url);
       // Convert to base64 for storage
       const reader = new FileReader();
@@ -128,6 +147,10 @@ function AnnouncementsPage({ showToast }) {
 
   // Reset publish form
   const resetPublishForm = () => {
+    if (posterPreviewUrlRef.current) {
+      URL.revokeObjectURL(posterPreviewUrlRef.current);
+      posterPreviewUrlRef.current = '';
+    }
     setNewEvent({
       title: '',
       place: '',
@@ -141,6 +164,9 @@ function AnnouncementsPage({ showToast }) {
       applicantQQ: '',
     });
     setPosterPreview('');
+    if (posterInputRef.current) {
+      posterInputRef.current.value = '';
+    }
   };
 
   // Format time for display

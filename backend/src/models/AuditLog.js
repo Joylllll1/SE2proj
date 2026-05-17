@@ -11,6 +11,7 @@ const auditLogSchema = new mongoose.Schema(
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     targetUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     targetPostId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' },
+    targetEventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
     targetBanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ban' },
     reason: { type: String },
     days: { type: Number },
