@@ -401,10 +401,10 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen">
       <AdminSidebar activeTab={activeTab} onTabChange={handleTabChange} />
 
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 pb-12">
         {/* Reports Tab */}
         {activeTab === 'reports' && (
           <div>
