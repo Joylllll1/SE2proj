@@ -78,7 +78,12 @@ function AnnouncementsPage({ showToast }) {
     if (file) {
       const url = URL.createObjectURL(file);
       setPosterPreview(url);
-      setNewEvent((prev) => ({ ...prev, poster: url }));
+      // Convert to base64 for storage
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setNewEvent((prev) => ({ ...prev, poster: event.target?.result || '' }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
