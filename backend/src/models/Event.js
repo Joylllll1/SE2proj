@@ -61,6 +61,27 @@ const eventSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, '拒绝原因最多500个字符'],
     },
+    // Applicant contact info (for admin review only)
+    applicantName: {
+      type: String,
+      trim: true,
+      maxlength: [50, '姓名最多50个字符'],
+    },
+    applicantStudentId: {
+      type: String,
+      trim: true,
+      maxlength: [20, '学号最多20个字符'],
+    },
+    applicantPhone: {
+      type: String,
+      trim: true,
+      maxlength: [20, '手机号最多20个字符'],
+    },
+    applicantQQ: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'QQ号最多20个字符'],
+    },
   },
   {
     timestamps: true,

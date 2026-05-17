@@ -23,6 +23,9 @@ export function EventDetailModal({ event, onClose }) {
     });
   };
 
+  // Check if applicant info exists (for admin view)
+  const hasApplicantInfo = event.applicantName || event.applicantStudentId || event.applicantPhone || event.applicantQQ;
+
   return (
     <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/40 animate-modal-fade-in" onClick={onClose}>
       <div className="modal-content w-[min(600px,90vw)] max-h-[85vh] overflow-y-auto rounded-lg bg-white shadow-md animate-modal-scale-in" onClick={(e) => e.stopPropagation()}>
@@ -43,6 +46,17 @@ export function EventDetailModal({ event, onClose }) {
           {event.description && (
             <div className="my-4 p-4 bg-surface-soft rounded-md">
               <p className="m-0 text-text-2 text-sm leading-relaxed">{event.description}</p>
+            </div>
+          )}
+          {hasApplicantInfo && (
+            <div className="my-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-blue-700 text-sm font-semibold mb-2">申请人信息</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {event.applicantName && <p><span className="text-text-3">姓名：</span>{event.applicantName}</p>}
+                {event.applicantStudentId && <p><span className="text-text-3">学号：</span>{event.applicantStudentId}</p>}
+                {event.applicantPhone && <p><span className="text-text-3">手机：</span>{event.applicantPhone}</p>}
+                {event.applicantQQ && <p><span className="text-text-3">QQ：</span>{event.applicantQQ}</p>}
+              </div>
             </div>
           )}
           <div className="flex items-center justify-between gap-4 pt-4 border-t border-line-soft">

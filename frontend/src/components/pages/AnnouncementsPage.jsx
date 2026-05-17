@@ -25,7 +25,18 @@ function AnnouncementsPage({ showToast }) {
 
   // Publish form
   const [showPublishForm, setShowPublishForm] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', place: '', time: '', type: '官方活动', description: '', poster: '' });
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    place: '',
+    time: '',
+    type: '官方活动',
+    description: '',
+    poster: '',
+    applicantName: '',
+    applicantStudentId: '',
+    applicantPhone: '',
+    applicantQQ: '',
+  });
   const [posterPreview, setPosterPreview] = useState('');
   const posterInputRef = useRef(null);
 
@@ -83,11 +94,26 @@ function AnnouncementsPage({ showToast }) {
         type: newEvent.type,
         description: newEvent.description,
         image: newEvent.poster,
+        applicantName: newEvent.applicantName,
+        applicantStudentId: newEvent.applicantStudentId,
+        applicantPhone: newEvent.applicantPhone,
+        applicantQQ: newEvent.applicantQQ,
       });
 
       showToast?.('提交成功，等待审核');
       setShowPublishForm(false);
-      setNewEvent({ title: '', place: '', time: '', type: '官方活动', description: '', poster: '' });
+      setNewEvent({
+        title: '',
+        place: '',
+        time: '',
+        type: '官方活动',
+        description: '',
+        poster: '',
+        applicantName: '',
+        applicantStudentId: '',
+        applicantPhone: '',
+        applicantQQ: '',
+      });
       setPosterPreview('');
 
       // Refresh my events
@@ -115,7 +141,7 @@ function AnnouncementsPage({ showToast }) {
       <section className="section-head large flex items-center justify-between gap-[18px]">
         <div>
           <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Campus Center</p>
-          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">校园公告 & 活动中心</h1>
+          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">校园公告</h1>
           <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">探索南大校园最新资讯、讲座、比赛与活动。</p>
         </div>
         <button
@@ -472,6 +498,35 @@ function AnnouncementsPage({ showToast }) {
                   value={newEvent.description}
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                 />
+                <div className="border-t border-line-soft pt-3 mt-2">
+                  <p className="text-sm font-semibold text-text-2 mb-2">申请人信息（仅管理员可见）</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm"
+                      placeholder="姓名 *"
+                      value={newEvent.applicantName}
+                      onChange={(e) => setNewEvent({ ...newEvent, applicantName: e.target.value })}
+                    />
+                    <input
+                      className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm"
+                      placeholder="学号 *"
+                      value={newEvent.applicantStudentId}
+                      onChange={(e) => setNewEvent({ ...newEvent, applicantStudentId: e.target.value })}
+                    />
+                    <input
+                      className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm"
+                      placeholder="手机号 *"
+                      value={newEvent.applicantPhone}
+                      onChange={(e) => setNewEvent({ ...newEvent, applicantPhone: e.target.value })}
+                    />
+                    <input
+                      className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm"
+                      placeholder="QQ号"
+                      value={newEvent.applicantQQ}
+                      onChange={(e) => setNewEvent({ ...newEvent, applicantQQ: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="poster-upload flex items-center gap-2.5 flex-wrap">
                   <label className="text-sm font-semibold text-text-2">活动海报</label>
                   <button
@@ -502,7 +557,14 @@ function AnnouncementsPage({ showToast }) {
                 <button
                   className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handlePublishEvent}
-                  disabled={!newEvent.title.trim() || !newEvent.place.trim() || !newEvent.time.trim()}
+                  disabled={
+                    !newEvent.title.trim() ||
+                    !newEvent.place.trim() ||
+                    !newEvent.time.trim() ||
+                    !newEvent.applicantName.trim() ||
+                    !newEvent.applicantStudentId.trim() ||
+                    !newEvent.applicantPhone.trim()
+                  }
                   type="button"
                 >
                   提交申请

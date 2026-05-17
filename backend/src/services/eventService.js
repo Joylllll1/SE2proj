@@ -5,7 +5,7 @@ import AppError from '../utils/AppError.js';
 // ─── Event Creation ───
 
 export async function createEvent(eventData, userId) {
-  const { title, type, place, time, description, image } = eventData;
+  const { title, type, place, time, description, image, applicantName, applicantStudentId, applicantPhone, applicantQQ } = eventData;
 
   // Validate required fields
   if (!title || !title.trim()) {
@@ -30,6 +30,10 @@ export async function createEvent(eventData, userId) {
     image: image?.trim() || '',
     status: 'pending',
     submittedBy: userId,
+    applicantName: applicantName?.trim() || '',
+    applicantStudentId: applicantStudentId?.trim() || '',
+    applicantPhone: applicantPhone?.trim() || '',
+    applicantQQ: applicantQQ?.trim() || '',
   });
 
   return event;
