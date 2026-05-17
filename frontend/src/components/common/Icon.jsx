@@ -53,6 +53,7 @@ const Icon = ({ name, filled = false }) => {
     gavel: 'M1 21h12M3 17l9-9 3 3-9 9H3v-3Zm10-10 3-3 3 3-3 3-3-3Z',
     receipt_long: 'M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16l-3-2-2 2-2-2-2 2-2-2-3 2Zm3-8h8m-8-4h8',
     close: 'M6 6l12 12M6 18L18 6',
+    description: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
   };
 
   return (
