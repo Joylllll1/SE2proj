@@ -4,7 +4,7 @@ import useEventStore from '../../store/eventStore';
 import useAuthStore from '../../store/authStore';
 import { formatEventTime } from '../../utils';
 
-const categories = ['全部活动', '学术讲座', '文艺展览', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招', '实习招聘', '校园招聘会'];
+const categories = ['全部活动', '官方活动', '学术讲座', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招', '实习招聘', '校园招聘会'];
 
 const statusMap = {
   pending: { label: '待审核', color: 'text-amber-600 bg-amber-100' },
@@ -128,19 +128,23 @@ function AnnouncementsPage({ showToast }) {
       </section>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-line">
+      <div className="flex gap-2 mb-6">
         <button
-          className={`px-4 py-3 text-sm font-semibold transition-colors duration-150 ${
-            activeTab === 'all' ? 'text-blue border-b-2 border-blue' : 'text-text-2 hover:text-text'
+          className={`rounded-full px-4 py-[10px] text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 ${
+            activeTab === 'all'
+              ? 'bg-blue-soft text-blue border border-blue'
+              : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
           }`}
           onClick={() => setActiveTab('all')}
           type="button"
         >
-          全部活动
+          校园活动
         </button>
         <button
-          className={`px-4 py-3 text-sm font-semibold transition-colors duration-150 ${
-            activeTab === 'my' ? 'text-blue border-b-2 border-blue' : 'text-text-2 hover:text-text'
+          className={`rounded-full px-4 py-[10px] text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 ${
+            activeTab === 'my'
+              ? 'bg-blue-soft text-blue border border-blue'
+              : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
           }`}
           onClick={() => setActiveTab('my')}
           type="button"
