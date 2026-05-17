@@ -4,7 +4,7 @@ import useEventStore from '../../store/eventStore';
 import useAuthStore from '../../store/authStore';
 import { formatEventTime } from '../../utils';
 
-const categories = ['全部活动', '官方活动', '学术讲座', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招', '实习招聘', '校园招聘会'];
+const categories = ['全部活动', '官方活动', '学术讲座', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招'];
 
 const statusMap = {
   pending: { label: '待审核', color: 'text-amber-600 bg-amber-100' },
@@ -462,14 +462,11 @@ function AnnouncementsPage({ showToast }) {
                 >
                   <option value="官方活动">官方活动</option>
                   <option value="学术讲座">学术讲座</option>
-                  <option value="文艺展览">文艺展览</option>
                   <option value="体育赛事">体育赛事</option>
                   <option value="科技竞赛">科技竞赛</option>
                   <option value="志愿公益">志愿公益</option>
                   <option value="答辩">答辩</option>
                   <option value="校招">校招</option>
-                  <option value="实习招聘">实习招聘</option>
-                  <option value="校园招聘会">校园招聘会</option>
                 </select>
                 <textarea
                   className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm min-h-[80px] resize-y"

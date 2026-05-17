@@ -12,7 +12,7 @@ const eventSchema = new mongoose.Schema(
       type: String,
       required: [true, '请选择活动类型'],
       enum: {
-        values: ['官方活动', '学术讲座', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招', '实习招聘', '校园招聘会'],
+        values: ['官方活动', '学术讲座', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招'],
         message: '无效的活动类型',
       },
     },
