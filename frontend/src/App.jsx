@@ -18,6 +18,7 @@ import LikesPage from './components/pages/LikesPage';
 import AdminDashboard from './components/pages/AdminDashboard';
 import AnnouncementsPage from './components/pages/AnnouncementsPage';
 import UnderConstruction from './components/common/UnderConstruction';
+import EmptyState from './components/common/EmptyState';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
 import { getUserId } from './utils';
@@ -26,7 +27,7 @@ import { getUserId } from './utils';
 import useBookmarkStore from './store/bookmarkStore';
 import useCommentStore from './store/commentStore';
 import usePostStore from './store/postStore';
-import useUiStore from './store/uiStore';
+import useUiStore, { ADMIN_ROUTE_PAGES } from './store/uiStore';
 
 // ─── Hooks ───
 import useLikeBookmark from './hooks/useLikeBookmark';
@@ -104,13 +105,15 @@ function App() {
   const confirmPendingNavigation = useUiStore(selectConfirmPendingNavigation);
   const discardPendingNavigation = useUiStore(selectDiscardPendingNavigation);
   const navigate = useUiStore(selectNavigate);
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  const isAdminRoute = activePage === 'admin' || ADMIN_ROUTE_PAGES.includes(activePage);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
   React.useEffect(() => {
     if (isAuthenticated && AUTH_PAGES.includes(activePage)) {
-      navigate('home');
+      navigate(isAdmin ? 'admin-events' : 'home', undefined, { force: true });
     }
-  }, [isAuthenticated, activePage, navigate]);
+  }, [isAuthenticated, isAdmin, activePage, navigate]);
 
   const query = useUiStore(selectQuery);
   const setQuery = useUiStore(selectSetQuery);
@@ -169,8 +172,11 @@ function App() {
     }
   }, [activePage, uiDraftId]);
 
-  // ── Admin check ──
-  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  React.useEffect(() => {
+    if (!isAuthenticated || !isAdmin) return;
+    if (ADMIN_ROUTE_PAGES.includes(activePage)) return;
+    navigate('admin-events', undefined, { force: true });
+  }, [isAuthenticated, isAdmin, activePage, navigate]);
 
   // ── Notification polling ──
   useNotificationPolling(isAuthenticated && !isAdmin);
@@ -320,7 +326,12 @@ function App() {
             />
           )}
           {activePage === 'announcements' && <AnnouncementsPage showToast={showToast} />}
-          {activePage === 'admin' && <UnderConstruction feature="管理后台" />}
+          {isAdminRoute && (
+            <EmptyState
+              title="无权访问管理后台"
+              description="当前账号没有管理员权限。"
+            />
+          )}
           {activePage === 'settings' && <SettingsPage />}
         </main>
       </div>

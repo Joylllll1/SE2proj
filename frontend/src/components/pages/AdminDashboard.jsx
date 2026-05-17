@@ -17,7 +17,7 @@ const BAN_DURATIONS = [
 
 // ─── Modal Components ───
 
-function TraceModal({ post, onClose, onConfirm }) {
+function TraceModal({ onClose, onConfirm }) {
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -59,7 +59,7 @@ function TraceModal({ post, onClose, onConfirm }) {
   );
 }
 
-function BanModal({ userId, postId, onConfirm, onClose }) {
+function BanModal({ postId, onConfirm, onClose }) {
   const [days, setDays] = useState(7);
   const [customDays, setCustomDays] = useState('');
   const [reason, setReason] = useState('');
@@ -267,7 +267,7 @@ function AdminDashboard() {
   const {
     reports, reportsLoading, fetchReports, dismissReport, deletePost, deleteComment,
     bans, bansLoading, fetchBans, banUser, unbanUser,
-    traceResult, traceLoading, tracePost, clearTraceResult,
+    traceResult, tracePost, clearTraceResult,
     auditLogs, auditLogsLoading, fetchAuditLogs,
   } = useAdminStore();
 
