@@ -24,9 +24,9 @@ function AdminSidebar({ activeTab, onTabChange }) {
     <aside className="sidebar sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-[#1a1a2e] z-30 max-md:hidden">
       <div className="pt-5 px-[14px]">
         <button className="brand text-white" type="button">
-          <span className="brand-mark bg-blue-500">A</span>
+          <span className="brand-mark bg-blue-500">后</span>
           <span>
-            <strong className="block text-[17px] font-bold tracking-tight text-white">管理后台</strong>
+            <strong className="block text-[17px] font-bold tracking-tight text-white">后台管理</strong>
             <small className="block mt-px text-gray-400 text-[10px] font-semibold tracking-widest uppercase">Admin Console</small>
           </span>
         </button>
