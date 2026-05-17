@@ -410,32 +410,32 @@ function AdminDashboard() {
           <div>
             <h1 className="text-2xl font-bold mb-6">举报管理</h1>
             {reportsLoading ? (
-              <div className="text-center py-12 text-gray-500">加载中...</div>
+              <div className="text-center py-12 text-text-3">加载中...</div>
             ) : reports.length === 0 ? (
               <EmptyState title="暂无待处理举报" description="举报队列已清空" />
             ) : (
               <div className="space-y-4">
                 {reports.map((report) => (
-                  <div key={report._id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                  <div key={report._id} className="bg-surface rounded-md p-5 shadow-sm border border-line-soft">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          report.targetType === 'post' ? 'bg-orange-100 text-orange-700' :
-                          report.targetType === 'comment' ? 'bg-blue-100 text-blue-700' :
-                          'bg-purple-100 text-purple-700'
+                          report.targetType === 'post' ? 'bg-orange-soft text-orange' :
+                          report.targetType === 'comment' ? 'bg-blue-soft text-blue' :
+                          'bg-purple-soft text-purple'
                         }`}>
                           {report.targetType === 'post' ? '帖子举报' :
                            report.targetType === 'comment' ? '评论举报' : '回复举报'}
                         </span>
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-surface-soft text-text-2">
                           {report.reasons?.[0]?.reason || '举报'}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-text-3">
                           举报 {report.reportCount || report.reasons?.length || 1} 次
                         </span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-text-3">
                           {new Date(report.createdAt).toLocaleString('zh-CN')}
                         </span>
                       </div>
@@ -443,18 +443,18 @@ function AdminDashboard() {
 
                     {/* 帖子举报显示帖子内容 */}
                     {report.targetType === 'post' && report.postId && (
-                      <div className="p-3 bg-gray-50 rounded-lg mb-4">
-                        <h3 className="font-semibold text-gray-800 mb-1">{report.postId.title}</h3>
-                        <p className="text-sm text-gray-600 line-clamp-2">{report.postId.content}</p>
+                      <div className="p-3 bg-surface-soft rounded-md mb-4">
+                        <h3 className="font-semibold text-text mb-1">{report.postId.title}</h3>
+                        <p className="text-sm text-text-2 line-clamp-2">{report.postId.content}</p>
                       </div>
                     )}
 
                     {/* 评论/回复举报只显示内容本身 */}
                     {(report.targetType === 'comment' || report.targetType === 'reply') && (
-                      <div className="p-3 bg-gray-50 rounded-lg mb-4">
-                        <p className="text-sm text-gray-600">{report.targetContent || '[内容已删除]'}</p>
+                      <div className="p-3 bg-surface-soft rounded-md mb-4">
+                        <p className="text-sm text-text-2">{report.targetContent || '[内容已删除]'}</p>
                         {report.postId && (
-                          <p className="text-xs text-gray-400 mt-2">
+                          <p className="text-xs text-text-3 mt-2">
                             所属帖子：{report.postId.title || '[已删除]'}
                           </p>
                         )}
@@ -463,14 +463,14 @@ function AdminDashboard() {
 
                     <div className="flex flex-wrap gap-2">
                       <button
-                        className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50"
+                        className="px-3 py-1.5 text-xs font-semibold border border-line rounded-full text-text-2 hover:bg-surface-soft transition-colors duration-150"
                         onClick={() => setSelectedPost(report.targetType === 'post' ? report.postId : { content: report.targetContent, postId: report.postId, targetType: report.targetType })}
                         type="button"
                       >
                         查看详情
                       </button>
                       <button
-                        className="px-3 py-1.5 text-xs font-semibold border border-blue-200 rounded-full text-blue-600 hover:bg-blue-50"
+                        className="px-3 py-1.5 text-xs font-semibold border border-blue rounded-full text-blue hover:bg-blue-soft transition-colors duration-150"
                         onClick={() => setTraceModalPost({ _id: report.targetId, targetType: report.targetType })}
                         type="button"
                       >
@@ -478,7 +478,7 @@ function AdminDashboard() {
                       </button>
                       {report.targetType === 'post' && (
                         <button
-                          className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
+                          className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
                           onClick={() => handleDeletePost(report.postId?._id || report.targetId)}
                           type="button"
                         >
@@ -487,7 +487,7 @@ function AdminDashboard() {
                       )}
                       {(report.targetType === 'comment' || report.targetType === 'reply') && (
                         <button
-                          className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
+                          className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
                           onClick={() => handleDeleteComment(report.targetId)}
                           type="button"
                         >
@@ -495,7 +495,7 @@ function AdminDashboard() {
                         </button>
                       )}
                       <button
-                        className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-full text-gray-500 hover:bg-gray-50"
+                        className="px-3 py-1.5 text-xs font-semibold border border-line rounded-full text-text-3 hover:bg-surface-soft transition-colors duration-150"
                         onClick={() => dismissReport(report._id)}
                         type="button"
                       >
@@ -514,40 +514,40 @@ function AdminDashboard() {
           <div>
             <h1 className="text-2xl font-bold mb-6">封禁记录</h1>
             {bansLoading ? (
-              <div className="text-center py-12 text-gray-500">加载中...</div>
+              <div className="text-center py-12 text-text-3">加载中...</div>
             ) : bans.length === 0 ? (
               <EmptyState title="暂无封禁记录" description="封禁列表为空" />
             ) : (
               <div className="space-y-4">
                 {bans.map((ban) => (
-                  <div key={ban._id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                  <div key={ban._id} className="bg-surface rounded-md p-5 shadow-sm border border-line-soft">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-semibold text-gray-800">{ban.userId?.email || '未知用户'}</p>
-                        <p className="text-sm text-gray-500 mt-1">原因：{ban.reason}</p>
+                        <p className="font-semibold text-text">{ban.userId?.email || '未知用户'}</p>
+                        <p className="text-sm text-text-2 mt-1">原因：{ban.reason}</p>
                       </div>
                       <div className="text-right">
                         {ban.isActive && !ban.isExpired ? (
-                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-soft text-red">
                             剩余 {ban.remainingDays} 天
                           </span>
                         ) : (
-                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-surface-soft text-text-3">
                             已过期
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                    <div className="flex items-center gap-4 text-xs text-text-3 mb-4">
                       <span>封禁 {ban.days} 天</span>
                       <span>•</span>
                       <span>{new Date(ban.createdAt).toLocaleString('zh-CN')}</span>
                     </div>
                     {ban.relatedPostId && (
-                      <div className="p-2 bg-gray-50 rounded text-xs text-gray-600 mb-4">
+                      <div className="p-2 bg-surface-soft rounded text-xs text-text-2 mb-4">
                         关联帖子：{ban.relatedPostId.title || '[已删除]'}
                         <button
-                          className="ml-2 text-blue-600 hover:underline"
+                          className="ml-2 text-blue hover:underline"
                           onClick={() => setSelectedPost(ban.relatedPostId)}
                           type="button"
                         >
@@ -557,7 +557,7 @@ function AdminDashboard() {
                     )}
                     {ban.isActive && !ban.isExpired && (
                       <button
-                        className="px-3 py-1.5 text-xs font-semibold border border-blue-200 rounded-full text-blue-600 hover:bg-blue-50"
+                        className="px-3 py-1.5 text-xs font-semibold border border-blue rounded-full text-blue hover:bg-blue-soft transition-colors duration-150"
                         onClick={() => setUnbanModalBan(ban)}
                         type="button"
                       >
@@ -576,33 +576,33 @@ function AdminDashboard() {
           <div>
             <h1 className="text-2xl font-bold mb-6">审计日志</h1>
             {auditLogsLoading ? (
-              <div className="text-center py-12 text-gray-500">加载中...</div>
+              <div className="text-center py-12 text-text-3">加载中...</div>
             ) : auditLogs.length === 0 ? (
               <EmptyState title="暂无审计日志" description="操作记录为空" />
             ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="bg-surface rounded-md shadow-sm border border-line-soft overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-surface-soft">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-600">操作</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-600">对象</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-600">原因</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-600">时间</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2">操作</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2">对象</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2">原因</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2">时间</th>
                     </tr>
                   </thead>
                   <tbody>
                     {auditLogs.map((log) => (
-                      <tr key={log._id} className="border-t border-gray-100">
+                      <tr key={log._id} className="border-t border-line-soft">
                         <td className="px-4 py-3">
                           <span className={`px-2 py-1 text-xs rounded-full ${
-                            log.action === 'trace' ? 'bg-purple-100 text-purple-700' :
-                            log.action === 'ban' ? 'bg-red-100 text-red-700' :
-                            log.action === 'unban' ? 'bg-green-100 text-green-700' :
-                            log.action === 'approve_event' ? 'bg-blue-100 text-blue-700' :
-                            log.action === 'reject_event' ? 'bg-red-100 text-red-700' :
-                            log.action === 'archive_event' ? 'bg-gray-100 text-gray-700' :
-                            log.action === 'delete_event' ? 'bg-orange-100 text-orange-700' :
-                            'bg-gray-100 text-gray-700'
+                            log.action === 'trace' ? 'bg-purple-soft text-purple' :
+                            log.action === 'ban' ? 'bg-red-soft text-red' :
+                            log.action === 'unban' ? 'bg-green-soft text-green' :
+                            log.action === 'approve_event' ? 'bg-blue-soft text-blue' :
+                            log.action === 'reject_event' ? 'bg-red-soft text-red' :
+                            log.action === 'archive_event' ? 'bg-surface-soft text-text-2' :
+                            log.action === 'delete_event' ? 'bg-orange-soft text-orange' :
+                            'bg-surface-soft text-text-2'
                           }`}>
                             {log.action === 'trace' ? '追溯' :
                              log.action === 'ban' ? '封禁' :
@@ -613,13 +613,13 @@ function AdminDashboard() {
                              log.action === 'delete_event' ? '下架活动' : '删帖'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-600">
+                        <td className="px-4 py-3 text-text-2">
                           {log.targetEventId?.title || log.targetUserId?.email || log.targetPostId?.title?.slice(0, 20) || '-'}
                         </td>
-                        <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">
+                        <td className="px-4 py-3 text-text-3 max-w-[200px] truncate">
                           {log.reason || '-'}
                         </td>
-                        <td className="px-4 py-3 text-gray-400">
+                        <td className="px-4 py-3 text-text-3">
                           {new Date(log.createdAt).toLocaleString('zh-CN')}
                         </td>
                       </tr>
@@ -637,12 +637,12 @@ function AdminDashboard() {
             <h1 className="text-2xl font-bold mb-6">公告审核</h1>
 
             {/* Event sub-tabs */}
-            <div className="flex gap-2 mb-4 border-b border-gray-200">
+            <div className="flex gap-2 mb-4 border-b border-line-soft">
               <button
                 className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors duration-150 ${
                   eventTab === 'pending'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue text-blue'
+                    : 'border-transparent text-text-3 hover:text-text'
                 }`}
                 onClick={() => setEventTab('pending')}
                 type="button"
@@ -652,8 +652,8 @@ function AdminDashboard() {
               <button
                 className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors duration-150 ${
                   eventTab === 'approved'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue text-blue'
+                    : 'border-transparent text-text-3 hover:text-text'
                 }`}
                 onClick={() => setEventTab('approved')}
                 type="button"
@@ -663,8 +663,8 @@ function AdminDashboard() {
               <button
                 className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors duration-150 ${
                   eventTab === 'rejected'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue text-blue'
+                    : 'border-transparent text-text-3 hover:text-text'
                 }`}
                 onClick={() => setEventTab('rejected')}
                 type="button"
@@ -676,28 +676,28 @@ function AdminDashboard() {
             {/* Pending Events */}
             {eventTab === 'pending' && (
               pendingLoading ? (
-                <div className="text-center py-12 text-gray-500">加载中...</div>
+                <div className="text-center py-12 text-text-3">加载中...</div>
               ) : pendingEvents.length === 0 ? (
                 <EmptyState title="暂无待审核活动" description="活动审核队列已清空" />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {pendingEvents.map((event) => (
-                    <div key={event._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div key={event._id} className="bg-surface rounded-md shadow-sm border border-line-soft overflow-hidden">
                       {event.image && (
-                        <div className="aspect-video overflow-hidden bg-gray-100">
+                        <div className="aspect-video overflow-hidden bg-surface-soft">
                           <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                         </div>
                       )}
                       <div className="p-4">
-                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 mb-2">{event.type}</span>
-                        <h3 className="font-bold text-gray-800 mb-2 line-clamp-2">{event.title}</h3>
-                        <div className="flex items-center gap-3 mb-3 text-gray-500 text-xs">
+                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-soft text-blue mb-2">{event.type}</span>
+                        <h3 className="font-bold text-text mb-2 line-clamp-2">{event.title}</h3>
+                        <div className="flex items-center gap-3 mb-3 text-text-3 text-xs">
                           <span className="flex items-center gap-1"><Icon name="schedule" /> {formatEventTime(event.time)}</span>
                           <span className="flex items-center gap-1"><Icon name="location_on" /> {event.place}</span>
                         </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between pt-3 border-t border-line-soft">
                           <button
-                            className="text-blue-600 text-xs font-semibold hover:underline"
+                            className="text-blue text-xs font-semibold hover:underline"
                             onClick={() => setSelectedEvent(event)}
                             type="button"
                           >
@@ -705,14 +705,14 @@ function AdminDashboard() {
                           </button>
                           <div className="flex gap-2">
                             <button
-                              className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50"
+                              className="px-3 py-1.5 text-xs font-semibold border border-line rounded-full text-text-2 hover:bg-surface-soft transition-colors duration-150"
                               onClick={() => setRejectionEvent(event)}
                               type="button"
                             >
                               拒绝
                             </button>
                             <button
-                              className="px-3 py-1.5 text-xs font-semibold border-0 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+                              className="px-3 py-1.5 text-xs font-semibold border-0 rounded-full bg-blue text-white hover:bg-blue-2 transition-colors duration-150"
                               onClick={() => handleApproveEvent(event._id)}
                               type="button"
                             >
@@ -730,28 +730,28 @@ function AdminDashboard() {
             {/* Approved Events */}
             {eventTab === 'approved' && (
               approvedLoading ? (
-                <div className="text-center py-12 text-gray-500">加载中...</div>
+                <div className="text-center py-12 text-text-3">加载中...</div>
               ) : approvedEvents.length === 0 ? (
                 <EmptyState title="暂无已通过活动" description="已通过的活动将显示在这里" />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {approvedEvents.map((event) => (
-                    <div key={event._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div key={event._id} className="bg-surface rounded-md shadow-sm border border-line-soft overflow-hidden">
                       {event.image && (
-                        <div className="aspect-video overflow-hidden bg-gray-100">
+                        <div className="aspect-video overflow-hidden bg-surface-soft">
                           <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                         </div>
                       )}
                       <div className="p-4">
-                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 mb-2">{event.type}</span>
-                        <h3 className="font-bold text-gray-800 mb-2 line-clamp-2">{event.title}</h3>
-                        <div className="flex items-center gap-3 mb-3 text-gray-500 text-xs">
+                        <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-green-soft text-green mb-2">{event.type}</span>
+                        <h3 className="font-bold text-text mb-2 line-clamp-2">{event.title}</h3>
+                        <div className="flex items-center gap-3 mb-3 text-text-3 text-xs">
                           <span className="flex items-center gap-1"><Icon name="schedule" /> {formatEventTime(event.time)}</span>
                           <span className="flex items-center gap-1"><Icon name="location_on" /> {event.place}</span>
                         </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between pt-3 border-t border-line-soft">
                           <button
-                            className="text-blue-600 text-xs font-semibold hover:underline"
+                            className="text-blue text-xs font-semibold hover:underline"
                             onClick={() => setSelectedEvent(event)}
                             type="button"
                           >
@@ -759,14 +759,14 @@ function AdminDashboard() {
                           </button>
                           <div className="flex gap-2">
                             <button
-                              className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-full text-orange-600 hover:bg-orange-50"
+                              className="px-3 py-1.5 text-xs font-semibold border border-orange rounded-full text-orange hover:bg-orange-soft transition-colors duration-150"
                               onClick={() => handleArchiveEvent(event._id)}
                               type="button"
                             >
                               归档
                             </button>
                             <button
-                              className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-full text-red-600 hover:bg-red-50"
+                              className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
                               onClick={() => handleDeleteEvent(event._id)}
                               type="button"
                             >
@@ -784,34 +784,34 @@ function AdminDashboard() {
             {/* Rejected Events */}
             {eventTab === 'rejected' && (
               rejectedLoading ? (
-                <div className="text-center py-12 text-gray-500">加载中...</div>
+                <div className="text-center py-12 text-text-3">加载中...</div>
               ) : rejectedEvents.length === 0 ? (
                 <EmptyState title="暂无已拒绝活动" description="被拒绝的活动将显示在这里" />
               ) : (
                 <div className="space-y-4">
                   {rejectedEvents.map((event) => (
-                    <div key={event._id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div key={event._id} className="bg-surface rounded-md p-5 shadow-sm border border-line-soft">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 mb-2">{event.type}</span>
-                          <h3 className="font-bold text-gray-800">{event.title}</h3>
+                          <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-red-soft text-red mb-2">{event.type}</span>
+                          <h3 className="font-bold text-text">{event.title}</h3>
                         </div>
                         <button
-                          className="text-blue-600 text-xs font-semibold hover:underline"
+                          className="text-blue text-xs font-semibold hover:underline"
                           onClick={() => setSelectedEvent(event)}
                           type="button"
                         >
                           查看详情
                         </button>
                       </div>
-                      <div className="flex items-center gap-3 mb-3 text-gray-500 text-xs">
+                      <div className="flex items-center gap-3 mb-3 text-text-3 text-xs">
                         <span className="flex items-center gap-1"><Icon name="schedule" /> {formatEventTime(event.time)}</span>
                         <span className="flex items-center gap-1"><Icon name="location_on" /> {event.place}</span>
                       </div>
                       {event.rejectionReason && (
-                        <div className="p-3 bg-red-50 rounded-lg text-sm">
-                          <span className="text-gray-500">拒绝原因：</span>
-                          <span className="text-red-700">{event.rejectionReason}</span>
+                        <div className="p-3 bg-red-soft rounded-md text-sm">
+                          <span className="text-text-3">拒绝原因：</span>
+                          <span className="text-red">{event.rejectionReason}</span>
                         </div>
                       )}
                     </div>
@@ -825,22 +825,22 @@ function AdminDashboard() {
 
       {/* Trace Result Panel */}
       {traceResult && (
-        <div className="fixed bottom-4 right-4 w-80 bg-white rounded-xl shadow-lg p-4 z-50">
+        <div className="fixed bottom-4 right-4 w-80 bg-surface rounded-md shadow-lg p-4 z-50 border border-line-soft">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">追溯结果</h3>
-            <button className="text-gray-400 hover:text-gray-600" onClick={clearTraceResult}>✕</button>
+            <h3 className="font-semibold text-text">追溯结果</h3>
+            <button className="text-text-3 hover:text-text" onClick={clearTraceResult}>✕</button>
           </div>
           <div className="space-y-2 text-sm">
-            <p><span className="text-gray-500">邮箱：</span>{traceResult.email}</p>
-            <p><span className="text-gray-500">发帖：</span>{traceResult.postCount} 篇</p>
-            <p><span className="text-gray-500">评论：</span>{traceResult.commentCount} 条</p>
-            <p><span className="text-gray-500">被举报：</span>{traceResult.reportCount} 次</p>
+            <p><span className="text-text-3">邮箱：</span>{traceResult.email}</p>
+            <p><span className="text-text-3">发帖：</span>{traceResult.postCount} 篇</p>
+            <p><span className="text-text-3">评论：</span>{traceResult.commentCount} 条</p>
+            <p><span className="text-text-3">被举报：</span>{traceResult.reportCount} 次</p>
             {traceResult.isBanned && (
-              <p className="text-red-600">当前封禁中，剩余 {Math.ceil((new Date(traceResult.banExpiresAt) - new Date()) / 86400000)} 天</p>
+              <p className="text-red">当前封禁中，剩余 {Math.ceil((new Date(traceResult.banExpiresAt) - new Date()) / 86400000)} 天</p>
             )}
           </div>
           <button
-            className="w-full mt-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"
+            className="w-full mt-4 py-2 text-sm font-semibold text-white bg-red rounded-lg hover:bg-red-2 transition-colors duration-150"
             onClick={() => {
               setBanModalData({ userId: traceResult.userId || traceResult._id, postId: traceModalPost?._id });
               clearTraceResult();
