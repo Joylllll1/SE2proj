@@ -1,5 +1,6 @@
 import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
+import { notifyLike } from './notificationService.js';
 
 export const createPost = async (userId, data) => {
   const post = await Post.create({ ownerUserId: userId, ...data });
@@ -77,6 +78,11 @@ export const toggleLike = async (userId, postId) => {
   } else {
     post.likedBy.push(userId);
     post.likes += 1;
+
+    // 触发点赞通知（不等待完成）
+    if (post.ownerUserId.toString() !== userId) {
+      notifyLike(post.ownerUserId, post.title, postId).catch(() => {});
+    }
   }
   await post.save();
   return { liked: idx === -1, likes: post.likes };

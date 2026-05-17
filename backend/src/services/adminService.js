@@ -5,6 +5,7 @@ import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
 import User from '../models/User.js';
 import { sendBanNotification, sendUnbanNotification } from './emailService.js';
+import { notifyBanned, notifyUnbanned } from './notificationService.js';
 
 async function resolveAssociatedPostId(targetId, targetType) {
   if (targetType === 'post') {
@@ -332,6 +333,9 @@ export async function banUser(userId, { days, reason, relatedPostId, adminId }) 
     days,
   });
 
+  // 触发封禁通知（不等待完成）
+  notifyBanned(userId, reason).catch(() => {});
+
   // Send email notification (async, don't wait)
   let postInfo = {};
   if (relatedPostId) {
@@ -386,6 +390,9 @@ export async function unbanUser(banId, { reason, adminId, isManual = true }) {
     reason,
     isManual,
   });
+
+  // 触发解封通知（不等待完成）
+  notifyUnbanned(ban.userId._id).catch(() => {});
 
   // Send email notification
   sendUnbanNotification(ban.userId.email, { reason, isManual }).catch(console.error);

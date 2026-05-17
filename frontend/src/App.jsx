@@ -31,22 +31,21 @@ import useUiStore from './store/uiStore';
 // ─── Hooks ───
 import useLikeBookmark from './hooks/useLikeBookmark';
 import usePostActions from './hooks/usePostActions';
+import useNotificationPolling from './hooks/useNotificationPolling';
 import * as postService from './services/postService';
 import * as reportService from './services/reportService';
+import useNotificationStore from './store/notificationStore';
 
 // ─── Stable store selectors (prevents zustand getSnapshot churn) ───
 const selectInitialized = (s) => s.initialized;
 const selectFolderSelectorOpen = (s) => s.folderSelectorOpen;
 const selectCloseFolderSelector = (s) => s.closeFolderSelector;
 const selectCollectionFolders = (s) => s.collectionFolders;
-const selectSelectFolder = (s) => s.selectFolder;
 const selectToast = (s) => s.toast;
 const selectClearToast = (s) => s.clearToast;
 const selectShowToast = (s) => s.showToast;
 const selectAiOpen = (s) => s.aiOpen;
 const selectCloseAi = (s) => s.closeAi;
-const selectNotifs = (s) => s.notifs;
-const selectMarkAllNotifsRead = (s) => s.markAllNotifsRead;
 const selectActivePage = (s) => s.activePage;
 const selectUiDraftId = (s) => s.draftId;
 const selectLeaveConfirm = (s) => s.leaveConfirm;
@@ -67,6 +66,8 @@ const selectPosts = (s) => s.posts;
 const selectBookmarkFolders = (s) => s.bookmarkFolders;
 const selectUpdateFolders = (s) => s.updateFolders;
 const selectUpdateBookmarkFolders = (s) => s.updateBookmarkFolders;
+const selectResetNotifications = (s) => s.reset;
+const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
 
 /* ─── App Root ─── */
 
@@ -90,15 +91,12 @@ function App() {
   const folderSelectorOpen = useBookmarkStore(selectFolderSelectorOpen);
   const closeFolderSelector = useBookmarkStore(selectCloseFolderSelector);
   const collectionFolders = useBookmarkStore(selectCollectionFolders);
-  const selectFolder = useBookmarkStore(selectSelectFolder);
 
   const toast = useUiStore(selectToast);
   const clearToast = useUiStore(selectClearToast);
   const showToast = useUiStore(selectShowToast);
   const aiOpen = useUiStore(selectAiOpen);
   const closeAi = useUiStore(selectCloseAi);
-  const notifs = useUiStore(selectNotifs);
-  const markAllNotifsRead = useUiStore(selectMarkAllNotifsRead);
   const activePage = useUiStore(selectActivePage);
   const uiDraftId = useUiStore(selectUiDraftId);
   const leaveConfirm = useUiStore(selectLeaveConfirm);
@@ -108,7 +106,6 @@ function App() {
   const navigate = useUiStore(selectNavigate);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
-  const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
   React.useEffect(() => {
     if (isAuthenticated && AUTH_PAGES.includes(activePage)) {
       navigate('home');
@@ -138,6 +135,7 @@ function App() {
   const bookmarkFolders = useBookmarkStore(selectBookmarkFolders);
   const updateFolders = useBookmarkStore(selectUpdateFolders);
   const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
+  const resetNotifications = useNotificationStore(selectResetNotifications);
 
   // ── Load comments when entering detail page ──
   React.useEffect(() => {
@@ -173,6 +171,15 @@ function App() {
 
   // ── Admin check ──
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+
+  // ── Notification polling ──
+  useNotificationPolling(isAuthenticated && !isAdmin);
+
+  React.useEffect(() => {
+    if (!isAuthenticated || isAdmin) {
+      resetNotifications();
+    }
+  }, [isAuthenticated, isAdmin, resetNotifications]);
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
@@ -265,8 +272,6 @@ function App() {
           onQueryChange={setQuery}
           onNavigate={navigate}
           onAIOpen={handleToggleAi}
-          notifs={notifs}
-          onMarkAllRead={markAllNotifsRead}
         />
         <main className="p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
           {activePage === 'home' && <HomePage />}

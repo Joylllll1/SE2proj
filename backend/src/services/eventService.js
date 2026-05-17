@@ -1,6 +1,7 @@
 import Event from '../models/Event.js';
 import AuditLog from '../models/AuditLog.js';
 import AppError from '../utils/AppError.js';
+import { notifyEventApproved, notifyEventRejected } from './notificationService.js';
 
 const MAX_EVENT_IMAGE_BYTES = 4 * 1024 * 1024;
 
@@ -141,6 +142,9 @@ export async function approveEvent(eventId, adminId) {
     reason: '活动审核通过',
   });
 
+  // 触发审核通过通知（不等待完成）
+  notifyEventApproved(event.submittedBy, event.title, event._id).catch(() => {});
+
   return event;
 }
 
@@ -172,6 +176,9 @@ export async function rejectEvent(eventId, adminId, reason) {
     targetEventId: event._id,
     reason: reason.trim(),
   });
+
+  // 触发审核拒绝通知（不等待完成）
+  notifyEventRejected(event.submittedBy, event.title, reason.trim(), event._id).catch(() => {});
 
   return event;
 }

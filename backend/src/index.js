@@ -13,6 +13,7 @@ import fortuneRoutes from './routes/fortuneRoutes.js';
 import draftRoutes from './routes/draftRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 dotenv.config();
@@ -35,6 +36,7 @@ app.use('/api/fortune', fortuneRoutes);
 app.use('/api/drafts', draftRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

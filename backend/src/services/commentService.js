@@ -1,8 +1,12 @@
 import Comment from '../models/Comment.js';
 import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
+import { notifyComment } from './notificationService.js';
 
 export const createComment = async (userId, postId, content, official = false) => {
+  const post = await Post.findById(postId);
+  if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
+
   const comment = await Comment.create({
     postId,
     ownerUserId: userId,
@@ -11,6 +15,16 @@ export const createComment = async (userId, postId, content, official = false) =
   });
 
   await Post.findByIdAndUpdate(postId, { $inc: { comments: 1 } });
+
+  // 触发评论通知（不等待完成）
+  if (post.ownerUserId.toString() !== userId) {
+    notifyComment(
+      post.ownerUserId,
+      '匿名用户', // 评论者名字，实际应该通过匿名ID系统获取
+      post.title,
+      postId
+    ).catch(() => {});
+  }
 
   return {
     ...comment.toObject(),
