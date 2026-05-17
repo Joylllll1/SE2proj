@@ -521,7 +521,7 @@ function AnnouncementsPage({ showToast }) {
                     />
                     <input
                       className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm"
-                      placeholder="QQ号"
+                      placeholder="QQ号 *"
                       value={newEvent.applicantQQ}
                       onChange={(e) => setNewEvent({ ...newEvent, applicantQQ: e.target.value })}
                     />
@@ -563,7 +563,8 @@ function AnnouncementsPage({ showToast }) {
                     !newEvent.time.trim() ||
                     !newEvent.applicantName.trim() ||
                     !newEvent.applicantStudentId.trim() ||
-                    !newEvent.applicantPhone.trim()
+                    !newEvent.applicantPhone.trim() ||
+                    !newEvent.applicantQQ.trim()
                   }
                   type="button"
                 >
