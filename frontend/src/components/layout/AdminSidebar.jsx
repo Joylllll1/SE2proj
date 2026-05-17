@@ -21,13 +21,13 @@ function AdminSidebar({ activeTab, onTabChange }) {
   };
 
   return (
-    <aside className="sidebar sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-[#1a1a2e] z-30 max-md:hidden">
+    <aside className="sidebar sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-[#f5f5f7] z-30 max-md:hidden">
       <div className="pt-5 px-[14px]">
-        <button className="brand text-white" type="button">
+        <button className="brand" type="button">
           <span className="brand-mark bg-blue-500">后</span>
           <span>
-            <strong className="block text-[17px] font-bold tracking-tight text-white">后台管理</strong>
-            <small className="block mt-px text-gray-400 text-[10px] font-semibold tracking-widest uppercase">Admin Console</small>
+            <strong className="block text-[17px] font-bold tracking-tight">后台管理</strong>
+            <small className="block mt-px text-text-3 text-[10px] font-semibold tracking-widest uppercase">Admin Console</small>
           </span>
         </button>
         <nav className="grid gap-[5px] mt-4">
