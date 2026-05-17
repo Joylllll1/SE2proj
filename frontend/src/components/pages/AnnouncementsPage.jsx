@@ -86,6 +86,16 @@ function AnnouncementsPage({ showToast }) {
   const handlePublishEvent = async () => {
     if (!newEvent.title.trim()) return;
 
+    // Validate event time is in the future
+    if (newEvent.time) {
+      const eventTime = new Date(newEvent.time);
+      const now = new Date();
+      if (eventTime <= now) {
+        showToast?.('活动时间必须在现在之后');
+        return;
+      }
+    }
+
     try {
       await submitEvent({
         title: newEvent.title,
@@ -500,7 +510,7 @@ function AnnouncementsPage({ showToast }) {
                 />
                 <div className="border-t border-line-soft pt-3 mt-2">
                   <p className="text-sm font-semibold text-text-2 mb-2">申请人信息（仅管理员可见）</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-3">
                     <input
                       className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm"
                       placeholder="姓名 *"
