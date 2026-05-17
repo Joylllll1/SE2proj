@@ -10,6 +10,10 @@ const PAGE_URLS = {
   announcements: '/announcements',
   drafts: '/drafts',
   admin: '/admin',
+  'admin-events': '/admin/events',
+  'admin-reports': '/admin/reports',
+  'admin-bans': '/admin/bans',
+  'admin-audit': '/admin/audit',
   settings: '/settings',
   compose: '/compose',
   login: '/login',
@@ -18,14 +22,32 @@ const PAGE_URLS = {
   'reset-password': '/reset-password',
 };
 
+// Admin 子页面映射
+const ADMIN_TAB_PAGES = {
+  '/admin/events': 'admin-events',
+  '/admin/reports': 'admin-reports',
+  '/admin/bans': 'admin-bans',
+  '/admin/audit': 'admin-audit',
+};
+
+export const ADMIN_PAGE_TABS = {
+  'admin-events': 'events',
+  'admin-reports': 'reports',
+  'admin-bans': 'bans',
+  'admin-audit': 'audit',
+};
+
 // 反向映射：URL → page name
 function urlToPage(url) {
   const path = url.replace(/\/+$/, '') || '/';
+  // 优先匹配精确路径（包括 admin 子页面）
   for (const [page, p] of Object.entries(PAGE_URLS)) {
     if (p === path) return page;
   }
   // 匹配 detail 页：/detail/:id
   if (/^\/detail\//.test(path)) return 'detail';
+  // 匹配 /admin 基础路径，重定向到 events
+  if (path === '/admin') return 'admin-events';
   return null;
 }
 

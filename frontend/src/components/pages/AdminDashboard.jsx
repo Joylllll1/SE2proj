@@ -5,7 +5,7 @@ import AdminSidebar from '../layout/AdminSidebar';
 import { EventDetailModal, RejectionModal } from '../common/EventModals';
 import useAdminStore from '../../store/adminStore';
 import useEventStore from '../../store/eventStore';
-import useUiStore from '../../store/uiStore';
+import useUiStore, { ADMIN_PAGE_TABS } from '../../store/uiStore';
 
 // Ban duration options
 const BAN_DURATIONS = [
@@ -242,7 +242,10 @@ function PostDetailModal({ post, onClose }) {
 // ─── Main Dashboard ───
 
 function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('events');
+  const activePage = useUiStore((s) => s.activePage);
+  const navigate = useUiStore((s) => s.navigate);
+  const activeTab = ADMIN_PAGE_TABS[activePage] || 'events';
+
   const [selectedPost, setSelectedPost] = useState(null);
   const [traceModalPost, setTraceModalPost] = useState(null);
   const [banModalData, setBanModalData] = useState(null);
@@ -254,6 +257,12 @@ function AdminDashboard() {
   const [rejectionEvent, setRejectionEvent] = useState(null);
 
   const showToast = useUiStore((s) => s.showToast);
+
+  // Tab change handler
+  const handleTabChange = (tab) => {
+    const pageName = `admin-${tab}`;
+    navigate(pageName);
+  };
 
   const {
     reports, reportsLoading, fetchReports, dismissReport, deletePost, deleteComment,
@@ -393,7 +402,7 @@ function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <AdminSidebar activeTab={activeTab} onTabChange={handleTabChange} />
 
       <main className="flex-1 p-6">
         {/* Reports Tab */}
