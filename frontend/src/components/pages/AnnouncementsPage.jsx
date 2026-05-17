@@ -112,25 +112,30 @@ function AnnouncementsPage({ showToast }) {
 
       showToast?.('提交成功，等待审核');
       setShowPublishForm(false);
-      setNewEvent({
-        title: '',
-        place: '',
-        time: '',
-        type: '官方活动',
-        description: '',
-        poster: '',
-        applicantName: '',
-        applicantStudentId: '',
-        applicantPhone: '',
-        applicantQQ: '',
-      });
-      setPosterPreview('');
+      resetPublishForm();
 
       // Refresh my events
       fetchMyEvents();
     } catch (err) {
       showToast?.(err.message || '提交失败');
     }
+  };
+
+  // Reset publish form
+  const resetPublishForm = () => {
+    setNewEvent({
+      title: '',
+      place: '',
+      time: '',
+      type: '官方活动',
+      description: '',
+      poster: '',
+      applicantName: '',
+      applicantStudentId: '',
+      applicantPhone: '',
+      applicantQQ: '',
+    });
+    setPosterPreview('');
   };
 
   // Format time for display
@@ -458,7 +463,10 @@ function AnnouncementsPage({ showToast }) {
       {showPublishForm && (
         <div
           className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/40 animate-modal-fade-in"
-          onClick={() => setShowPublishForm(false)}
+          onClick={() => {
+            setShowPublishForm(false);
+            resetPublishForm();
+          }}
         >
           <div
             className="modal-content w-[min(560px,90vw)] max-h-[85vh] overflow-y-auto rounded-lg bg-white shadow-md animate-modal-scale-in"
@@ -559,7 +567,10 @@ function AnnouncementsPage({ showToast }) {
               <div className="modal-actions flex justify-end gap-2.5 mt-5">
                 <button
                   className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-4 py-[7px] bg-white text-text-2 text-[13px] font-semibold transition-all duration-150"
-                  onClick={() => setShowPublishForm(false)}
+                  onClick={() => {
+                    setShowPublishForm(false);
+                    resetPublishForm();
+                  }}
                   type="button"
                 >
                   取消
