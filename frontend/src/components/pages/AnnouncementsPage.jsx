@@ -463,10 +463,6 @@ function AnnouncementsPage({ showToast }) {
       {showPublishForm && (
         <div
           className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/40 animate-modal-fade-in"
-          onClick={() => {
-            setShowPublishForm(false);
-            resetPublishForm();
-          }}
         >
           <div
             className="modal-content w-[min(560px,90vw)] max-h-[85vh] overflow-y-auto rounded-lg bg-white shadow-md animate-modal-scale-in"
@@ -476,7 +472,19 @@ function AnnouncementsPage({ showToast }) {
               <img src={posterPreview} alt="poster preview" className="w-full h-[240px] object-cover rounded-t-lg" />
             )}
             <div className="p-6">
-              <h2 className="text-2xl tracking-tight">发布新活动</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl tracking-tight">发布新活动</h2>
+                <button
+                  className="p-2 rounded-full hover:bg-surface-soft transition-colors"
+                  onClick={() => {
+                    setShowPublishForm(false);
+                    resetPublishForm();
+                  }}
+                  type="button"
+                >
+                  <Icon name="close" />
+                </button>
+              </div>
               <div className="modal-form grid gap-3 mt-4">
                 <input
                   className="w-full px-[14px] py-[10px] border border-line rounded-sm bg-white text-text text-sm"
