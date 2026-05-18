@@ -41,7 +41,7 @@ function mergeLikeNotifications(notifications) {
     merged.push({
       ...group,
       title: '收到新点赞',
-      content: `${group._likeCount}人赞了你的帖子《${group.relatedData?.postTitle || '未知帖子'}》`,
+      content: `你的帖子《${group.relatedData?.postTitle || '未知帖子'}》收到了新的点赞`,
       _isMerged: true,
       _likeIds: group._likeIds,
       _unreadLikeCount: group._unreadLikeCount,
