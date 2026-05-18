@@ -15,6 +15,7 @@ const PAGE_URLS = {
   'admin-bans': '/admin/bans',
   'admin-audit': '/admin/audit',
   settings: '/settings',
+  'settings-password': '/settings/password',
   compose: '/compose',
   login: '/login',
   register: '/register',

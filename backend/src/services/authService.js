@@ -127,3 +127,57 @@ export const logout = async () => {
   // Future: implement refresh token blacklist or Redis blocklist.
   return { message: '已退出登录' };
 };
+
+export const updateProfile = async (userId, data) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError('用户不存在', 401, 'USER_NOT_FOUND');
+  }
+
+  if (data.notificationPreferences) {
+    const { reply, like, announcement, reportResult } = data.notificationPreferences;
+    if (reply !== undefined) user.notificationPreferences.reply = reply;
+    if (like !== undefined) user.notificationPreferences.like = like;
+    if (announcement !== undefined) user.notificationPreferences.announcement = announcement;
+    if (reportResult !== undefined) user.notificationPreferences.reportResult = reportResult;
+  }
+
+  await user.save();
+  return { user: user.toJSON() };
+};
+
+export const changePassword = async (userId, { code, newPassword }) => {
+  if (!code || !newPassword) {
+    throw new AppError('参数不完整', 400, 'MISSING_PARAMS');
+  }
+
+  const user = await User.findById(userId).select('+password');
+  if (!user) {
+    throw new AppError('用户不存在', 401, 'USER_NOT_FOUND');
+  }
+
+  // Verify code
+  const record = await VerificationCode.findOne({ email: user.email, type: 'change_password', verified: true });
+  if (!record) {
+    throw new AppError('请先完成邮箱验证', 400, 'CODE_NOT_VERIFIED');
+  }
+  if (record.expiresAt <= new Date()) {
+    await VerificationCode.deleteMany({ email: user.email, type: 'change_password' });
+    throw new AppError('验证码已过期，请重新发送', 400, 'CODE_EXPIRED');
+  }
+
+  // Validate password strength
+  if (newPassword.length < 8) {
+    throw new AppError('密码至少 8 位', 400, 'WEAK_PASSWORD');
+  }
+  if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+    throw new AppError('密码需包含字母和数字', 400, 'WEAK_PASSWORD');
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  await VerificationCode.deleteOne({ _id: record._id });
+
+  return { message: '密码修改成功' };
+};

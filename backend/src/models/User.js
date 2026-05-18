@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    notificationPreferences: {
+      reply: { type: Boolean, default: true },
+      like: { type: Boolean, default: true },
+      announcement: { type: Boolean, default: true },
+      reportResult: { type: Boolean, default: true },
+    },
   },
   {
     timestamps: true,

@@ -14,17 +14,22 @@ export const sendCode = async (req, res) => {
     throw new AppError('邮箱和验证类型不能为空', 400, 'MISSING_PARAMS');
   }
 
-  // Check email domain
-  const domain = '@' + email.split('@')[1]?.toLowerCase();
-  if (!['@nju.edu.cn', '@smail.nju.edu.cn'].includes(domain)) {
-    throw new AppError('仅支持 nju.edu.cn 和 smail.nju.edu.cn 邮箱', 400, 'INVALID_DOMAIN');
-  }
+  // For change_password, skip domain and existence checks (user is authenticated)
+  if (type === 'change_password') {
+    // No domain check or user existence check needed — user is logged in
+  } else {
+    // Check email domain
+    const domain = '@' + email.split('@')[1]?.toLowerCase();
+    if (!['@nju.edu.cn', '@smail.nju.edu.cn'].includes(domain)) {
+      throw new AppError('仅支持 nju.edu.cn 和 smail.nju.edu.cn 邮箱', 400, 'INVALID_DOMAIN');
+    }
 
-  // For reset_password, check if user exists
-  if (type === 'reset_password') {
-    const user = await User.findOne({ email });
-    if (!user) {
-      throw new AppError('该邮箱尚未注册', 404, 'EMAIL_NOT_FOUND');
+    // For reset_password, check if user exists
+    if (type === 'reset_password') {
+      const user = await User.findOne({ email });
+      if (!user) {
+        throw new AppError('该邮箱尚未注册', 404, 'EMAIL_NOT_FOUND');
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import TopBar from './components/layout/TopBar';
 import AIPanel from './components/features/AIPanel';
 import HomePage from './components/pages/HomePage';
 import SettingsPage from './components/pages/SettingsPage';
+import PasswordChangePage from './components/pages/PasswordChangePage';
 import LandingPage from './components/pages/LandingPage';
 import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
@@ -333,6 +334,7 @@ function App() {
             />
           )}
           {activePage === 'settings' && <SettingsPage />}
+          {activePage === 'settings-password' && <PasswordChangePage />}
         </main>
       </div>
       <AIPanel open={aiOpen} onClose={closeAi} />

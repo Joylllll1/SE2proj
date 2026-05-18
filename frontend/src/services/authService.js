@@ -55,3 +55,17 @@ export async function refreshToken() {
 export async function logout() {
   return request('/api/auth/logout', { method: 'POST' });
 }
+
+export async function updateProfile(data) {
+  return request('/api/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function changePassword({ code, newPassword }) {
+  return request('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ code, newPassword }),
+  });
+}

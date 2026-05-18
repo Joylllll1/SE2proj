@@ -27,3 +27,13 @@ export const logout = async (_req, res) => {
   const result = await authService.logout();
   res.json(result);
 };
+
+export const updateProfile = async (req, res) => {
+  const result = await authService.updateProfile(req.user.id, req.body);
+  res.json(result);
+};
+
+export const changePassword = async (req, res) => {
+  const result = await authService.changePassword(req.user.id, req.body);
+  res.json(result);
+};
