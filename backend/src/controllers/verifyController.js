@@ -7,6 +7,15 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+function ensureAuthenticatedChangePasswordRequest(req, email) {
+  if (!req.user) {
+    throw new AppError('请先登录后再修改密码', 401, 'UNAUTHORIZED_CHANGE_PASSWORD');
+  }
+  if (req.user.email !== email) {
+    throw new AppError('验证码只能发送到当前登录邮箱', 403, 'EMAIL_MISMATCH');
+  }
+}
+
 export const sendCode = async (req, res) => {
   const { email, type } = req.body;
 
@@ -14,9 +23,8 @@ export const sendCode = async (req, res) => {
     throw new AppError('邮箱和验证类型不能为空', 400, 'MISSING_PARAMS');
   }
 
-  // For change_password, skip domain and existence checks (user is authenticated)
   if (type === 'change_password') {
-    // No domain check or user existence check needed — user is logged in
+    ensureAuthenticatedChangePasswordRequest(req, email);
   } else {
     // Check email domain
     const domain = '@' + email.split('@')[1]?.toLowerCase();
@@ -54,6 +62,10 @@ export const checkCode = async (req, res) => {
 
   if (!email || !code || !type) {
     throw new AppError('参数不完整', 400, 'MISSING_PARAMS');
+  }
+
+  if (type === 'change_password') {
+    ensureAuthenticatedChangePasswordRequest(req, email);
   }
 
   const record = await VerificationCode.findOne({ email, type, verified: false });

@@ -156,10 +156,17 @@ export const changePassword = async (userId, { code, newPassword }) => {
     throw new AppError('用户不存在', 401, 'USER_NOT_FOUND');
   }
 
+  const normalizedCode = String(code).trim();
+
   // Verify code
-  const record = await VerificationCode.findOne({ email: user.email, type: 'change_password', verified: true });
+  const record = await VerificationCode.findOne({
+    email: user.email,
+    type: 'change_password',
+    code: normalizedCode,
+    verified: true,
+  });
   if (!record) {
-    throw new AppError('请先完成邮箱验证', 400, 'CODE_NOT_VERIFIED');
+    throw new AppError('验证码无效或尚未验证', 400, 'CODE_NOT_VERIFIED');
   }
   if (record.expiresAt <= new Date()) {
     await VerificationCode.deleteMany({ email: user.email, type: 'change_password' });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Icon from '../common/Icon';
 import useAuthStore from '../../store/authStore';
 import * as authService from '../../services/authService';
@@ -10,30 +10,57 @@ function formatDate(dateStr) {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
-function SettingsPage() {
-  const user = useAuthStore((s) => s.user);
-  const showToast = useUiStore((s) => s.showToast);
-  const navigate = useUiStore((s) => s.navigate);
-
-  const [prefs, setPrefs] = useState(() => ({
+function getNotificationPreferences(user) {
+  return {
     reply: user?.notificationPreferences?.reply ?? true,
     like: user?.notificationPreferences?.like ?? true,
     announcement: user?.notificationPreferences?.announcement ?? true,
     reportResult: user?.notificationPreferences?.reportResult ?? true,
-  }));
+  };
+}
+
+function SettingsPage() {
+  const user = useAuthStore((s) => s.user);
+  const showToast = useUiStore((s) => s.showToast);
+  const navigate = useUiStore((s) => s.navigate);
+  const [prefs, setPrefs] = useState(() => getNotificationPreferences(user));
+  const [savingKey, setSavingKey] = useState(null);
+  const prefsRef = useRef(prefs);
+  const savingRef = useRef(false);
+
+  useEffect(() => {
+    const nextPrefs = getNotificationPreferences(user);
+    prefsRef.current = nextPrefs;
+    setPrefs(nextPrefs);
+  }, [user]);
 
   const toggle = useCallback(async (key) => {
-    const prev = prefs;
+    if (savingRef.current) return;
+
+    const prev = prefsRef.current;
     const next = { ...prev, [key]: !prev[key] };
+    prefsRef.current = next;
     setPrefs(next);
+    savingRef.current = true;
+    setSavingKey(key);
+
     try {
       const data = await authService.updateProfile({ notificationPreferences: next });
-      useAuthStore.setState({ user: data.user });
+      const savedPrefs = getNotificationPreferences(data.user);
+      prefsRef.current = savedPrefs;
+      setPrefs(savedPrefs);
+      useAuthStore.setState((state) => ({
+        user: state.user ? { ...state.user, ...data.user } : data.user,
+      }));
     } catch {
+      prefsRef.current = prev;
       setPrefs(prev);
       showToast('更新失败，请重试');
+    } finally {
+      savingRef.current = false;
+      setSavingKey(null);
     }
-  }, [prefs, showToast]);
+  }, [showToast]);
 
   return (
     <div className="settings-page max-w-[960px] mx-auto">
@@ -74,8 +101,8 @@ function SettingsPage() {
               <div className="settings-row toggle-row flex items-center justify-between gap-4 px-5 py-3 border-b border-line-soft text-sm last:border-0" key={key}>
                 <span className="text-text-2">{label}</span>
                 <label className="toggle relative inline-block w-[44px] h-[26px] flex-shrink-0">
-                  <input className="opacity-0 w-0 h-0" type="checkbox" checked={prefs[key]} onChange={() => toggle(key)} />
-                  <span className={`toggle-slider absolute inset-0 rounded-full cursor-pointer transition-colors duration-200 ${prefs[key] ? 'bg-blue' : 'bg-[#d1d5db]'}`}>
+                  <input className="opacity-0 w-0 h-0" type="checkbox" checked={prefs[key]} onChange={() => toggle(key)} disabled={savingKey !== null} />
+                  <span className={`toggle-slider absolute inset-0 rounded-full transition-colors duration-200 ${savingKey !== null ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${prefs[key] ? 'bg-blue' : 'bg-[#d1d5db]'}`}>
                     <span className={`absolute bottom-[3px] left-[3px] w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${prefs[key] ? 'translate-x-[18px]' : ''}`} />
                   </span>
                 </label>

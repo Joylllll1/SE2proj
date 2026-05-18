@@ -1,11 +1,37 @@
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 const NOTIFICATION_LIMIT = 30;
+const TYPE_TO_PREFERENCE = {
+  comment: 'reply',
+  like: 'like',
+  event_approved: 'announcement',
+  event_rejected: 'announcement',
+  banned: 'reportResult',
+  unbanned: 'reportResult',
+};
+
+async function shouldCreateNotification(recipient, type) {
+  const preferenceKey = TYPE_TO_PREFERENCE[type];
+  if (!preferenceKey) return true;
+
+  const user = await User.findById(recipient)
+    .select(`notificationPreferences.${preferenceKey}`)
+    .lean();
+
+  if (!user) return false;
+
+  return user.notificationPreferences?.[preferenceKey] !== false;
+}
 
 // ─── Notification Creation ───
 
 export async function createNotification(data) {
   const { recipient, type, title, content, relatedId, relatedType, relatedData } = data;
+
+  if (!(await shouldCreateNotification(recipient, type))) {
+    return null;
+  }
 
   const notification = await Notification.create({
     recipient,
