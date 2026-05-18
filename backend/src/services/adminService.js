@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import { sendBanNotification, sendUnbanNotification } from './emailService.js';
 import { notifyBanned, notifyUnbanned } from './notificationService.js';
+import { syncPostCommentCount } from './commentCountService.js';
 
 async function resolveAssociatedPostId(targetId, targetType) {
   if (targetType === 'post') {
@@ -521,7 +522,7 @@ export async function deleteComment(commentId, adminId, reason) {
       ],
     });
 
-    await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -(1 + replyIds.length) } });
+    await syncPostCommentCount(comment.postId);
 
     // Create audit log
     await AuditLog.create({
@@ -556,7 +557,7 @@ export async function deleteComment(commentId, adminId, reason) {
   // Mark related reports as processed
   await Report.deleteMany({ targetId: commentId, targetType: 'reply', status: 'pending' });
 
-  await Post.findByIdAndUpdate(parentComment.postId, { $inc: { comments: -1 } });
+  await syncPostCommentCount(parentComment.postId);
 
   // Create audit log
   await AuditLog.create({

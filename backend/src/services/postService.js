@@ -1,6 +1,7 @@
 import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
 import { notifyLike } from './notificationService.js';
+import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountService.js';
 
 function toPostDto(post, userId) {
   return {
@@ -10,7 +11,7 @@ function toPostDto(post, userId) {
     id: post._id.toString(),
     time: formatRelativeTime(post.createdAt),
     likes: post.likes || 0,
-    comments: post.comments || 0,
+    comments: post.visibleCommentCount ?? post.comments ?? 0,
     saves: post.saves || 0,
     isLiked: userId ? post.likedBy?.some((id) => id.toString() === userId) : false,
     isSaved: userId ? post.savedBy?.some((id) => id.toString() === userId) : false,
@@ -34,7 +35,11 @@ export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => 
     Post.countDocuments(filter),
   ]);
 
-  const postsWithLikeStatus = posts.map((p) => toPostDto(p, userId));
+  const visibleCommentCounts = await getVisibleCommentCounts(posts.map((post) => post._id.toString()));
+  const postsWithLikeStatus = posts.map((p) => toPostDto({
+    ...p,
+    visibleCommentCount: visibleCommentCounts.get(p._id.toString()) || 0,
+  }, userId));
 
   return {
     posts: postsWithLikeStatus,
@@ -48,7 +53,8 @@ export const getPostById = async (postId, userId) => {
   const post = await Post.findOne({ _id: postId, isDeleted: false }).lean();
   if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
 
-  return toPostDto(post, userId);
+  const visibleCommentCount = await getVisibleCommentCount(post._id.toString());
+  return toPostDto({ ...post, visibleCommentCount }, userId);
 };
 
 export const deletePost = async (userId, postId) => {
@@ -129,8 +135,13 @@ export const getSavedPosts = async (userId) => {
     .sort({ updatedAt: -1 })
     .lean();
 
+  const visibleCommentCounts = await getVisibleCommentCounts(posts.map((post) => post._id.toString()));
+
   return posts.map((p) => ({
-    ...toPostDto(p, userId),
+    ...toPostDto({
+      ...p,
+      visibleCommentCount: visibleCommentCounts.get(p._id.toString()) || 0,
+    }, userId),
     isSaved: true,
   }));
 };

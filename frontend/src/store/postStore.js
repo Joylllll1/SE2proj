@@ -236,6 +236,13 @@ const usePostStore = create((set, get) => ({
           ? { ...p, comments: Math.max(0, p.comments + increment) }
           : p,
       ),
+      selectedPost:
+        state.selectedPost?.id === postId
+          ? {
+              ...state.selectedPost,
+              comments: Math.max(0, (state.selectedPost.comments || 0) + increment),
+            }
+          : state.selectedPost,
     }));
   },
 

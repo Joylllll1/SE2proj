@@ -1,5 +1,6 @@
 import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
+import { getVisibleCommentCounts } from './commentCountService.js';
 
 export const getUserLikes = async (userId) => {
   // 帖子喜爱：likedBy 含该用户的帖子
@@ -10,6 +11,8 @@ export const getUserLikes = async (userId) => {
     .sort({ updatedAt: -1 })
     .lean();
 
+  const visibleCommentCounts = await getVisibleCommentCounts(likedPosts.map((post) => post._id.toString()));
+
   const posts = likedPosts.map((p) => ({
     id: p._id.toString(),
     title: p.title,
@@ -18,7 +21,7 @@ export const getUserLikes = async (userId) => {
     mood: p.mood,
     moodType: p.moodType,
     likes: p.likes || 0,
-    comments: p.comments || 0,
+    comments: visibleCommentCounts.get(p._id.toString()) || 0,
     saves: p.saves || 0,
     image: p.image,
     images: Array.isArray(p.images) ? p.images : [],

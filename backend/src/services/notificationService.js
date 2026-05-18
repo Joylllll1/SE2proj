@@ -5,8 +5,7 @@ const NOTIFICATION_LIMIT = 30;
 const TYPE_TO_PREFERENCE = {
   comment: 'reply',
   like: 'like',
-  event_approved: 'announcement',
-  event_rejected: 'announcement',
+  announcement: 'announcement',
   banned: 'reportResult',
   unbanned: 'reportResult',
 };
@@ -48,6 +47,40 @@ export async function createNotification(data) {
   cleanupOldNotifications(recipient).catch(() => {});
 
   return notification;
+}
+
+export async function createNotificationsForRecipients(recipients, data) {
+  if (!Array.isArray(recipients) || recipients.length === 0) {
+    return [];
+  }
+
+  const uniqueRecipients = [...new Set(recipients.map((id) => id.toString()))];
+  const eligibleRecipients = await Promise.all(
+    uniqueRecipients.map(async (recipient) => (
+      (await shouldCreateNotification(recipient, data.type)) ? recipient : null
+    ))
+  );
+
+  const finalRecipients = eligibleRecipients.filter(Boolean);
+  if (finalRecipients.length === 0) {
+    return [];
+  }
+
+  const notifications = await Notification.insertMany(
+    finalRecipients.map((recipient) => ({
+      recipient,
+      type: data.type,
+      title: data.title,
+      content: data.content || '',
+      relatedId: data.relatedId || null,
+      relatedType: data.relatedType || null,
+      relatedData: data.relatedData || null,
+      read: false,
+    }))
+  );
+
+  Promise.allSettled(finalRecipients.map((recipient) => cleanupOldNotifications(recipient))).catch(() => {});
+  return notifications;
 }
 
 // ─── Notification Queries ───
@@ -134,6 +167,25 @@ export async function notifyEventApproved(userId, eventTitle, eventId) {
     relatedType: 'event',
     relatedData: { eventTitle },
   });
+}
+
+export async function notifyAnnouncementBroadcast(eventTitle, eventId, { excludeUserIds = [] } = {}) {
+  const excluded = new Set(excludeUserIds.map((id) => id.toString()));
+  const recipients = await User.find({ _id: { $nin: [...excluded] } })
+    .select('_id')
+    .lean();
+
+  return createNotificationsForRecipients(
+    recipients.map((user) => user._id.toString()),
+    {
+      type: 'announcement',
+      title: '校园新公告',
+      content: `校园公告新增了《${eventTitle}》`,
+      relatedId: eventId,
+      relatedType: 'event',
+      relatedData: { eventTitle },
+    }
+  );
 }
 
 export async function notifyEventRejected(userId, eventTitle, reason, eventId) {

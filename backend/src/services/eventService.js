@@ -1,7 +1,7 @@
 import Event from '../models/Event.js';
 import AuditLog from '../models/AuditLog.js';
 import AppError from '../utils/AppError.js';
-import { notifyEventApproved, notifyEventRejected } from './notificationService.js';
+import { notifyAnnouncementBroadcast, notifyEventApproved, notifyEventRejected } from './notificationService.js';
 
 const MAX_EVENT_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -144,6 +144,7 @@ export async function approveEvent(eventId, adminId) {
 
   // 触发审核通过通知（不等待完成）
   notifyEventApproved(event.submittedBy, event.title, event._id).catch(() => {});
+  notifyAnnouncementBroadcast(event.title, event._id, { excludeUserIds: [event.submittedBy] }).catch(() => {});
 
   return event;
 }

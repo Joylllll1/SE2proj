@@ -2,6 +2,7 @@ import Comment from '../models/Comment.js';
 import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
 import { notifyComment } from './notificationService.js';
+import { syncPostCommentCount } from './commentCountService.js';
 
 export const createComment = async (userId, postId, content, official = false) => {
   const post = await Post.findById(postId);
@@ -14,7 +15,7 @@ export const createComment = async (userId, postId, content, official = false) =
     official,
   });
 
-  await Post.findByIdAndUpdate(postId, { $inc: { comments: 1 } });
+  await syncPostCommentCount(postId);
 
   // 触发评论通知（不等待完成）
   if (post.ownerUserId.toString() !== userId) {
@@ -47,7 +48,7 @@ export const addReply = async (userId, commentId, content, official = false, rep
   comment.replies.push(reply);
   await comment.save();
 
-  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: 1 } });
+  await syncPostCommentCount(comment.postId);
 
   const savedReply = comment.replies[comment.replies.length - 1];
   return {
@@ -97,8 +98,7 @@ export const deleteComment = async (userId, commentId) => {
   comment.isDeleted = true;
   await comment.save();
 
-  const hiddenReplyCount = (comment.replies || []).filter((reply) => !reply.isDeleted).length;
-  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -(1 + hiddenReplyCount) } });
+  await syncPostCommentCount(comment.postId);
 };
 
 export const deleteReply = async (userId, commentId, replyId) => {
@@ -114,7 +114,7 @@ export const deleteReply = async (userId, commentId, replyId) => {
   reply.isDeleted = true;
   await comment.save();
 
-  await Post.findByIdAndUpdate(comment.postId, { $inc: { comments: -1 } });
+  await syncPostCommentCount(comment.postId);
 };
 
 export const toggleLike = async (userId, commentId) => {
