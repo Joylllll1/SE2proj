@@ -50,12 +50,8 @@ function AnnouncementsPage({ showToast }) {
   const [activeRailIndex, setActiveRailIndex] = useState(0);
   const currentRailRef = useRef(null);
   const railCardRefs = useRef([]);
-  const railMotionRef = useRef({
-    frameId: null,
-    current: 0,
-    target: 0,
-  });
   const railScrollFrameRef = useRef(null);
+  const activeRailIndexRef = useRef(0);
 
   // Store
   const publicEvents = useEventStore((s) => s.publicEvents);
@@ -79,9 +75,6 @@ function AnnouncementsPage({ showToast }) {
   useEffect(() => () => {
     if (posterPreviewUrlRef.current) {
       URL.revokeObjectURL(posterPreviewUrlRef.current);
-    }
-    if (railMotionRef.current.frameId) {
-      window.cancelAnimationFrame(railMotionRef.current.frameId);
     }
     if (railScrollFrameRef.current) {
       window.cancelAnimationFrame(railScrollFrameRef.current);
@@ -107,6 +100,10 @@ function AnnouncementsPage({ showToast }) {
     railCardRefs.current = railCardRefs.current.slice(0, visibleCurrentEvents.length + 1);
     setActiveRailIndex((current) => Math.min(current, visibleCurrentEvents.length));
   }, [visibleCurrentEvents.length]);
+
+  useEffect(() => {
+    activeRailIndexRef.current = activeRailIndex;
+  }, [activeRailIndex]);
 
   // Handle poster upload
   const handlePosterSelect = (e) => {
@@ -229,43 +226,9 @@ function AnnouncementsPage({ showToast }) {
       }
     });
 
-    setActiveRailIndex(nearestIndex);
-  };
-
-  const animateRailScroll = () => {
-    const rail = currentRailRef.current;
-    const motion = railMotionRef.current;
-    if (!rail) {
-      motion.frameId = null;
-      return;
-    }
-
-    motion.current += (motion.target - motion.current) * 0.14;
-    rail.scrollLeft = motion.current;
-
-    if (Math.abs(motion.target - motion.current) < 0.6) {
-      motion.current = motion.target;
-      rail.scrollLeft = motion.target;
-      motion.frameId = null;
-      updateActiveRailIndex();
-      return;
-    }
-
-    motion.frameId = window.requestAnimationFrame(animateRailScroll);
-  };
-
-  const moveRailTo = (targetLeft) => {
-    const rail = currentRailRef.current;
-    if (!rail) return;
-
-    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-    const clampedTarget = Math.max(0, Math.min(maxScrollLeft, targetLeft));
-    const motion = railMotionRef.current;
-    motion.current = rail.scrollLeft;
-    motion.target = clampedTarget;
-
-    if (!motion.frameId) {
-      motion.frameId = window.requestAnimationFrame(animateRailScroll);
+    if (nearestIndex !== activeRailIndexRef.current) {
+      activeRailIndexRef.current = nearestIndex;
+      setActiveRailIndex(nearestIndex);
     }
   };
 
@@ -275,7 +238,11 @@ function AnnouncementsPage({ showToast }) {
     if (!rail || !targetCard) return;
 
     const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
-    moveRailTo(targetLeft);
+    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
+    rail.scrollTo({
+      left: Math.max(0, Math.min(maxScrollLeft, targetLeft)),
+      behavior: 'smooth',
+    });
   };
 
   const handleRailWheel = (event) => {
@@ -288,18 +255,13 @@ function AnnouncementsPage({ showToast }) {
 
     if (delta !== 0) {
       event.preventDefault();
-      moveRailTo(railMotionRef.current.target + delta * 1.1);
+      rail.scrollLeft += delta * 1.1;
     }
   };
 
   const handleRailScroll = () => {
     const rail = currentRailRef.current;
     if (!rail) return;
-
-    if (railMotionRef.current.frameId) {
-      railMotionRef.current.current = rail.scrollLeft;
-      railMotionRef.current.target = rail.scrollLeft;
-    }
 
     if (railScrollFrameRef.current) return;
     railScrollFrameRef.current = window.requestAnimationFrame(() => {

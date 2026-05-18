@@ -860,6 +860,7 @@ h1, h2, h3, p {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pinch-zoom;
   perspective: 1800px;
+  scroll-behavior: smooth;
 }
 
 .announcement-rail-card {
