@@ -484,22 +484,24 @@ function AnnouncementsPage({ showToast }) {
                 >
                   {railItems.map((item, index) => {
                     const visualOffset = getRailOffset(index, railPosition);
-                    const isActive = Math.abs(visualOffset) < 0.5;
-                    const isVisible = Math.abs(visualOffset) <= Math.min(2.35, railItemCount - 0.65);
+                    const absOffset = Math.abs(visualOffset);
+                    const isInteractive = absOffset <= Math.min(1.9, railItemCount - 0.55);
                     const cardStyle = {
                       '--rail-offset': visualOffset,
-                      '--rail-abs-offset': Math.abs(visualOffset),
+                      '--rail-abs-offset': absOffset,
+                      '--rail-focus': Math.max(0, 1 - Math.min(absOffset, 1)),
+                      zIndex: Math.max(1, 400 - Math.round(absOffset * 100)),
                     };
 
                     if (item.kind === 'proposal') {
                       return (
                         <article
-                          className={`announcement-rail-card new-event-card ${isActive ? 'is-active' : ''} ${isVisible ? 'is-visible' : 'is-hidden'}`}
+                          className={`announcement-rail-card new-event-card ${isInteractive ? '' : 'is-passive'}`}
                           key={item.key}
                           onClick={() => setShowPublishForm(true)}
                           role="button"
-                          tabIndex={isVisible ? 0 : -1}
-                          aria-hidden={!isVisible}
+                          tabIndex={isInteractive ? 0 : -1}
+                          aria-hidden={!isInteractive}
                           style={cardStyle}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -515,7 +517,7 @@ function AnnouncementsPage({ showToast }) {
                           <button
                             type="button"
                             className="border-0 rounded-full px-[13px] py-[9px] text-blue bg-blue-soft font-bold"
-                            tabIndex={isVisible ? 0 : -1}
+                            tabIndex={isInteractive ? 0 : -1}
                             onClick={(event) => {
                               event.stopPropagation();
                               setShowPublishForm(true);
@@ -529,12 +531,12 @@ function AnnouncementsPage({ showToast }) {
 
                     return (
                       <article
-                        className={`announcement-rail-card announcement-card ${isActive ? 'is-active' : ''} ${isVisible ? 'is-visible' : 'is-hidden'}`}
+                        className={`announcement-rail-card announcement-card ${isInteractive ? '' : 'is-passive'}`}
                         key={item.key}
                         onClick={() => setSelectedAnnouncement(item.event)}
                         role="button"
-                        tabIndex={isVisible ? 0 : -1}
-                        aria-hidden={!isVisible}
+                        tabIndex={isInteractive ? 0 : -1}
+                        aria-hidden={!isInteractive}
                         style={cardStyle}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
@@ -566,7 +568,7 @@ function AnnouncementsPage({ showToast }) {
                             <strong>点开查看完整信息</strong>
                             <button
                               type="button"
-                              tabIndex={isVisible ? 0 : -1}
+                              tabIndex={isInteractive ? 0 : -1}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setSelectedAnnouncement(item.event);
