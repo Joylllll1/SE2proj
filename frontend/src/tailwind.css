@@ -880,10 +880,8 @@ h1, h2, h3, p {
   opacity: calc(1 - min(var(--rail-abs-offset, 0), 4) * 0.12);
   z-index: calc(30 - min(var(--rail-abs-offset, 0), 9));
   transition:
-    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 180ms ease,
-    box-shadow 220ms ease,
-    border-color 180ms ease;
+    box-shadow 180ms ease,
+    border-color 160ms ease;
 }
 
 .announcement-rail-card:hover {

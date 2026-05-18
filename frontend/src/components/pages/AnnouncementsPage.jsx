@@ -48,11 +48,12 @@ function AnnouncementsPage({ showToast }) {
   // Past events fold
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [activeRailIndex, setActiveRailIndex] = useState(0);
+  const [railPosition, setRailPosition] = useState(0);
   const activeRailIndexRef = useRef(0);
-  const railWheelGestureRef = useRef({ x: 0, y: 0 });
-  const railWheelLockRef = useRef(false);
-  const railWheelIdleTimeoutRef = useRef(null);
-  const railTransitionTimeoutRef = useRef(null);
+  const railPositionRef = useRef(0);
+  const railTargetRef = useRef(0);
+  const railAnimationFrameRef = useRef(null);
+  const railSnapTimeoutRef = useRef(null);
   const railTouchStartRef = useRef(null);
 
   // Store
@@ -78,11 +79,11 @@ function AnnouncementsPage({ showToast }) {
     if (posterPreviewUrlRef.current) {
       URL.revokeObjectURL(posterPreviewUrlRef.current);
     }
-    if (railWheelIdleTimeoutRef.current) {
-      window.clearTimeout(railWheelIdleTimeoutRef.current);
+    if (railSnapTimeoutRef.current) {
+      window.clearTimeout(railSnapTimeoutRef.current);
     }
-    if (railTransitionTimeoutRef.current) {
-      window.clearTimeout(railTransitionTimeoutRef.current);
+    if (railAnimationFrameRef.current) {
+      window.cancelAnimationFrame(railAnimationFrameRef.current);
     }
   }, []);
 
@@ -118,23 +119,37 @@ function AnnouncementsPage({ showToast }) {
     return ((index % railItemCount) + railItemCount) % railItemCount;
   };
 
-  const getRailOffset = (index) => {
-    if (railItemCount <= 1) return index - activeRailIndex;
+  const wrapRailPosition = (position) => {
+    if (railItemCount === 0) return 0;
+    return ((position % railItemCount) + railItemCount) % railItemCount;
+  };
 
-    const forward = (index - activeRailIndex + railItemCount) % railItemCount;
-    const backward = forward - railItemCount;
+  const getRailOffset = (index, position) => {
+    if (railItemCount <= 1) return index - position;
 
-    if (Math.abs(backward) < Math.abs(forward)) {
-      return backward;
+    let offset = index - position;
+    const half = railItemCount / 2;
+
+    if (offset > half) {
+      offset -= railItemCount;
+    } else if (offset < -half) {
+      offset += railItemCount;
     }
 
-    return forward;
+    return offset;
   };
 
   useEffect(() => {
+    const nextPosition = railItemCount === 0
+      ? 0
+      : ((railTargetRef.current % railItemCount) + railItemCount) % railItemCount;
+    const roundedIndex = Math.round(nextPosition);
     const nextIndex = railItemCount === 0
       ? 0
-      : ((activeRailIndexRef.current % railItemCount) + railItemCount) % railItemCount;
+      : ((roundedIndex % railItemCount) + railItemCount) % railItemCount;
+    railPositionRef.current = nextPosition;
+    railTargetRef.current = nextPosition;
+    setRailPosition(nextPosition);
     activeRailIndexRef.current = nextIndex;
     setActiveRailIndex(nextIndex);
   }, [railItemCount]);
@@ -244,21 +259,69 @@ function AnnouncementsPage({ showToast }) {
     return statusMap[status] || statusMap.approved;
   };
 
+  const syncActiveRailIndex = (position) => {
+    const nextIndex = wrapRailIndex(Math.round(position));
+    if (nextIndex !== activeRailIndexRef.current) {
+      activeRailIndexRef.current = nextIndex;
+      setActiveRailIndex(nextIndex);
+    }
+  };
+
+  const ensureRailAnimation = () => {
+    if (railAnimationFrameRef.current || !railLoopEnabled) return;
+
+    const tick = () => {
+      const current = railPositionRef.current;
+      const target = railTargetRef.current;
+      const offset = getRailOffset(target, current);
+      const next = Math.abs(offset) < 0.001
+        ? target
+        : wrapRailPosition(current + (offset * 0.18));
+
+      railPositionRef.current = next;
+      setRailPosition(next);
+      syncActiveRailIndex(next);
+
+      if (Math.abs(getRailOffset(target, next)) < 0.0015) {
+        railPositionRef.current = target;
+        setRailPosition(target);
+        syncActiveRailIndex(target);
+        railAnimationFrameRef.current = null;
+        return;
+      }
+
+      railAnimationFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    railAnimationFrameRef.current = window.requestAnimationFrame(tick);
+  };
+
+  const nudgeRailTarget = (delta) => {
+    if (!railLoopEnabled || delta === 0) return;
+    railTargetRef.current = wrapRailPosition(railTargetRef.current + delta);
+    ensureRailAnimation();
+  };
+
+  const snapRailToNearest = () => {
+    if (!railLoopEnabled) return;
+    railTargetRef.current = wrapRailIndex(Math.round(railTargetRef.current));
+    ensureRailAnimation();
+  };
+
+  const scheduleRailSnap = (delay = 110) => {
+    if (railSnapTimeoutRef.current) {
+      window.clearTimeout(railSnapTimeoutRef.current);
+    }
+    railSnapTimeoutRef.current = window.setTimeout(() => {
+      railSnapTimeoutRef.current = null;
+      snapRailToNearest();
+    }, delay);
+  };
+
   const moveRailBy = (step) => {
     if (!railLoopEnabled || step === 0) return;
-
-    const nextIndex = wrapRailIndex(activeRailIndexRef.current + step);
-    activeRailIndexRef.current = nextIndex;
-    setActiveRailIndex(nextIndex);
-
-    railWheelGestureRef.current = { x: 0, y: 0 };
-    if (railTransitionTimeoutRef.current) {
-      window.clearTimeout(railTransitionTimeoutRef.current);
-    }
-
-    railTransitionTimeoutRef.current = window.setTimeout(() => {
-      railTransitionTimeoutRef.current = null;
-    }, 220);
+    railTargetRef.current = wrapRailIndex(Math.round(railTargetRef.current) + step);
+    ensureRailAnimation();
   };
 
   const handleRailArrow = (direction) => {
@@ -270,34 +333,16 @@ function AnnouncementsPage({ showToast }) {
 
     const absDeltaX = Math.abs(event.deltaX);
     const absDeltaY = Math.abs(event.deltaY);
-    if (absDeltaX < 2 && absDeltaY < 2) return;
-    if (absDeltaX <= absDeltaY * 1.1) return;
+
+    if (absDeltaX < 1.5 || absDeltaX <= absDeltaY * 1.08) return;
 
     if (event.cancelable) {
       event.preventDefault();
     }
 
-    if (railWheelIdleTimeoutRef.current) {
-      window.clearTimeout(railWheelIdleTimeoutRef.current);
-    }
-    railWheelIdleTimeoutRef.current = window.setTimeout(() => {
-      railWheelGestureRef.current = { x: 0, y: 0 };
-      railWheelLockRef.current = false;
-      railWheelIdleTimeoutRef.current = null;
-    }, 120);
-
-    railWheelGestureRef.current = {
-      x: railWheelGestureRef.current.x + event.deltaX,
-      y: railWheelGestureRef.current.y + event.deltaY,
-    };
-
-    if (railWheelLockRef.current) return;
-    if (Math.abs(railWheelGestureRef.current.x) < 16) {
-      return;
-    }
-
-    railWheelLockRef.current = true;
-    moveRailBy(railWheelGestureRef.current.x > 0 ? 1 : -1);
+    const normalizedDelta = Math.max(-0.45, Math.min(0.45, event.deltaX / 180));
+    nudgeRailTarget(normalizedDelta);
+    scheduleRailSnap(120);
   };
 
   const handleRailTouchStart = (event) => {
@@ -438,9 +483,9 @@ function AnnouncementsPage({ showToast }) {
                   onTouchEnd={handleRailTouchEnd}
                 >
                   {railItems.map((item, index) => {
-                    const visualOffset = getRailOffset(index);
-                    const isActive = visualOffset === 0;
-                    const isVisible = Math.abs(visualOffset) <= Math.min(2, railItemCount - 1);
+                    const visualOffset = getRailOffset(index, railPosition);
+                    const isActive = Math.abs(visualOffset) < 0.5;
+                    const isVisible = Math.abs(visualOffset) <= Math.min(2.35, railItemCount - 0.65);
                     const cardStyle = {
                       '--rail-offset': visualOffset,
                       '--rail-abs-offset': Math.abs(visualOffset),
