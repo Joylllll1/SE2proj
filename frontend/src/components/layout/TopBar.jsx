@@ -140,9 +140,8 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
             </div>
           )}
         </div>
-        <button className="profile-button flex items-center gap-2 h-[38px] py-1 px-3 border border-line rounded-full bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px" type="button">
-          <span className="grid w-7 h-7 place-items-center rounded-full text-white bg-[#1d1d1f] text-xs font-bold">W</span>
-          <strong className="text-xs font-semibold max-sm:hidden">校园邮箱已验证</strong>
+        <button className="icon-button grid w-[38px] h-[38px] place-items-center rounded-full border border-line bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px" type="button" aria-label="个人设置" onClick={() => onNavigate('settings')}>
+          <Icon name="person" />
         </button>
       </div>
     </header>
