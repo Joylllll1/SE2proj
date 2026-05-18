@@ -10,18 +10,9 @@ const FORTUNE_LEVELS = [
   { level: '大凶', weight: 10 },
 ];
 
-function createSeededRng(seed) {
-  let s = seed | 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) | 0;
-    return (s >>> 0) / 4294967296;
-  };
-}
-
-function pickWeighted(seed) {
-  const rng = createSeededRng(seed);
+function pickWeighted() {
   const total = FORTUNE_LEVELS.reduce((s, l) => s + l.weight, 0);
-  const r = rng() * total;
+  const r = Math.random() * total;
   let sum = 0;
   for (const { level, weight } of FORTUNE_LEVELS) {
     sum += weight;
@@ -35,11 +26,10 @@ function getToday() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function pickRandom(arr, count, seed) {
-  const rng = createSeededRng(seed);
+function pickRandom(arr, count) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
+    const j = Math.floor(Math.random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a.slice(0, count);
@@ -77,17 +67,14 @@ export const checkin = async (userId) => {
     return { checkedIn: false, ...existing, streak };
   }
 
-  // 运势等级（加权随机）
-  const dateNum = parseInt(today.replace(/-/g, ''));
-  const userNum = parseInt((userId || '').slice(-6)) || 0;
-  const seed = dateNum + userNum;
-  const level = pickWeighted(seed);
+  // 运势等级：当天首次打卡时真正随机一次，然后落库固定当日结果
+  const level = pickWeighted();
 
-  // 选取宜忌（Fisher-Yates 真洗牌）
+  // 选取宜忌：当天首次打卡时随机一次，然后落库固定当日结果
   const allDos = await FortuneItem.find({ type: 'dos' }).lean();
   const allDonts = await FortuneItem.find({ type: 'donts' }).lean();
-  const dos = pickRandom(allDos, 2, seed + 1);
-  const donts = pickRandom(allDonts, 2, seed + 2);
+  const dos = pickRandom(allDos, 2);
+  const donts = pickRandom(allDonts, 2);
 
   // 创建打卡记录
   await CheckIn.create({ userId, date: today, level, dos, donts });
