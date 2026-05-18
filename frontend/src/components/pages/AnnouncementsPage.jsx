@@ -50,6 +50,8 @@ function AnnouncementsPage({ showToast }) {
   const [activeRailIndex, setActiveRailIndex] = useState(0);
   const activeRailIndexRef = useRef(0);
   const railWheelDeltaRef = useRef(0);
+  const railWheelLockRef = useRef(false);
+  const railWheelIdleTimeoutRef = useRef(null);
   const railTransitionTimeoutRef = useRef(null);
   const railTouchStartRef = useRef(null);
 
@@ -75,6 +77,9 @@ function AnnouncementsPage({ showToast }) {
   useEffect(() => () => {
     if (posterPreviewUrlRef.current) {
       URL.revokeObjectURL(posterPreviewUrlRef.current);
+    }
+    if (railWheelIdleTimeoutRef.current) {
+      window.clearTimeout(railWheelIdleTimeoutRef.current);
     }
     if (railTransitionTimeoutRef.current) {
       window.clearTimeout(railTransitionTimeoutRef.current);
@@ -267,10 +272,23 @@ function AnnouncementsPage({ showToast }) {
     if (delta === 0) return;
 
     event.preventDefault();
+
+    if (railWheelIdleTimeoutRef.current) {
+      window.clearTimeout(railWheelIdleTimeoutRef.current);
+    }
+    railWheelIdleTimeoutRef.current = window.setTimeout(() => {
+      railWheelDeltaRef.current = 0;
+      railWheelLockRef.current = false;
+      railWheelIdleTimeoutRef.current = null;
+    }, 180);
+
+    if (railWheelLockRef.current) return;
+
     railWheelDeltaRef.current += delta;
 
     if (Math.abs(railWheelDeltaRef.current) < 72) return;
 
+    railWheelLockRef.current = true;
     moveRailBy(railWheelDeltaRef.current > 0 ? 1 : -1);
   };
 
