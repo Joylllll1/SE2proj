@@ -51,6 +51,8 @@ function AnnouncementsPage({ showToast }) {
   const currentRailRef = useRef(null);
   const railCardRefs = useRef([]);
   const railScrollFrameRef = useRef(null);
+  const railSnapTimeoutRef = useRef(null);
+  const railLoopResetRef = useRef(null);
   const activeRailIndexRef = useRef(0);
 
   // Store
@@ -79,6 +81,12 @@ function AnnouncementsPage({ showToast }) {
     if (railScrollFrameRef.current) {
       window.cancelAnimationFrame(railScrollFrameRef.current);
     }
+    if (railSnapTimeoutRef.current) {
+      window.clearTimeout(railSnapTimeoutRef.current);
+    }
+    if (railLoopResetRef.current) {
+      window.clearTimeout(railLoopResetRef.current);
+    }
   }, []);
 
   // Separate current and past events
@@ -95,11 +103,66 @@ function AnnouncementsPage({ showToast }) {
   const visiblePastEvents = pastEvents.filter((event) => matchEventQuery(event, query));
   const visibleMyEvents = myEvents.filter((event) => matchEventQuery(event, query));
   const searching = hasSearchQuery(query);
+  const railItems = [
+    ...visibleCurrentEvents.map((event) => ({
+      kind: 'event',
+      key: event._id,
+      event,
+    })),
+    {
+      kind: 'proposal',
+      key: 'proposal-card',
+    },
+  ];
+  const railItemCount = railItems.length;
+  const railLoopEnabled = railItemCount > 1;
+  const railRenderItems = railLoopEnabled
+    ? [
+      {
+        ...railItems[railItemCount - 1],
+        clone: 'leading',
+        logicalIndex: railItemCount - 1,
+        renderKey: `leading-${railItems[railItemCount - 1].key}`,
+      },
+      ...railItems.map((item, index) => ({
+        ...item,
+        logicalIndex: index,
+        renderKey: item.key,
+      })),
+      {
+        ...railItems[0],
+        clone: 'trailing',
+        logicalIndex: 0,
+        renderKey: `trailing-${railItems[0].key}`,
+      },
+    ]
+    : railItems.map((item, index) => ({
+      ...item,
+      logicalIndex: index,
+      renderKey: item.key,
+    }));
 
   useEffect(() => {
-    railCardRefs.current = railCardRefs.current.slice(0, visibleCurrentEvents.length + 1);
-    setActiveRailIndex((current) => Math.min(current, visibleCurrentEvents.length));
-  }, [visibleCurrentEvents.length]);
+    railCardRefs.current = railCardRefs.current.slice(0, railRenderItems.length);
+    const nextIndex = Math.min(activeRailIndexRef.current, railItemCount - 1);
+    activeRailIndexRef.current = nextIndex;
+    setActiveRailIndex(nextIndex);
+
+    window.requestAnimationFrame(() => {
+      const displayIndex = railLoopEnabled ? nextIndex + 1 : nextIndex;
+      const targetCard = railCardRefs.current[displayIndex];
+      const rail = currentRailRef.current;
+
+      if (!rail || !targetCard) return;
+
+      const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
+      const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
+      rail.scrollTo({
+        left: Math.max(0, Math.min(maxScrollLeft, targetLeft)),
+        behavior: 'auto',
+      });
+    });
+  }, [railItemCount, railLoopEnabled, railRenderItems.length]);
 
   useEffect(() => {
     activeRailIndexRef.current = activeRailIndex;
@@ -226,63 +289,127 @@ function AnnouncementsPage({ showToast }) {
       }
     });
 
-    if (nearestIndex !== activeRailIndexRef.current) {
-      activeRailIndexRef.current = nearestIndex;
-      setActiveRailIndex(nearestIndex);
+    const nearestLogicalIndex = railRenderItems[nearestIndex]?.logicalIndex ?? 0;
+    if (nearestLogicalIndex !== activeRailIndexRef.current) {
+      activeRailIndexRef.current = nearestLogicalIndex;
+      setActiveRailIndex(nearestLogicalIndex);
     }
   };
 
-  const centerRailCard = (index) => {
+  const centerRailCard = (displayIndex, behavior = 'smooth') => {
     const rail = currentRailRef.current;
-    const targetCard = railCardRefs.current[index];
+    const targetCard = railCardRefs.current[displayIndex];
     if (!rail || !targetCard) return;
 
     const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
     const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
     rail.scrollTo({
       left: Math.max(0, Math.min(maxScrollLeft, targetLeft)),
-      behavior: 'smooth',
+      behavior,
     });
   };
 
-  const handleRailWheel = (event) => {
+  const centerLogicalRailCard = (logicalIndex, behavior = 'smooth') => {
+    centerRailCard(railLoopEnabled ? logicalIndex + 1 : logicalIndex, behavior);
+  };
+
+  const normalizeRailLoopPosition = () => {
     const rail = currentRailRef.current;
-    if (!rail) return;
+    if (!rail || !railLoopEnabled || railLoopResetRef.current) return false;
 
-    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-      ? event.deltaX
-      : event.deltaY;
-
-    if (delta !== 0) {
-      event.preventDefault();
-      rail.scrollLeft += delta * 1.1;
+    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
+    if (rail.scrollLeft <= 1) {
+      centerRailCard(railItemCount, 'auto');
+      window.requestAnimationFrame(() => {
+        activeRailIndexRef.current = railItemCount - 1;
+        setActiveRailIndex(railItemCount - 1);
+      });
+      return true;
     }
+
+    if (rail.scrollLeft >= maxScrollLeft - 1) {
+      centerRailCard(1, 'auto');
+      window.requestAnimationFrame(() => {
+        activeRailIndexRef.current = 0;
+        setActiveRailIndex(0);
+      });
+      return true;
+    }
+
+    return false;
   };
 
   const handleRailScroll = () => {
-    const rail = currentRailRef.current;
-    if (!rail) return;
+    if (railSnapTimeoutRef.current) {
+      window.clearTimeout(railSnapTimeoutRef.current);
+    }
+
+    railSnapTimeoutRef.current = window.setTimeout(() => {
+      if (railLoopResetRef.current) return;
+      centerLogicalRailCard(activeRailIndexRef.current);
+    }, 120);
 
     if (railScrollFrameRef.current) return;
     railScrollFrameRef.current = window.requestAnimationFrame(() => {
       railScrollFrameRef.current = null;
+      if (normalizeRailLoopPosition()) return;
       updateActiveRailIndex();
     });
   };
 
   const handleRailArrow = (direction) => {
-    const nextIndex = Math.max(0, Math.min(activeRailIndex + direction, visibleCurrentEvents.length));
-    centerRailCard(nextIndex);
+    if (railItemCount === 0) return;
+
+    if (railSnapTimeoutRef.current) {
+      window.clearTimeout(railSnapTimeoutRef.current);
+    }
+    if (railLoopResetRef.current) {
+      window.clearTimeout(railLoopResetRef.current);
+      railLoopResetRef.current = null;
+    }
+
+    const currentIndex = activeRailIndexRef.current;
+    const nextIndex = (currentIndex + direction + railItemCount) % railItemCount;
+    const wrapsForward = railLoopEnabled && direction > 0 && currentIndex === railItemCount - 1;
+    const wrapsBackward = railLoopEnabled && direction < 0 && currentIndex === 0;
+
+    activeRailIndexRef.current = nextIndex;
     setActiveRailIndex(nextIndex);
+
+    if (wrapsForward || wrapsBackward) {
+      const cloneDisplayIndex = wrapsForward ? railRenderItems.length - 1 : 0;
+      centerRailCard(cloneDisplayIndex);
+      railLoopResetRef.current = window.setTimeout(() => {
+        railLoopResetRef.current = null;
+        centerLogicalRailCard(nextIndex, 'auto');
+        window.requestAnimationFrame(() => {
+          updateActiveRailIndex();
+        });
+      }, 440);
+      return;
+    }
+
+    centerLogicalRailCard(nextIndex);
   };
 
   useEffect(() => {
     if (!publicLoading) {
       window.requestAnimationFrame(() => {
-        updateActiveRailIndex();
+        const rail = currentRailRef.current;
+        const displayIndex = railLoopEnabled ? activeRailIndexRef.current + 1 : activeRailIndexRef.current;
+        const targetCard = railCardRefs.current[displayIndex];
+
+        if (!rail || !targetCard) return;
+
+        const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
+        const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
+        rail.scrollTo({
+          left: Math.max(0, Math.min(maxScrollLeft, targetLeft)),
+          behavior: 'auto',
+        });
       });
     }
-  }, [publicLoading, visibleCurrentEvents.length]);
+  }, [publicLoading, railLoopEnabled]);
 
   return (
     <div className="announcements-page max-w-[1180px] mx-auto">
@@ -367,13 +494,12 @@ function AnnouncementsPage({ showToast }) {
                   <h2 className="m-0 text-[22px] tracking-tight">正在发生的活动</h2>
                 </div>
                 <div className="announcement-rail-controls">
-                  <p className="hidden text-sm text-text-3 md:block">滚轮、触控板或箭头切换。</p>
+                  <p className="hidden text-sm text-text-3 md:block">触控板横滑或箭头切换。</p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       className="announcement-rail-arrow"
                       onClick={() => handleRailArrow(-1)}
-                      disabled={activeRailIndex === 0}
                       aria-label="查看上一个活动"
                     >
                       <Icon name="arrow_back" />
@@ -382,7 +508,6 @@ function AnnouncementsPage({ showToast }) {
                       type="button"
                       className="announcement-rail-arrow"
                       onClick={() => handleRailArrow(1)}
-                      disabled={activeRailIndex >= visibleCurrentEvents.length}
                       aria-label="查看下一个活动"
                     >
                       <Icon name="arrow_forward" />
@@ -395,95 +520,103 @@ function AnnouncementsPage({ showToast }) {
                 <div
                   ref={currentRailRef}
                   className="announcement-rail"
-                  onWheel={handleRailWheel}
                   onScroll={handleRailScroll}
                 >
-                  {visibleCurrentEvents.map((item, index) => (
-                    <article
-                      ref={(node) => { railCardRefs.current[index] = node; }}
-                      className={`announcement-rail-card announcement-card ${index === activeRailIndex ? 'is-active' : ''}`}
-                      key={item._id}
-                      onClick={() => setSelectedAnnouncement(item)}
-                      role="button"
-                      tabIndex={0}
-                      style={{
-                        '--rail-offset': index - activeRailIndex,
-                        '--rail-abs-offset': Math.abs(index - activeRailIndex),
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          setSelectedAnnouncement(item);
-                        }
-                      }}
-                    >
-                      <img
-                        alt={item.title}
-                        src={item.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80'}
-                        className="announcement-rail-image"
-                      />
-                      <div className="announcement-rail-body">
-                        <div className="announcement-rail-topline">
-                          <span className="pill blue inline-flex items-center gap-[5px] w-fit rounded-full px-3 py-2 text-xs font-semibold text-white bg-blue">
-                            {item.type}
-                          </span>
-                          <span className="announcement-rail-state">即将开始</span>
-                        </div>
-                        <h3>{item.title}</h3>
-                        <p>
-                          <Icon name="schedule" /> {formatTimeForDisplay(item.time)}
-                        </p>
-                        <p>
-                          <Icon name="location_on" /> {item.place}
-                        </p>
-                        <footer>
-                          <strong>点开查看完整信息</strong>
+                  {railRenderItems.map((item, displayIndex) => {
+                    const activeDisplayIndex = railLoopEnabled ? activeRailIndex + 1 : activeRailIndex;
+                    const visualOffset = displayIndex - activeDisplayIndex;
+                    const isActive = item.logicalIndex === activeRailIndex;
+                    const cardStyle = {
+                      '--rail-offset': visualOffset,
+                      '--rail-abs-offset': Math.abs(visualOffset),
+                    };
+
+                    if (item.kind === 'proposal') {
+                      return (
+                        <article
+                          ref={(node) => { railCardRefs.current[displayIndex] = node; }}
+                          className={`announcement-rail-card new-event-card ${isActive ? 'is-active' : ''}`}
+                          key={item.renderKey}
+                          onClick={() => setShowPublishForm(true)}
+                          role="button"
+                          tabIndex={0}
+                          style={cardStyle}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setShowPublishForm(true);
+                            }
+                          }}
+                        >
+                          <Icon name="add" />
+                          <p className="new-event-kicker">New Proposal</p>
+                          <h3 className="mt-[14px] mb-[10px] text-[26px] leading-[1.05] tracking-tight">想发起新活动？</h3>
+                          <p className="mb-4">把你的创意放进这条流动的公告带里，让更多同学看到。</p>
                           <button
                             type="button"
+                            className="border-0 rounded-full px-[13px] py-[9px] text-blue bg-blue-soft font-bold"
                             onClick={(event) => {
                               event.stopPropagation();
-                              setSelectedAnnouncement(item);
+                              setShowPublishForm(true);
                             }}
                           >
-                            查看详情
+                            前往申请流程
                           </button>
-                        </footer>
-                      </div>
-                    </article>
-                  ))}
+                        </article>
+                      );
+                    }
 
-                  <article
-                    ref={(node) => { railCardRefs.current[visibleCurrentEvents.length] = node; }}
-                    className={`announcement-rail-card new-event-card ${activeRailIndex === visibleCurrentEvents.length ? 'is-active' : ''}`}
-                    onClick={() => setShowPublishForm(true)}
-                    role="button"
-                    tabIndex={0}
-                    style={{
-                      '--rail-offset': visibleCurrentEvents.length - activeRailIndex,
-                      '--rail-abs-offset': Math.abs(visibleCurrentEvents.length - activeRailIndex),
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setShowPublishForm(true);
-                      }
-                    }}
-                  >
-                    <Icon name="add" />
-                    <p className="new-event-kicker">New Proposal</p>
-                    <h3 className="mt-[14px] mb-[10px] text-[26px] leading-[1.05] tracking-tight">想发起新活动？</h3>
-                    <p className="mb-4">把你的创意放进这条流动的公告带里，让更多同学看到。</p>
-                    <button
-                      type="button"
-                      className="border-0 rounded-full px-[13px] py-[9px] text-blue bg-blue-soft font-bold"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setShowPublishForm(true);
-                      }}
-                    >
-                      前往申请流程
-                    </button>
-                  </article>
+                    return (
+                      <article
+                        ref={(node) => { railCardRefs.current[displayIndex] = node; }}
+                        className={`announcement-rail-card announcement-card ${isActive ? 'is-active' : ''}`}
+                        key={item.renderKey}
+                        onClick={() => setSelectedAnnouncement(item.event)}
+                        role="button"
+                        tabIndex={0}
+                        style={cardStyle}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setSelectedAnnouncement(item.event);
+                          }
+                        }}
+                      >
+                        <img
+                          alt={item.event.title}
+                          src={item.event.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80'}
+                          className="announcement-rail-image"
+                        />
+                        <div className="announcement-rail-body">
+                          <div className="announcement-rail-topline">
+                            <span className="pill blue inline-flex items-center gap-[5px] w-fit rounded-full px-3 py-2 text-xs font-semibold text-white bg-blue">
+                              {item.event.type}
+                            </span>
+                            <span className="announcement-rail-state">即将开始</span>
+                          </div>
+                          <h3>{item.event.title}</h3>
+                          <p>
+                            <Icon name="schedule" /> {formatTimeForDisplay(item.event.time)}
+                          </p>
+                          <p>
+                            <Icon name="location_on" /> {item.event.place}
+                          </p>
+                          <footer>
+                            <strong>点开查看完整信息</strong>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedAnnouncement(item.event);
+                              }}
+                            >
+                              查看详情
+                            </button>
+                          </footer>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
             </section>

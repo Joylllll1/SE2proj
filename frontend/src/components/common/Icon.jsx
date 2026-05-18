@@ -41,6 +41,7 @@ const Icon = ({ name, filled = false }) => {
     send: 'M3 4.5 21 12 3 19.5v-6l10.5-1.5L3 10.5v-6Z',
     bookmark_border: 'M7 5h10v15l-5-3-5 3V5Z',
     arrow_back: 'M5 12h14M5 12l5-5M5 12l5 5',
+    arrow_forward: 'M19 12H5m14 0-5-5m5 5-5 5',
     delete: 'M6 7h12M6 7l1 12h10l1-12M9 7V5h6v2m-4 4v5m2-5v5',
     edit: 'M5 3l10 10M3 21l3-1 11-11-2-2-11 11-1 3Z',
     check: 'M5 12l5 5L20 7',
