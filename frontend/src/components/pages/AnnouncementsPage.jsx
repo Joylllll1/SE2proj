@@ -49,7 +49,7 @@ function AnnouncementsPage({ showToast }) {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [activeRailIndex, setActiveRailIndex] = useState(0);
   const activeRailIndexRef = useRef(0);
-  const railWheelDeltaRef = useRef(0);
+  const railWheelGestureRef = useRef({ x: 0, y: 0 });
   const railWheelLockRef = useRef(false);
   const railWheelIdleTimeoutRef = useRef(null);
   const railTransitionTimeoutRef = useRef(null);
@@ -246,16 +246,19 @@ function AnnouncementsPage({ showToast }) {
 
   const moveRailBy = (step) => {
     if (!railLoopEnabled || step === 0) return;
-    if (railTransitionTimeoutRef.current) return;
 
     const nextIndex = wrapRailIndex(activeRailIndexRef.current + step);
     activeRailIndexRef.current = nextIndex;
     setActiveRailIndex(nextIndex);
-    railWheelDeltaRef.current = 0;
+
+    railWheelGestureRef.current = { x: 0, y: 0 };
+    if (railTransitionTimeoutRef.current) {
+      window.clearTimeout(railTransitionTimeoutRef.current);
+    }
 
     railTransitionTimeoutRef.current = window.setTimeout(() => {
       railTransitionTimeoutRef.current = null;
-    }, 280);
+    }, 220);
   };
 
   const handleRailArrow = (direction) => {
@@ -267,9 +270,8 @@ function AnnouncementsPage({ showToast }) {
 
     const absDeltaX = Math.abs(event.deltaX);
     const absDeltaY = Math.abs(event.deltaY);
-    const primaryDelta = absDeltaX >= absDeltaY * 0.85 ? event.deltaX : event.deltaY;
-
-    if (Math.abs(primaryDelta) < 4) return;
+    if (absDeltaX < 2 && absDeltaY < 2) return;
+    if (absDeltaX <= absDeltaY * 1.1) return;
 
     if (event.cancelable) {
       event.preventDefault();
@@ -279,27 +281,23 @@ function AnnouncementsPage({ showToast }) {
       window.clearTimeout(railWheelIdleTimeoutRef.current);
     }
     railWheelIdleTimeoutRef.current = window.setTimeout(() => {
-      railWheelDeltaRef.current = 0;
+      railWheelGestureRef.current = { x: 0, y: 0 };
       railWheelLockRef.current = false;
       railWheelIdleTimeoutRef.current = null;
-    }, 140);
+    }, 120);
+
+    railWheelGestureRef.current = {
+      x: railWheelGestureRef.current.x + event.deltaX,
+      y: railWheelGestureRef.current.y + event.deltaY,
+    };
 
     if (railWheelLockRef.current) return;
-
-    railWheelDeltaRef.current += primaryDelta;
-
-    const immediateThreshold = absDeltaX >= absDeltaY ? 18 : 26;
-    const accumulatedThreshold = absDeltaX >= absDeltaY ? 30 : 42;
-
-    if (
-      Math.abs(primaryDelta) < immediateThreshold
-      && Math.abs(railWheelDeltaRef.current) < accumulatedThreshold
-    ) {
+    if (Math.abs(railWheelGestureRef.current.x) < 16) {
       return;
     }
 
     railWheelLockRef.current = true;
-    moveRailBy(primaryDelta > 0 ? 1 : -1);
+    moveRailBy(railWheelGestureRef.current.x > 0 ? 1 : -1);
   };
 
   const handleRailTouchStart = (event) => {
