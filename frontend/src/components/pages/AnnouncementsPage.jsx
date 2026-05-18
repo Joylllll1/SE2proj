@@ -47,6 +47,15 @@ function AnnouncementsPage({ showToast }) {
 
   // Past events fold
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [activeRailIndex, setActiveRailIndex] = useState(0);
+  const currentRailRef = useRef(null);
+  const railCardRefs = useRef([]);
+  const railMotionRef = useRef({
+    frameId: null,
+    current: 0,
+    target: 0,
+  });
+  const railScrollFrameRef = useRef(null);
 
   // Store
   const publicEvents = useEventStore((s) => s.publicEvents);
@@ -71,6 +80,12 @@ function AnnouncementsPage({ showToast }) {
     if (posterPreviewUrlRef.current) {
       URL.revokeObjectURL(posterPreviewUrlRef.current);
     }
+    if (railMotionRef.current.frameId) {
+      window.cancelAnimationFrame(railMotionRef.current.frameId);
+    }
+    if (railScrollFrameRef.current) {
+      window.cancelAnimationFrame(railScrollFrameRef.current);
+    }
   }, []);
 
   // Separate current and past events
@@ -87,6 +102,11 @@ function AnnouncementsPage({ showToast }) {
   const visiblePastEvents = pastEvents.filter((event) => matchEventQuery(event, query));
   const visibleMyEvents = myEvents.filter((event) => matchEventQuery(event, query));
   const searching = hasSearchQuery(query);
+
+  useEffect(() => {
+    railCardRefs.current = railCardRefs.current.slice(0, visibleCurrentEvents.length + 1);
+    setActiveRailIndex((current) => Math.min(current, visibleCurrentEvents.length));
+  }, [visibleCurrentEvents.length]);
 
   // Handle poster upload
   const handlePosterSelect = (e) => {
@@ -189,6 +209,119 @@ function AnnouncementsPage({ showToast }) {
     return statusMap[status] || statusMap.approved;
   };
 
+  const updateActiveRailIndex = () => {
+    const rail = currentRailRef.current;
+    if (!rail || railCardRefs.current.length === 0) return;
+
+    const railRect = rail.getBoundingClientRect();
+    const railCenter = railRect.left + railRect.width / 2;
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    railCardRefs.current.forEach((node, index) => {
+      if (!node) return;
+      const rect = node.getBoundingClientRect();
+      const center = rect.left + rect.width / 2;
+      const distance = Math.abs(center - railCenter);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    setActiveRailIndex(nearestIndex);
+  };
+
+  const animateRailScroll = () => {
+    const rail = currentRailRef.current;
+    const motion = railMotionRef.current;
+    if (!rail) {
+      motion.frameId = null;
+      return;
+    }
+
+    motion.current += (motion.target - motion.current) * 0.14;
+    rail.scrollLeft = motion.current;
+
+    if (Math.abs(motion.target - motion.current) < 0.6) {
+      motion.current = motion.target;
+      rail.scrollLeft = motion.target;
+      motion.frameId = null;
+      updateActiveRailIndex();
+      return;
+    }
+
+    motion.frameId = window.requestAnimationFrame(animateRailScroll);
+  };
+
+  const moveRailTo = (targetLeft) => {
+    const rail = currentRailRef.current;
+    if (!rail) return;
+
+    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
+    const clampedTarget = Math.max(0, Math.min(maxScrollLeft, targetLeft));
+    const motion = railMotionRef.current;
+    motion.current = rail.scrollLeft;
+    motion.target = clampedTarget;
+
+    if (!motion.frameId) {
+      motion.frameId = window.requestAnimationFrame(animateRailScroll);
+    }
+  };
+
+  const centerRailCard = (index) => {
+    const rail = currentRailRef.current;
+    const targetCard = railCardRefs.current[index];
+    if (!rail || !targetCard) return;
+
+    const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
+    moveRailTo(targetLeft);
+  };
+
+  const handleRailWheel = (event) => {
+    const rail = currentRailRef.current;
+    if (!rail) return;
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+      ? event.deltaX
+      : event.deltaY;
+
+    if (delta !== 0) {
+      event.preventDefault();
+      moveRailTo(railMotionRef.current.target + delta * 1.1);
+    }
+  };
+
+  const handleRailScroll = () => {
+    const rail = currentRailRef.current;
+    if (!rail) return;
+
+    if (railMotionRef.current.frameId) {
+      railMotionRef.current.current = rail.scrollLeft;
+      railMotionRef.current.target = rail.scrollLeft;
+    }
+
+    if (railScrollFrameRef.current) return;
+    railScrollFrameRef.current = window.requestAnimationFrame(() => {
+      railScrollFrameRef.current = null;
+      updateActiveRailIndex();
+    });
+  };
+
+  const handleRailArrow = (direction) => {
+    const nextIndex = Math.max(0, Math.min(activeRailIndex + direction, visibleCurrentEvents.length));
+    centerRailCard(nextIndex);
+    setActiveRailIndex(nextIndex);
+  };
+
+  useEffect(() => {
+    if (!publicLoading) {
+      window.requestAnimationFrame(() => {
+        updateActiveRailIndex();
+      });
+    }
+  }, [publicLoading, visibleCurrentEvents.length]);
+
   return (
     <div className="announcements-page max-w-[1180px] mx-auto">
       {/* Header */}
@@ -263,57 +396,134 @@ function AnnouncementsPage({ showToast }) {
             </div>
           )}
 
-          {/* Current Events Grid */}
+          {/* Current Events Rail */}
           {!publicLoading && (
-            <section className="announcement-grid grid grid-cols-3 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-8">
-              {visibleCurrentEvents.map((item) => (
-                <article
-                  className="announcement-card overflow-hidden rounded-md border border-line-soft bg-surface shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm"
-                  key={item._id}
-                >
-                  <img
-                    alt={item.title}
-                    src={item.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80'}
-                    className="w-full h-[206px] object-cover"
-                  />
-                  <div className="p-5">
-                    <span className="pill blue inline-flex items-center gap-[5px] w-fit rounded-full px-3 py-2 text-xs font-semibold text-white bg-blue">
-                      {item.type}
-                    </span>
-                    <h3 className="mt-[14px] mb-[14px] text-xl leading-snug tracking-tight">{item.title}</h3>
-                    <p className="flex items-center gap-[7px] my-2 text-text-2 text-sm">
-                      <Icon name="schedule" /> {formatTimeForDisplay(item.time)}
-                    </p>
-                    <p className="flex items-center gap-[7px] my-2 text-text-2 text-sm">
-                      <Icon name="location_on" /> {item.place}
-                    </p>
-                    <footer className="flex items-center justify-between gap-3 mt-[18px] pt-4 border-t border-line-soft">
-                      <strong>即将开始</strong>
-                      <button
-                        type="button"
-                        className="border-0 rounded-full px-[13px] py-[9px] text-blue bg-blue-soft font-bold"
-                        onClick={() => setSelectedAnnouncement(item)}
-                      >
-                        查看详情
-                      </button>
-                    </footer>
+            <section className="announcement-rail-shell mb-8">
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-text-3">Current Flow</p>
+                  <h2 className="m-0 text-[22px] tracking-tight">正在发生的活动</h2>
+                </div>
+                <div className="announcement-rail-controls">
+                  <p className="hidden text-sm text-text-3 md:block">滚轮、触控板或箭头切换。</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="announcement-rail-arrow"
+                      onClick={() => handleRailArrow(-1)}
+                      disabled={activeRailIndex === 0}
+                      aria-label="查看上一个活动"
+                    >
+                      <Icon name="arrow_back" />
+                    </button>
+                    <button
+                      type="button"
+                      className="announcement-rail-arrow"
+                      onClick={() => handleRailArrow(1)}
+                      disabled={activeRailIndex >= visibleCurrentEvents.length}
+                      aria-label="查看下一个活动"
+                    >
+                      <Icon name="arrow_forward" />
+                    </button>
                   </div>
-                </article>
-              ))}
+                </div>
+              </div>
 
-              {/* Create new event card */}
-              <article className="new-event-card grid min-h-[360px] place-items-center align-content-center p-7 border-dashed border border-line-soft text-text-2 text-center">
-                <Icon name="add" />
-                <h3 className="mt-[14px] mb-[14px] text-xl leading-snug tracking-tight">想发起新活动？</h3>
-                <p className="mb-4">在这里发布你的创意，与全校同学一起参与。</p>
-                <button
-                  type="button"
-                  className="border-0 rounded-full px-[13px] py-[9px] text-blue bg-blue-soft font-bold"
-                  onClick={() => setShowPublishForm(true)}
+              <div className="announcement-rail-mask">
+                <div
+                  ref={currentRailRef}
+                  className="announcement-rail"
+                  onWheel={handleRailWheel}
+                  onScroll={handleRailScroll}
                 >
-                  前往申请流程
-                </button>
-              </article>
+                  {visibleCurrentEvents.map((item, index) => (
+                    <article
+                      ref={(node) => { railCardRefs.current[index] = node; }}
+                      className={`announcement-rail-card announcement-card ${index === activeRailIndex ? 'is-active' : ''}`}
+                      key={item._id}
+                      onClick={() => setSelectedAnnouncement(item)}
+                      role="button"
+                      tabIndex={0}
+                      style={{
+                        '--rail-offset': index - activeRailIndex,
+                        '--rail-abs-offset': Math.abs(index - activeRailIndex),
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setSelectedAnnouncement(item);
+                        }
+                      }}
+                    >
+                      <img
+                        alt={item.title}
+                        src={item.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80'}
+                        className="announcement-rail-image"
+                      />
+                      <div className="announcement-rail-body">
+                        <div className="announcement-rail-topline">
+                          <span className="pill blue inline-flex items-center gap-[5px] w-fit rounded-full px-3 py-2 text-xs font-semibold text-white bg-blue">
+                            {item.type}
+                          </span>
+                          <span className="announcement-rail-state">即将开始</span>
+                        </div>
+                        <h3>{item.title}</h3>
+                        <p>
+                          <Icon name="schedule" /> {formatTimeForDisplay(item.time)}
+                        </p>
+                        <p>
+                          <Icon name="location_on" /> {item.place}
+                        </p>
+                        <footer>
+                          <strong>点开查看完整信息</strong>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedAnnouncement(item);
+                            }}
+                          >
+                            查看详情
+                          </button>
+                        </footer>
+                      </div>
+                    </article>
+                  ))}
+
+                  <article
+                    ref={(node) => { railCardRefs.current[visibleCurrentEvents.length] = node; }}
+                    className={`announcement-rail-card new-event-card ${activeRailIndex === visibleCurrentEvents.length ? 'is-active' : ''}`}
+                    onClick={() => setShowPublishForm(true)}
+                    role="button"
+                    tabIndex={0}
+                    style={{
+                      '--rail-offset': visibleCurrentEvents.length - activeRailIndex,
+                      '--rail-abs-offset': Math.abs(visibleCurrentEvents.length - activeRailIndex),
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setShowPublishForm(true);
+                      }
+                    }}
+                  >
+                    <Icon name="add" />
+                    <p className="new-event-kicker">New Proposal</p>
+                    <h3 className="mt-[14px] mb-[10px] text-[26px] leading-[1.05] tracking-tight">想发起新活动？</h3>
+                    <p className="mb-4">把你的创意放进这条流动的公告带里，让更多同学看到。</p>
+                    <button
+                      type="button"
+                      className="border-0 rounded-full px-[13px] py-[9px] text-blue bg-blue-soft font-bold"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setShowPublishForm(true);
+                      }}
+                    >
+                      前往申请流程
+                    </button>
+                  </article>
+                </div>
+              </div>
             </section>
           )}
 
