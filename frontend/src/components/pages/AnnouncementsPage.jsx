@@ -525,7 +525,8 @@ function AnnouncementsPage({ showToast }) {
                   {railRenderItems.map((item, displayIndex) => {
                     const activeDisplayIndex = railLoopEnabled ? activeRailIndex + 1 : activeRailIndex;
                     const visualOffset = displayIndex - activeDisplayIndex;
-                    const isActive = item.logicalIndex === activeRailIndex;
+                    const isClone = Boolean(item.clone);
+                    const isActive = displayIndex === activeDisplayIndex;
                     const cardStyle = {
                       '--rail-offset': visualOffset,
                       '--rail-abs-offset': Math.abs(visualOffset),
@@ -535,13 +536,15 @@ function AnnouncementsPage({ showToast }) {
                       return (
                         <article
                           ref={(node) => { railCardRefs.current[displayIndex] = node; }}
-                          className={`announcement-rail-card new-event-card ${isActive ? 'is-active' : ''}`}
+                          className={`announcement-rail-card new-event-card ${isActive ? 'is-active' : ''} ${isClone ? 'is-clone' : ''}`}
                           key={item.renderKey}
-                          onClick={() => setShowPublishForm(true)}
+                          onClick={isClone ? undefined : () => setShowPublishForm(true)}
                           role="button"
-                          tabIndex={0}
+                          tabIndex={isClone ? -1 : 0}
+                          aria-hidden={isClone}
                           style={cardStyle}
                           onKeyDown={(event) => {
+                            if (isClone) return;
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
                               setShowPublishForm(true);
@@ -569,13 +572,15 @@ function AnnouncementsPage({ showToast }) {
                     return (
                       <article
                         ref={(node) => { railCardRefs.current[displayIndex] = node; }}
-                        className={`announcement-rail-card announcement-card ${isActive ? 'is-active' : ''}`}
+                        className={`announcement-rail-card announcement-card ${isActive ? 'is-active' : ''} ${isClone ? 'is-clone' : ''}`}
                         key={item.renderKey}
-                        onClick={() => setSelectedAnnouncement(item.event)}
+                        onClick={isClone ? undefined : () => setSelectedAnnouncement(item.event)}
                         role="button"
-                        tabIndex={0}
+                        tabIndex={isClone ? -1 : 0}
+                        aria-hidden={isClone}
                         style={cardStyle}
                         onKeyDown={(event) => {
+                          if (isClone) return;
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
                             setSelectedAnnouncement(item.event);

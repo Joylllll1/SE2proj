@@ -898,6 +898,10 @@ h1, h2, h3, p {
   box-shadow: 0 22px 50px rgba(15, 23, 42, 0.16);
 }
 
+.announcement-rail-card.is-clone {
+  pointer-events: none;
+}
+
 .announcement-rail-card.is-active {
   opacity: 1;
   transform:
