@@ -1,0 +1,15 @@
+import { Router } from 'express';
+import * as aiController from '../controllers/aiController.js';
+import auth from '../middlewares/auth.js';
+
+const router = Router();
+
+// AI chat routes
+router.post('/chat', auth, aiController.sendMessage);
+router.get('/sessions', auth, aiController.getSessions);
+router.get('/sessions/:id', auth, aiController.getSession);
+router.post('/sessions', auth, aiController.createSession);
+router.delete('/sessions/:id', auth, aiController.deleteSession);
+router.post('/sessions/:id/regenerate', auth, aiController.regenerateMessage);
+
+export default router;
