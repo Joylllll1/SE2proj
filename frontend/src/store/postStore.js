@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as postService from '../services/postService';
+import { matchPostQuery } from '../utils/search';
 
 function getKnownPostLikeState(state, postId) {
   if (state.likedPosts.includes(postId)) {
@@ -245,12 +246,7 @@ const usePostStore = create((set, get) => ({
 
   getFilteredPosts: (query) => {
     const { posts } = get();
-    if (!query || !query.trim()) return posts;
-    const q = query.trim().toLowerCase();
-    return posts.filter((p) => {
-      const text = `${p.title} ${p.content} ${(p.tags || []).join(' ')}`.toLowerCase();
-      return text.includes(q);
-    });
+    return posts.filter((post) => matchPostQuery(post, query));
   },
 }));
 

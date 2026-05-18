@@ -4,8 +4,11 @@ import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import * as postService from '../../services/postService';
 import usePostStore from '../../store/postStore';
+import useUiStore from '../../store/uiStore';
+import { hasSearchQuery, matchPostQuery } from '../../utils/search';
 
 const selectGetPostLikeView = (s) => s.getPostLikeView;
+const selectQuery = (s) => s.query;
 
 function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
   const [activeFolder, setActiveFolder] = useState('all');
@@ -18,6 +21,7 @@ function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onRep
   const [loadingSaved, setLoadingSaved] = useState(false);
   const menuRefs = useRef({});
   const getPostLikeView = usePostStore(selectGetPostLikeView);
+  const query = useUiStore(selectQuery);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -101,7 +105,9 @@ function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onRep
   };
 
   const folderPosts = getBookmarksForFolder(activeFolder);
-  const totalItems = folderPosts.length;
+  const filteredFolderPosts = folderPosts.filter((post) => matchPostQuery(post, query));
+  const totalItems = filteredFolderPosts.length;
+  const searching = hasSearchQuery(query);
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
@@ -190,11 +196,26 @@ function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onRep
         })}
       </div>
 
+      {searching && (
+        <p className="result-hint mb-[14px] text-text-2 text-sm">
+          搜索 &quot;{query}&quot; 找到 {totalItems} 条相关收藏。
+        </p>
+      )}
+
       {totalItems === 0 ? (
-        <EmptyState title={activeFolder === 'all' ? '还没有收藏内容' : `"${collectionFolders.find((f) => f.id === activeFolder)?.name || '此文件夹'}" 暂无收藏`} description="浏览树洞时点击书签图标即可收藏。" />
+        <EmptyState
+          title={
+            searching
+              ? '没有找到匹配的收藏'
+              : activeFolder === 'all'
+                ? '还没有收藏内容'
+                : `"${collectionFolders.find((f) => f.id === activeFolder)?.name || '此文件夹'}" 暂无收藏`
+          }
+          description={searching ? '换个关键词试试。' : '浏览树洞时点击书签图标即可收藏。'}
+        />
       ) : (
           <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
-            {folderPosts.map((post) => {
+            {filteredFolderPosts.map((post) => {
               const postView = getPostLikeView(post);
               return (
                 <div key={postView.id} className="inline-block w-full mb-[18px]">

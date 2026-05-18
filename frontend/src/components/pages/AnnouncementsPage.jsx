@@ -3,6 +3,8 @@ import Icon from '../common/Icon';
 import useEventStore from '../../store/eventStore';
 import useAuthStore from '../../store/authStore';
 import { formatEventTime } from '../../utils';
+import useUiStore from '../../store/uiStore';
+import { hasSearchQuery, matchEventQuery } from '../../utils/search';
 
 const categories = ['全部活动', '官方活动', '学术讲座', '体育赛事', '科技竞赛', '志愿公益', '答辩', '校招'];
 const MAX_POSTER_SIZE_BYTES = 3 * 1024 * 1024;
@@ -55,6 +57,7 @@ function AnnouncementsPage({ showToast }) {
   const fetchMyEvents = useEventStore((s) => s.fetchMyEvents);
   const submitEvent = useEventStore((s) => s.submitEvent);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const query = useUiStore((s) => s.query);
 
   // Fetch events on mount
   useEffect(() => {
@@ -80,6 +83,10 @@ function AnnouncementsPage({ showToast }) {
     category === '全部活动'
       ? currentEvents
       : currentEvents.filter((e) => e.type === category);
+  const visibleCurrentEvents = filteredCurrentEvents.filter((event) => matchEventQuery(event, query));
+  const visiblePastEvents = pastEvents.filter((event) => matchEventQuery(event, query));
+  const visibleMyEvents = myEvents.filter((event) => matchEventQuery(event, query));
+  const searching = hasSearchQuery(query);
 
   // Handle poster upload
   const handlePosterSelect = (e) => {
@@ -243,6 +250,12 @@ function AnnouncementsPage({ showToast }) {
             ))}
           </div>
 
+          {searching && (
+            <p className="result-hint mb-[14px] text-text-2 text-sm">
+              搜索 &quot;{query}&quot; 找到 {visibleCurrentEvents.length + visiblePastEvents.length} 条相关活动。
+            </p>
+          )}
+
           {/* Loading state */}
           {publicLoading && (
             <div className="py-12 text-center text-text-2">
@@ -253,7 +266,7 @@ function AnnouncementsPage({ showToast }) {
           {/* Current Events Grid */}
           {!publicLoading && (
             <section className="announcement-grid grid grid-cols-3 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1 mb-8">
-              {filteredCurrentEvents.map((item) => (
+              {visibleCurrentEvents.map((item) => (
                 <article
                   className="announcement-card overflow-hidden rounded-md border border-line-soft bg-surface shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm"
                   key={item._id}
@@ -304,8 +317,14 @@ function AnnouncementsPage({ showToast }) {
             </section>
           )}
 
+          {!publicLoading && visibleCurrentEvents.length === 0 && visiblePastEvents.length === 0 && (
+            <div className="py-12 text-center text-text-2">
+              {searching ? '没有找到匹配的活动。' : '当前还没有可展示的活动。'}
+            </div>
+          )}
+
           {/* Past Events Section */}
-          {pastEvents.length > 0 && (
+          {visiblePastEvents.length > 0 && (
             <section className="archived-section border-t border-line-soft pt-8">
               <button
                 className="flex items-center gap-2 text-text-2 text-sm font-semibold hover:text-text transition-colors duration-150"
@@ -313,11 +332,11 @@ function AnnouncementsPage({ showToast }) {
                 type="button"
               >
                 <Icon name={showPastEvents ? 'expand_less' : 'expand_more'} />
-                往期活动 ({pastEvents.length})
+                往期活动 ({visiblePastEvents.length})
               </button>
               {showPastEvents && (
                 <div className="mt-4 grid grid-cols-3 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1">
-                  {pastEvents.map((item) => (
+                  {visiblePastEvents.map((item) => (
                     <article
                       key={item._id}
                       className="announcement-card overflow-hidden rounded-md border border-line-soft bg-surface opacity-70 hover:opacity-100 transition-all duration-150"
@@ -381,9 +400,15 @@ function AnnouncementsPage({ showToast }) {
             </div>
           )}
 
-          {isAuthenticated && !myEventsLoading && myEvents.length > 0 && (
+          {isAuthenticated && !myEventsLoading && myEvents.length > 0 && searching && (
+            <p className="result-hint mb-[14px] text-text-2 text-sm">
+              搜索 &quot;{query}&quot; 找到 {visibleMyEvents.length} 条相关申请。
+            </p>
+          )}
+
+          {isAuthenticated && !myEventsLoading && myEvents.length > 0 && visibleMyEvents.length > 0 && (
             <div className="space-y-4">
-              {myEvents.map((event) => {
+              {visibleMyEvents.map((event) => {
                 const statusInfo = getEventStatus(event);
                 return (
                   <div
@@ -428,6 +453,12 @@ function AnnouncementsPage({ showToast }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {isAuthenticated && !myEventsLoading && myEvents.length > 0 && visibleMyEvents.length === 0 && (
+            <div className="py-12 text-center text-text-2">
+              <p>{searching ? '没有找到匹配的活动申请' : '您还没有提交过活动申请'}</p>
             </div>
           )}
         </div>

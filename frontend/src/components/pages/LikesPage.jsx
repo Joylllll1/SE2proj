@@ -6,6 +6,7 @@ import useUiStore from '../../store/uiStore';
 import usePostStore from '../../store/postStore';
 import useCommentStore from '../../store/commentStore';
 import { fetchLikes, fetchPostById } from '../../services/postService';
+import { hasSearchQuery, matchLikedCommentQuery, matchPostQuery } from '../../utils/search';
 
 const selectTogglePendingPostUnlike = (s) => s.togglePendingUnlike;
 const selectSubmitPendingPostUnlikes = (s) => s.submitPendingUnlikes;
@@ -16,6 +17,7 @@ const selectTogglePendingCommentUnlike = (s) => s.togglePendingUnlike;
 const selectSubmitPendingCommentUnlikes = (s) => s.submitPendingCommentUnlikes;
 const selectIsCommentPendingUnlike = (s) => s.isPendingUnlike;
 const selectPendingCommentUnlikes = (s) => s.pendingCommentUnlikes;
+const selectQuery = (s) => s.query;
 
 function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport }) {
   const [activeTab, setActiveTab] = useState('posts');
@@ -23,6 +25,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const showToast = useUiStore((s) => s.showToast);
+  const query = useUiStore(selectQuery);
   const pendingPostUnlikes = usePostStore(selectPendingPostUnlikes);
   const togglePendingPostUnlike = usePostStore(selectTogglePendingPostUnlike);
   const submitPendingPostUnlikes = usePostStore(selectSubmitPendingPostUnlikes);
@@ -209,6 +212,15 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
       },
     };
   });
+  const filteredPosts = posts.filter((post) => matchPostQuery(post, query));
+  const filteredComments = comments.filter((comment) => {
+    const relatedPostTitle = comment.postId
+      ? allPosts.find((post) => post.id === comment.postId)?.title
+      : null;
+    return matchLikedCommentQuery(comment, relatedPostTitle, query);
+  });
+  const searching = hasSearchQuery(query);
+  const resultCount = activeTab === 'posts' ? filteredPosts.length : filteredComments.length;
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
@@ -243,16 +255,22 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         </button>
       </div>
 
+      {searching && (
+        <p className="result-hint mb-[14px] text-text-2 text-sm">
+          搜索 &quot;{query}&quot; 找到 {resultCount} 条相关{activeTab === 'posts' ? '点赞帖子' : '点赞评论'}。
+        </p>
+      )}
+
       {loading ? (
         <div className="py-10 text-center text-text-3">加载中...</div>
       ) : error ? (
         <EmptyState title="加载失败" description={error} />
       ) : activeTab === 'posts' ? (
-        posts.length === 0 ? (
-          <EmptyState title="还没有赞过的帖子" />
+        filteredPosts.length === 0 ? (
+          <EmptyState title={searching ? '没有找到匹配的点赞帖子' : '还没有赞过的帖子'} />
         ) : (
           <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
-            {posts.map((post) => {
+            {filteredPosts.map((post) => {
               return (
                 <div key={post.id} className="inline-block w-full mb-[18px]">
                   <PostCard
@@ -272,11 +290,11 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
           </section>
         )
       ) : (
-        comments.length === 0 ? (
-          <EmptyState title="还没有赞过的评论" />
+        filteredComments.length === 0 ? (
+          <EmptyState title={searching ? '没有找到匹配的点赞评论' : '还没有赞过的评论'} />
         ) : (
           <section className="space-y-4">
-            {comments.map((comment) => {
+            {filteredComments.map((comment) => {
               const postId = comment.postId;
               const post = postId ? allPosts.find((p) => p.id === postId) : null;
               const isLiked = comment.item?.isLiked ?? false;
