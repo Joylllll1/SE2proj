@@ -255,7 +255,7 @@ function AnnouncementsPage({ showToast }) {
 
     railTransitionTimeoutRef.current = window.setTimeout(() => {
       railTransitionTimeoutRef.current = null;
-    }, 360);
+    }, 280);
   };
 
   const handleRailArrow = (direction) => {
@@ -265,13 +265,15 @@ function AnnouncementsPage({ showToast }) {
   const handleRailWheel = (event) => {
     if (!railLoopEnabled) return;
 
-    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-      ? event.deltaX
-      : event.deltaY;
+    const absDeltaX = Math.abs(event.deltaX);
+    const absDeltaY = Math.abs(event.deltaY);
+    const primaryDelta = absDeltaX >= absDeltaY * 0.85 ? event.deltaX : event.deltaY;
 
-    if (delta === 0) return;
+    if (Math.abs(primaryDelta) < 4) return;
 
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
 
     if (railWheelIdleTimeoutRef.current) {
       window.clearTimeout(railWheelIdleTimeoutRef.current);
@@ -280,16 +282,24 @@ function AnnouncementsPage({ showToast }) {
       railWheelDeltaRef.current = 0;
       railWheelLockRef.current = false;
       railWheelIdleTimeoutRef.current = null;
-    }, 180);
+    }, 140);
 
     if (railWheelLockRef.current) return;
 
-    railWheelDeltaRef.current += delta;
+    railWheelDeltaRef.current += primaryDelta;
 
-    if (Math.abs(railWheelDeltaRef.current) < 72) return;
+    const immediateThreshold = absDeltaX >= absDeltaY ? 18 : 26;
+    const accumulatedThreshold = absDeltaX >= absDeltaY ? 30 : 42;
+
+    if (
+      Math.abs(primaryDelta) < immediateThreshold
+      && Math.abs(railWheelDeltaRef.current) < accumulatedThreshold
+    ) {
+      return;
+    }
 
     railWheelLockRef.current = true;
-    moveRailBy(railWheelDeltaRef.current > 0 ? 1 : -1);
+    moveRailBy(primaryDelta > 0 ? 1 : -1);
   };
 
   const handleRailTouchStart = (event) => {
