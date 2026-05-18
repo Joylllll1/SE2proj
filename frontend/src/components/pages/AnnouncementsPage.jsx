@@ -48,12 +48,10 @@ function AnnouncementsPage({ showToast }) {
   // Past events fold
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [activeRailIndex, setActiveRailIndex] = useState(0);
-  const currentRailRef = useRef(null);
-  const railCardRefs = useRef([]);
-  const railScrollFrameRef = useRef(null);
-  const railSnapTimeoutRef = useRef(null);
-  const railLoopResetRef = useRef(null);
   const activeRailIndexRef = useRef(0);
+  const railWheelDeltaRef = useRef(0);
+  const railTransitionTimeoutRef = useRef(null);
+  const railTouchStartRef = useRef(null);
 
   // Store
   const publicEvents = useEventStore((s) => s.publicEvents);
@@ -78,14 +76,8 @@ function AnnouncementsPage({ showToast }) {
     if (posterPreviewUrlRef.current) {
       URL.revokeObjectURL(posterPreviewUrlRef.current);
     }
-    if (railScrollFrameRef.current) {
-      window.cancelAnimationFrame(railScrollFrameRef.current);
-    }
-    if (railSnapTimeoutRef.current) {
-      window.clearTimeout(railSnapTimeoutRef.current);
-    }
-    if (railLoopResetRef.current) {
-      window.clearTimeout(railLoopResetRef.current);
+    if (railTransitionTimeoutRef.current) {
+      window.clearTimeout(railTransitionTimeoutRef.current);
     }
   }, []);
 
@@ -116,53 +108,31 @@ function AnnouncementsPage({ showToast }) {
   ];
   const railItemCount = railItems.length;
   const railLoopEnabled = railItemCount > 1;
-  const railRenderItems = railLoopEnabled
-    ? [
-      {
-        ...railItems[railItemCount - 1],
-        clone: 'leading',
-        logicalIndex: railItemCount - 1,
-        renderKey: `leading-${railItems[railItemCount - 1].key}`,
-      },
-      ...railItems.map((item, index) => ({
-        ...item,
-        logicalIndex: index,
-        renderKey: item.key,
-      })),
-      {
-        ...railItems[0],
-        clone: 'trailing',
-        logicalIndex: 0,
-        renderKey: `trailing-${railItems[0].key}`,
-      },
-    ]
-    : railItems.map((item, index) => ({
-      ...item,
-      logicalIndex: index,
-      renderKey: item.key,
-    }));
+  const wrapRailIndex = (index) => {
+    if (railItemCount === 0) return 0;
+    return ((index % railItemCount) + railItemCount) % railItemCount;
+  };
+
+  const getRailOffset = (index) => {
+    if (railItemCount <= 1) return index - activeRailIndex;
+
+    const forward = (index - activeRailIndex + railItemCount) % railItemCount;
+    const backward = forward - railItemCount;
+
+    if (Math.abs(backward) < Math.abs(forward)) {
+      return backward;
+    }
+
+    return forward;
+  };
 
   useEffect(() => {
-    railCardRefs.current = railCardRefs.current.slice(0, railRenderItems.length);
-    const nextIndex = Math.min(activeRailIndexRef.current, railItemCount - 1);
+    const nextIndex = railItemCount === 0
+      ? 0
+      : ((activeRailIndexRef.current % railItemCount) + railItemCount) % railItemCount;
     activeRailIndexRef.current = nextIndex;
     setActiveRailIndex(nextIndex);
-
-    window.requestAnimationFrame(() => {
-      const displayIndex = railLoopEnabled ? nextIndex + 1 : nextIndex;
-      const targetCard = railCardRefs.current[displayIndex];
-      const rail = currentRailRef.current;
-
-      if (!rail || !targetCard) return;
-
-      const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
-      const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-      rail.scrollTo({
-        left: Math.max(0, Math.min(maxScrollLeft, targetLeft)),
-        behavior: 'auto',
-      });
-    });
-  }, [railItemCount, railLoopEnabled, railRenderItems.length]);
+  }, [railItemCount]);
 
   useEffect(() => {
     activeRailIndexRef.current = activeRailIndex;
@@ -269,147 +239,65 @@ function AnnouncementsPage({ showToast }) {
     return statusMap[status] || statusMap.approved;
   };
 
-  const updateActiveRailIndex = () => {
-    const rail = currentRailRef.current;
-    if (!rail || railCardRefs.current.length === 0) return;
+  const moveRailBy = (step) => {
+    if (!railLoopEnabled || step === 0) return;
+    if (railTransitionTimeoutRef.current) return;
 
-    const railRect = rail.getBoundingClientRect();
-    const railCenter = railRect.left + railRect.width / 2;
-    let nearestIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
+    const nextIndex = wrapRailIndex(activeRailIndexRef.current + step);
+    activeRailIndexRef.current = nextIndex;
+    setActiveRailIndex(nextIndex);
+    railWheelDeltaRef.current = 0;
 
-    railCardRefs.current.forEach((node, index) => {
-      if (!node) return;
-      const rect = node.getBoundingClientRect();
-      const center = rect.left + rect.width / 2;
-      const distance = Math.abs(center - railCenter);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = index;
-      }
-    });
-
-    const nearestLogicalIndex = railRenderItems[nearestIndex]?.logicalIndex ?? 0;
-    if (nearestLogicalIndex !== activeRailIndexRef.current) {
-      activeRailIndexRef.current = nearestLogicalIndex;
-      setActiveRailIndex(nearestLogicalIndex);
-    }
-  };
-
-  const centerRailCard = (displayIndex, behavior = 'smooth') => {
-    const rail = currentRailRef.current;
-    const targetCard = railCardRefs.current[displayIndex];
-    if (!rail || !targetCard) return;
-
-    const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
-    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-    rail.scrollTo({
-      left: Math.max(0, Math.min(maxScrollLeft, targetLeft)),
-      behavior,
-    });
-  };
-
-  const centerLogicalRailCard = (logicalIndex, behavior = 'smooth') => {
-    centerRailCard(railLoopEnabled ? logicalIndex + 1 : logicalIndex, behavior);
-  };
-
-  const normalizeRailLoopPosition = () => {
-    const rail = currentRailRef.current;
-    if (!rail || !railLoopEnabled || railLoopResetRef.current) return false;
-
-    const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-    if (rail.scrollLeft <= 1) {
-      centerRailCard(railItemCount, 'auto');
-      window.requestAnimationFrame(() => {
-        activeRailIndexRef.current = railItemCount - 1;
-        setActiveRailIndex(railItemCount - 1);
-      });
-      return true;
-    }
-
-    if (rail.scrollLeft >= maxScrollLeft - 1) {
-      centerRailCard(1, 'auto');
-      window.requestAnimationFrame(() => {
-        activeRailIndexRef.current = 0;
-        setActiveRailIndex(0);
-      });
-      return true;
-    }
-
-    return false;
-  };
-
-  const handleRailScroll = () => {
-    if (railSnapTimeoutRef.current) {
-      window.clearTimeout(railSnapTimeoutRef.current);
-    }
-
-    railSnapTimeoutRef.current = window.setTimeout(() => {
-      if (railLoopResetRef.current) return;
-      centerLogicalRailCard(activeRailIndexRef.current);
-    }, 120);
-
-    if (railScrollFrameRef.current) return;
-    railScrollFrameRef.current = window.requestAnimationFrame(() => {
-      railScrollFrameRef.current = null;
-      if (normalizeRailLoopPosition()) return;
-      updateActiveRailIndex();
-    });
+    railTransitionTimeoutRef.current = window.setTimeout(() => {
+      railTransitionTimeoutRef.current = null;
+    }, 360);
   };
 
   const handleRailArrow = (direction) => {
-    if (railItemCount === 0) return;
-
-    if (railSnapTimeoutRef.current) {
-      window.clearTimeout(railSnapTimeoutRef.current);
-    }
-    if (railLoopResetRef.current) {
-      window.clearTimeout(railLoopResetRef.current);
-      railLoopResetRef.current = null;
-    }
-
-    const currentIndex = activeRailIndexRef.current;
-    const nextIndex = (currentIndex + direction + railItemCount) % railItemCount;
-    const wrapsForward = railLoopEnabled && direction > 0 && currentIndex === railItemCount - 1;
-    const wrapsBackward = railLoopEnabled && direction < 0 && currentIndex === 0;
-
-    activeRailIndexRef.current = nextIndex;
-    setActiveRailIndex(nextIndex);
-
-    if (wrapsForward || wrapsBackward) {
-      const cloneDisplayIndex = wrapsForward ? railRenderItems.length - 1 : 0;
-      centerRailCard(cloneDisplayIndex);
-      railLoopResetRef.current = window.setTimeout(() => {
-        railLoopResetRef.current = null;
-        centerLogicalRailCard(nextIndex, 'auto');
-        window.requestAnimationFrame(() => {
-          updateActiveRailIndex();
-        });
-      }, 440);
-      return;
-    }
-
-    centerLogicalRailCard(nextIndex);
+    moveRailBy(direction);
   };
 
-  useEffect(() => {
-    if (!publicLoading) {
-      window.requestAnimationFrame(() => {
-        const rail = currentRailRef.current;
-        const displayIndex = railLoopEnabled ? activeRailIndexRef.current + 1 : activeRailIndexRef.current;
-        const targetCard = railCardRefs.current[displayIndex];
+  const handleRailWheel = (event) => {
+    if (!railLoopEnabled) return;
 
-        if (!rail || !targetCard) return;
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+      ? event.deltaX
+      : event.deltaY;
 
-        const targetLeft = targetCard.offsetLeft + targetCard.offsetWidth / 2 - rail.clientWidth / 2;
-        const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
-        rail.scrollTo({
-          left: Math.max(0, Math.min(maxScrollLeft, targetLeft)),
-          behavior: 'auto',
-        });
-      });
-    }
-  }, [publicLoading, railLoopEnabled]);
+    if (delta === 0) return;
+
+    event.preventDefault();
+    railWheelDeltaRef.current += delta;
+
+    if (Math.abs(railWheelDeltaRef.current) < 72) return;
+
+    moveRailBy(railWheelDeltaRef.current > 0 ? 1 : -1);
+  };
+
+  const handleRailTouchStart = (event) => {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+
+    railTouchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+  };
+
+  const handleRailTouchEnd = (event) => {
+    if (!railLoopEnabled || !railTouchStartRef.current) return;
+
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+
+    const deltaX = touch.clientX - railTouchStartRef.current.x;
+    const deltaY = touch.clientY - railTouchStartRef.current.y;
+    railTouchStartRef.current = null;
+
+    if (Math.abs(deltaX) < 44 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+
+    moveRailBy(deltaX < 0 ? 1 : -1);
+  };
 
   return (
     <div className="announcements-page max-w-[1180px] mx-auto">
@@ -494,7 +382,7 @@ function AnnouncementsPage({ showToast }) {
                   <h2 className="m-0 text-[22px] tracking-tight">正在发生的活动</h2>
                 </div>
                 <div className="announcement-rail-controls">
-                  <p className="hidden text-sm text-text-3 md:block">触控板横滑或箭头切换。</p>
+                  <p className="hidden text-sm text-text-3 md:block">轻扫、触控板或箭头切换。</p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -518,15 +406,15 @@ function AnnouncementsPage({ showToast }) {
 
               <div className="announcement-rail-mask">
                 <div
-                  ref={currentRailRef}
                   className="announcement-rail"
-                  onScroll={handleRailScroll}
+                  onWheel={handleRailWheel}
+                  onTouchStart={handleRailTouchStart}
+                  onTouchEnd={handleRailTouchEnd}
                 >
-                  {railRenderItems.map((item, displayIndex) => {
-                    const activeDisplayIndex = railLoopEnabled ? activeRailIndex + 1 : activeRailIndex;
-                    const visualOffset = displayIndex - activeDisplayIndex;
-                    const isClone = Boolean(item.clone);
-                    const isActive = displayIndex === activeDisplayIndex;
+                  {railItems.map((item, index) => {
+                    const visualOffset = getRailOffset(index);
+                    const isActive = visualOffset === 0;
+                    const isVisible = Math.abs(visualOffset) <= Math.min(2, railItemCount - 1);
                     const cardStyle = {
                       '--rail-offset': visualOffset,
                       '--rail-abs-offset': Math.abs(visualOffset),
@@ -535,16 +423,14 @@ function AnnouncementsPage({ showToast }) {
                     if (item.kind === 'proposal') {
                       return (
                         <article
-                          ref={(node) => { railCardRefs.current[displayIndex] = node; }}
-                          className={`announcement-rail-card new-event-card ${isActive ? 'is-active' : ''} ${isClone ? 'is-clone' : ''}`}
-                          key={item.renderKey}
-                          onClick={isClone ? undefined : () => setShowPublishForm(true)}
+                          className={`announcement-rail-card new-event-card ${isActive ? 'is-active' : ''} ${isVisible ? 'is-visible' : 'is-hidden'}`}
+                          key={item.key}
+                          onClick={() => setShowPublishForm(true)}
                           role="button"
-                          tabIndex={isClone ? -1 : 0}
-                          aria-hidden={isClone}
+                          tabIndex={isVisible ? 0 : -1}
+                          aria-hidden={!isVisible}
                           style={cardStyle}
                           onKeyDown={(event) => {
-                            if (isClone) return;
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
                               setShowPublishForm(true);
@@ -558,6 +444,7 @@ function AnnouncementsPage({ showToast }) {
                           <button
                             type="button"
                             className="border-0 rounded-full px-[13px] py-[9px] text-blue bg-blue-soft font-bold"
+                            tabIndex={isVisible ? 0 : -1}
                             onClick={(event) => {
                               event.stopPropagation();
                               setShowPublishForm(true);
@@ -571,16 +458,14 @@ function AnnouncementsPage({ showToast }) {
 
                     return (
                       <article
-                        ref={(node) => { railCardRefs.current[displayIndex] = node; }}
-                        className={`announcement-rail-card announcement-card ${isActive ? 'is-active' : ''} ${isClone ? 'is-clone' : ''}`}
-                        key={item.renderKey}
-                        onClick={isClone ? undefined : () => setSelectedAnnouncement(item.event)}
+                        className={`announcement-rail-card announcement-card ${isActive ? 'is-active' : ''} ${isVisible ? 'is-visible' : 'is-hidden'}`}
+                        key={item.key}
+                        onClick={() => setSelectedAnnouncement(item.event)}
                         role="button"
-                        tabIndex={isClone ? -1 : 0}
-                        aria-hidden={isClone}
+                        tabIndex={isVisible ? 0 : -1}
+                        aria-hidden={!isVisible}
                         style={cardStyle}
                         onKeyDown={(event) => {
-                          if (isClone) return;
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
                             setSelectedAnnouncement(item.event);
@@ -610,6 +495,7 @@ function AnnouncementsPage({ showToast }) {
                             <strong>点开查看完整信息</strong>
                             <button
                               type="button"
+                              tabIndex={isVisible ? 0 : -1}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setSelectedAnnouncement(item.event);

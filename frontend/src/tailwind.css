@@ -818,6 +818,7 @@ h1, h2, h3, p {
   @apply relative;
   --announcement-rail-card-width: clamp(286px, 32vw, 382px);
   --announcement-rail-card-lift: 18px;
+  --announcement-rail-step: clamp(152px, 18vw, 224px);
 }
 
 .announcement-rail-mask {
@@ -847,34 +848,28 @@ h1, h2, h3, p {
 }
 
 .announcement-rail {
-  display: flex;
-  gap: 18px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 20px max(16px, calc(50% - (var(--announcement-rail-card-width) / 2))) 22px;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: 50%;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pinch-zoom;
+  position: relative;
+  min-height: 462px;
+  padding: 20px 0 22px;
+  overflow: hidden;
+  touch-action: pan-y pinch-zoom;
   perspective: 1800px;
-  scroll-behavior: smooth;
 }
 
 .announcement-rail-card {
-  flex: 0 0 var(--announcement-rail-card-width);
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: var(--announcement-rail-card-width);
   min-height: 420px;
-  scroll-snap-align: center;
-  position: relative;
+  margin-left: calc(var(--announcement-rail-card-width) / -2);
   cursor: pointer;
   user-select: none;
   transform-origin: center center;
   will-change: transform, opacity;
   transform:
     translate3d(
-      calc(var(--rail-offset, 0) * 18px),
+      calc(var(--rail-offset, 0) * var(--announcement-rail-step)),
       calc(min(var(--rail-abs-offset, 0), 4) * calc(var(--announcement-rail-card-lift) * 0.8)),
       0
     )
@@ -890,15 +885,12 @@ h1, h2, h3, p {
     border-color 280ms ease;
 }
 
-.announcement-rail::-webkit-scrollbar {
-  display: none;
-}
-
 .announcement-rail-card:hover {
   box-shadow: 0 22px 50px rgba(15, 23, 42, 0.16);
 }
 
-.announcement-rail-card.is-clone {
+.announcement-rail-card.is-hidden {
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -1011,18 +1003,20 @@ h1, h2, h3, p {
   .announcement-rail-shell {
     --announcement-rail-card-width: min(84vw, 330px);
     --announcement-rail-card-lift: 12px;
+    --announcement-rail-step: clamp(108px, 26vw, 168px);
   }
 
   .announcement-rail {
-    gap: 14px;
+    min-height: 422px;
     padding-top: 14px;
     padding-bottom: 12px;
   }
 
   .announcement-rail-card {
+    top: 14px;
     min-height: 390px;
     transform:
-      translate3d(calc(var(--rail-offset, 0) * 10px), calc(min(var(--rail-abs-offset, 0), 4) * 10px), 0)
+      translate3d(calc(var(--rail-offset, 0) * var(--announcement-rail-step)), calc(min(var(--rail-abs-offset, 0), 4) * 10px), 0)
       rotateY(calc(var(--rail-offset, 0) * -6deg))
       scale(calc(1 - min(var(--rail-abs-offset, 0), 4) * 0.05));
   }
