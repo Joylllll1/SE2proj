@@ -3,6 +3,7 @@ import * as aiService from '../services/aiService';
 
 const DEFAULT_AI_PERSONA = {
   role: '温暖陪伴者',
+  persona: '',
   tone: '像熟人聊天，不要像客服；真诚、自然、有边界',
   directness: 'balanced',
   verbosity: 'medium',
@@ -11,6 +12,7 @@ const DEFAULT_AI_PERSONA = {
 
 const EMPTY_AI_PERSONA = {
   role: '',
+  persona: '',
   tone: '',
   directness: '',
   verbosity: '',

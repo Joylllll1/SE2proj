@@ -5,12 +5,14 @@ export const AI_VERBOSITY_OPTIONS = ['short', 'medium', 'detailed'];
 
 export const AI_PERSONA_TEXT_LIMITS = {
   role: 16,
+  persona: 120,
   tone: 80,
   customInstruction: 120,
 };
 
 export const DEFAULT_AI_PERSONA = {
   role: '温暖陪伴者',
+  persona: '',
   tone: '像熟人聊天，不要像客服；真诚、自然、有边界',
   directness: 'balanced',
   verbosity: 'medium',
@@ -24,6 +26,11 @@ export const aiPersonaFieldDefinitions = {
     type: String,
     trim: true,
     maxlength: [AI_PERSONA_TEXT_LIMITS.role, `角色最多 ${AI_PERSONA_TEXT_LIMITS.role} 个字符`],
+  },
+  persona: {
+    type: String,
+    trim: true,
+    maxlength: [AI_PERSONA_TEXT_LIMITS.persona, `人设最多 ${AI_PERSONA_TEXT_LIMITS.persona} 个字符`],
   },
   tone: {
     type: String,
@@ -89,6 +96,7 @@ export function sanitizePersonaInput(input = {}) {
 
   return {
     role: normalizeOptionalText(input.role, 'role', '角色'),
+    persona: normalizeOptionalText(input.persona, 'persona', '人设'),
     tone: normalizeOptionalText(input.tone, 'tone', '语气'),
     directness: normalizeEnum(input.directness, AI_DIRECTNESS_OPTIONS, '直接程度'),
     verbosity: normalizeEnum(input.verbosity, AI_VERBOSITY_OPTIONS, '回复长度'),

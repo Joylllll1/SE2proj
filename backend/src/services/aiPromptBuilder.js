@@ -21,6 +21,7 @@ export function buildSystemPrompt(persona = DEFAULT_AI_PERSONA) {
     '',
     '当前用户偏好：',
     `- 角色定位：${persona.role || DEFAULT_AI_PERSONA.role}`,
+    `- 人设描述：${persona.persona || DEFAULT_AI_PERSONA.persona || '未额外指定，保持自然稳定的陪伴者风格'}`,
     `- 语气风格：${persona.tone || DEFAULT_AI_PERSONA.tone}`,
     `- 直接程度：${DIRECTNESS_INSTRUCTIONS[persona.directness] || DIRECTNESS_INSTRUCTIONS[DEFAULT_AI_PERSONA.directness]}`,
     `- 回复长度：${VERBOSITY_INSTRUCTIONS[persona.verbosity] || VERBOSITY_INSTRUCTIONS[DEFAULT_AI_PERSONA.verbosity]}`,

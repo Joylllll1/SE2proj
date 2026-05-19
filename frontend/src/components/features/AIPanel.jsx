@@ -216,6 +216,11 @@ function PersonaSettingsView({
               <span className="px-3 py-1.5 rounded-full bg-surface-soft">
                 角色：{effectivePersona.role}
               </span>
+              {!!effectivePersona.persona && (
+                <span className="px-3 py-1.5 rounded-full bg-surface-soft">
+                  人设：{effectivePersona.persona}
+                </span>
+              )}
               <span className="px-3 py-1.5 rounded-full bg-surface-soft">
                 语气：{effectivePersona.tone}
               </span>
@@ -267,7 +272,27 @@ function PersonaSettingsView({
               </section>
 
               <section className="rounded-3xl border border-line bg-white p-5">
-                <p className="text-sm font-semibold text-text">2. 语气</p>
+                <p className="text-sm font-semibold text-text">2. 人设</p>
+                <textarea
+                  value={personaDraft.persona}
+                  onChange={(e) => onFieldChange('persona', e.target.value)}
+                  disabled={isPersonaSaving}
+                  rows={4}
+                  placeholder="比如：冷静、克制、观察力强，不主动暴露情绪；更擅长先判断局势再开口"
+                  className="mt-4 w-full px-4 py-3 border border-line rounded-2xl bg-surface-soft text-sm text-text placeholder:text-text-3 outline-none focus:border-blue transition-colors resize-none"
+                />
+                <div className="mt-3 flex items-center justify-between gap-4">
+                  <p className="text-xs text-text-3">
+                    写清楚这个角色真正该是什么感觉，比只填名字更容易稳定带入。
+                  </p>
+                  <span className="text-xs text-text-3 flex-shrink-0">
+                    {(personaDraft.persona || '').length} / 120
+                  </span>
+                </div>
+              </section>
+
+              <section className="rounded-3xl border border-line bg-white p-5">
+                <p className="text-sm font-semibold text-text">3. 语气</p>
                 <input
                   type="text"
                   value={personaDraft.tone}
@@ -299,7 +324,7 @@ function PersonaSettingsView({
               </section>
 
               <section className="rounded-3xl border border-line bg-white p-5">
-                <p className="text-sm font-semibold text-text">3. 直接程度</p>
+                <p className="text-sm font-semibold text-text">4. 直接程度</p>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4">
                   <OptionPill
                     active={!personaDraft.directness}
@@ -322,7 +347,7 @@ function PersonaSettingsView({
               </section>
 
               <section className="rounded-3xl border border-line bg-white p-5">
-                <p className="text-sm font-semibold text-text">4. 回复长度</p>
+                <p className="text-sm font-semibold text-text">5. 回复长度</p>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4">
                   <OptionPill
                     active={!personaDraft.verbosity}
@@ -345,7 +370,7 @@ function PersonaSettingsView({
               </section>
 
               <section className="rounded-3xl border border-line bg-white p-5">
-                <p className="text-sm font-semibold text-text">5. 额外要求</p>
+                <p className="text-sm font-semibold text-text">6. 额外要求</p>
                 <textarea
                   value={personaDraft.customInstruction}
                   onChange={(e) => onFieldChange('customInstruction', e.target.value)}
