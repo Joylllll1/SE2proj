@@ -2,12 +2,17 @@ import AISession from '../models/AISession.js';
 import AIMessage from '../models/AIMessage.js';
 import AppError from '../utils/AppError.js';
 
-const LLM_API_URL = process.env.LLM_API_URL || 'https://api.deepseek.com/v1/chat/completions';
-const LLM_API_KEY = process.env.LLM_API_KEY;
-const LLM_MODEL = process.env.LLM_MODEL || 'deepseek-chat';
 const MAX_CONTEXT_MESSAGES = 20; // 保留最近 20 条消息作为上下文
 const MAX_SESSION_TITLE_LENGTH = 20;
 const DEFAULT_LLM_ERROR_MESSAGE = '服务暂时不可用，请稍后再试';
+
+function getLLMConfig() {
+  return {
+    apiUrl: process.env.LLM_API_URL || 'https://api.deepseek.com/v1/chat/completions',
+    apiKey: process.env.LLM_API_KEY,
+    model: process.env.LLM_MODEL || 'deepseek-chat',
+  };
+}
 
 // 生成会话标题（基于首条消息）
 function generateSessionTitle(content) {
@@ -21,18 +26,20 @@ function generateSessionTitle(content) {
 
 // 调用 LLM API
 async function callLLM(messages) {
-  if (!LLM_API_KEY) {
+  const { apiUrl, apiKey, model } = getLLMConfig();
+
+  if (!apiKey) {
     throw new AppError('AI 服务未配置', 500, 'AI_NOT_CONFIGURED');
   }
 
-  const response = await fetch(LLM_API_URL, {
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${LLM_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: LLM_MODEL,
+      model,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
       temperature: 0.7,
       max_tokens: 2000,
