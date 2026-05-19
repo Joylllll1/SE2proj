@@ -259,7 +259,7 @@ function PersonaSettingsView({
                   className="mt-4 w-full h-11 px-4 border border-line rounded-2xl bg-surface-soft text-sm text-text placeholder:text-text-3 outline-none focus:border-blue transition-colors"
                 />
                 <p className="text-xs text-text-3 mt-3">
-                  描述你希望 AI 像什么样的人和你聊天。留空时会交给默认设置兜底。
+                  描述你希望 AI 像什么样的人和你聊天。留空时，这一项不会额外写进 prompt。
                 </p>
               </section>
 
@@ -294,7 +294,7 @@ function PersonaSettingsView({
                   className="mt-4 w-full h-11 px-4 border border-line rounded-2xl bg-surface-soft text-sm text-text placeholder:text-text-3 outline-none focus:border-blue transition-colors"
                 />
                 <p className="text-xs text-text-3 mt-3">
-                  描述你希望它怎么说话。可以写你喜欢的感觉，也可以写你不喜欢的风格。留空时继续使用默认设置。
+                  描述你希望它怎么说话。可以写你喜欢的感觉，也可以写你不喜欢的风格。留空时，这一项不会额外写进 prompt。
                 </p>
               </section>
 

@@ -2,6 +2,8 @@ import AppError from '../utils/AppError.js';
 
 export const AI_DIRECTNESS_OPTIONS = ['soft', 'balanced', 'straight'];
 export const AI_VERBOSITY_OPTIONS = ['short', 'medium', 'detailed'];
+export const AI_PERSONA_TEXT_KEYS = ['role', 'persona', 'tone', 'customInstruction'];
+export const AI_PERSONA_ENUM_KEYS = ['directness', 'verbosity'];
 
 export const AI_PERSONA_TEXT_LIMITS = {
   role: 16,
@@ -52,7 +54,7 @@ export const aiPersonaFieldDefinitions = {
   },
 };
 
-function normalizeOptionalText(value, field, label) {
+function normalizeOptionalText(value, field, label, preserveEmpty = false) {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -67,7 +69,7 @@ function normalizeOptionalText(value, field, label) {
     .trim();
 
   if (!sanitized) {
-    return undefined;
+    return preserveEmpty ? '' : undefined;
   }
 
   if (sanitized.length > AI_PERSONA_TEXT_LIMITS[field]) {
@@ -77,9 +79,13 @@ function normalizeOptionalText(value, field, label) {
   return sanitized;
 }
 
-function normalizeEnum(value, options, label) {
-  if (value === undefined || value === null || value === '') {
+function normalizeEnum(value, options, label, preserveEmpty = false) {
+  if (value === undefined || value === null) {
     return undefined;
+  }
+
+  if (value === '') {
+    return preserveEmpty ? '' : undefined;
   }
 
   if (typeof value !== 'string' || !options.includes(value)) {
@@ -89,25 +95,43 @@ function normalizeEnum(value, options, label) {
   return value;
 }
 
-export function sanitizePersonaInput(input = {}) {
+export function sanitizePersonaInput(input = {}, options = {}) {
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
     throw new AppError('AI persona 配置格式无效', 400, 'INVALID_AI_PERSONA');
   }
 
+  const {
+    preserveEmptyText = false,
+    preserveEmptyEnum = false,
+  } = options;
+
   return {
-    role: normalizeOptionalText(input.role, 'role', '角色'),
-    persona: normalizeOptionalText(input.persona, 'persona', '人设'),
-    tone: normalizeOptionalText(input.tone, 'tone', '语气'),
-    directness: normalizeEnum(input.directness, AI_DIRECTNESS_OPTIONS, '直接程度'),
-    verbosity: normalizeEnum(input.verbosity, AI_VERBOSITY_OPTIONS, '回复长度'),
-    customInstruction: normalizeOptionalText(input.customInstruction, 'customInstruction', '额外要求'),
+    role: normalizeOptionalText(input.role, 'role', '角色', preserveEmptyText),
+    persona: normalizeOptionalText(input.persona, 'persona', '人设', preserveEmptyText),
+    tone: normalizeOptionalText(input.tone, 'tone', '语气', preserveEmptyText),
+    directness: normalizeEnum(input.directness, AI_DIRECTNESS_OPTIONS, '直接程度', preserveEmptyEnum),
+    verbosity: normalizeEnum(input.verbosity, AI_VERBOSITY_OPTIONS, '回复长度', preserveEmptyEnum),
+    customInstruction: normalizeOptionalText(input.customInstruction, 'customInstruction', '额外要求', preserveEmptyText),
   };
 }
 
-export function compactPersona(persona = {}) {
+export function compactPersona(persona = {}, options = {}) {
+  const { preserveEmptyText = false } = options;
+
   return AI_PERSONA_KEYS.reduce((result, key) => {
     const value = persona[key];
-    if (value !== undefined && value !== null && value !== '') {
+    if (value === undefined || value === null) {
+      return result;
+    }
+
+    if (value === '') {
+      if (preserveEmptyText && AI_PERSONA_TEXT_KEYS.includes(key)) {
+        result[key] = value;
+      }
+      return result;
+    }
+
+    if (value !== '') {
       result[key] = value;
     }
     return result;
@@ -124,9 +148,18 @@ export function resolvePersonaConfig(...layers) {
 
     for (const key of AI_PERSONA_KEYS) {
       const value = layer[key];
-      if (value !== undefined && value !== null && value !== '') {
-        merged[key] = value;
+      if (value === undefined || value === null) {
+        continue;
       }
+
+      if (value === '') {
+        if (AI_PERSONA_TEXT_KEYS.includes(key)) {
+          merged[key] = value;
+        }
+        continue;
+      }
+
+      merged[key] = value;
     }
   }
 

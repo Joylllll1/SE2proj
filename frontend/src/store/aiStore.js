@@ -35,20 +35,40 @@ function toPersonaDraft(persona = {}) {
   };
 }
 
+function normalizeDraftValue(value) {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  return value;
+}
+
 function compactPersonaDraft(persona = {}) {
   return Object.entries(persona).reduce((result, [key, value]) => {
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (trimmed) {
-        result[key] = trimmed;
+    const normalized = normalizeDraftValue(value);
+
+    if (typeof normalized === 'string') {
+      if (normalized) {
+        result[key] = normalized;
       }
       return result;
     }
 
-    if (value !== undefined && value !== null && value !== '') {
-      result[key] = value;
+    if (normalized !== undefined && normalized !== null && normalized !== '') {
+      result[key] = normalized;
     }
 
+    return result;
+  }, {});
+}
+
+function createDirtyPersonaPatch(persona = {}, dirtyFields = {}) {
+  return Object.keys(dirtyFields).reduce((result, field) => {
+    if (!dirtyFields[field]) {
+      return result;
+    }
+
+    result[field] = normalizeDraftValue(persona[field]);
     return result;
   }, {});
 }
@@ -464,7 +484,7 @@ const useAIStore = create((set, get) => ({
   },
 
   saveSessionPersona: async () => {
-    const { currentSession, personaDraft } = get();
+    const { currentSession, personaDraft, personaDirtyFields } = get();
     if (!currentSession?._id) return null;
 
     set({ isPersonaSaving: true, error: null });
@@ -472,7 +492,7 @@ const useAIStore = create((set, get) => ({
     try {
       const result = await aiService.updateSessionPersona(
         currentSession._id,
-        compactPersonaDraft(personaDraft)
+        createDirtyPersonaPatch(personaDraft, personaDirtyFields)
       );
       const effectivePersona = withPersonaDefaults(result.effectivePersona);
 

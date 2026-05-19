@@ -2,22 +2,53 @@ import AIProfile from '../models/AIProfile.js';
 import AISession from '../models/AISession.js';
 import AppError from '../utils/AppError.js';
 import {
+  AI_PERSONA_KEYS,
+  AI_PERSONA_TEXT_KEYS,
   compactPersona,
-  diffPersonaConfig,
   resolvePersonaConfig,
   sanitizePersonaInput,
 } from './aiPersonaConfig.js';
 
-function toPlainPersona(persona) {
+function toPlainPersona(persona, options = {}) {
   if (!persona) {
     return {};
   }
 
   if (typeof persona.toObject === 'function') {
-    return compactPersona(persona.toObject());
+    return compactPersona(persona.toObject(), options);
   }
 
-  return compactPersona(persona);
+  return compactPersona(persona, options);
+}
+
+function applySessionPersonaPatch(currentPersona = {}, personaPatch = {}, rawInput = {}) {
+  const nextPersona = { ...currentPersona };
+
+  for (const key of AI_PERSONA_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(rawInput, key)) {
+      continue;
+    }
+
+    const value = personaPatch[key];
+
+    if (value === undefined) {
+      delete nextPersona[key];
+      continue;
+    }
+
+    if (value === '') {
+      if (AI_PERSONA_TEXT_KEYS.includes(key)) {
+        nextPersona[key] = value;
+      } else {
+        delete nextPersona[key];
+      }
+      continue;
+    }
+
+    nextPersona[key] = value;
+  }
+
+  return nextPersona;
 }
 
 async function getOwnedSession(userId, sessionId) {
@@ -53,7 +84,7 @@ export async function updateProfile(userId, personaInput) {
 export async function getSessionPersona(userId, sessionId) {
   const session = await getOwnedSession(userId, sessionId);
   const { effectivePersona: defaultPersona } = await getProfile(userId);
-  const persona = toPlainPersona(session.aiPersona);
+  const persona = toPlainPersona(session.aiPersona, { preserveEmptyText: true });
 
   return {
     persona,
@@ -64,17 +95,26 @@ export async function getSessionPersona(userId, sessionId) {
 export async function updateSessionPersona(userId, sessionId, personaInput) {
   const session = await getOwnedSession(userId, sessionId);
   const { effectivePersona: defaultPersona } = await getProfile(userId);
-  const submittedPersona = compactPersona(sanitizePersonaInput(personaInput));
-  const targetPersona = resolvePersonaConfig(defaultPersona, submittedPersona);
-  const overridePersona = diffPersonaConfig(targetPersona, defaultPersona);
+  const currentPersona = toPlainPersona(session.aiPersona, { preserveEmptyText: true });
+  const submittedPersona = sanitizePersonaInput(personaInput, {
+    preserveEmptyText: true,
+    preserveEmptyEnum: true,
+  });
+  const nextPersona = compactPersona(
+    applySessionPersonaPatch(currentPersona, submittedPersona, personaInput),
+    { preserveEmptyText: true }
+  );
 
-  session.aiPersona = Object.keys(overridePersona).length > 0 ? overridePersona : undefined;
+  session.aiPersona = Object.keys(nextPersona).length > 0 ? nextPersona : undefined;
   session.updatedAt = new Date();
   await session.save();
 
   return {
-    persona: toPlainPersona(session.aiPersona),
-    effectivePersona: resolvePersonaConfig(defaultPersona, toPlainPersona(session.aiPersona)),
+    persona: toPlainPersona(session.aiPersona, { preserveEmptyText: true }),
+    effectivePersona: resolvePersonaConfig(
+      defaultPersona,
+      toPlainPersona(session.aiPersona, { preserveEmptyText: true })
+    ),
   };
 }
 
@@ -90,5 +130,8 @@ export async function resolveEffectivePersona(userId, sessionOrPersonaSource = n
     return sessionPersona.effectivePersona;
   }
 
-  return resolvePersonaConfig(defaultPersona, toPlainPersona(sessionOrPersonaSource.aiPersona));
+  return resolvePersonaConfig(
+    defaultPersona,
+    toPlainPersona(sessionOrPersonaSource.aiPersona, { preserveEmptyText: true })
+  );
 }
