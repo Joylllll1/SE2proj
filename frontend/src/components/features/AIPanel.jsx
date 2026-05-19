@@ -15,17 +15,6 @@ const VERBOSITY_OPTIONS = [
   { value: 'detailed', label: '详细', description: '解释更多，适合认真分析' },
 ];
 
-const TONE_SUGGESTIONS = [
-  '温柔陪聊',
-  '像熟人聊天',
-  '少点说教',
-  '嘴硬但关心',
-  '冷静分析',
-  '轻松幽默',
-  '文艺一点',
-  '直接一点',
-];
-
 function formatRelativeTime(date) {
   if (!date) return '刚刚';
 
@@ -175,7 +164,6 @@ function PersonaSettingsView({
   error,
   onBack,
   onFieldChange,
-  onToneSuggestion,
   onReset,
   onSaveDefault,
   onSaveSession,
@@ -213,17 +201,21 @@ function PersonaSettingsView({
           <div className="rounded-3xl border border-line bg-white px-5 py-4">
             <p className="text-sm font-semibold text-text">当前生效风格</p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-text-2">
-              <span className="px-3 py-1.5 rounded-full bg-surface-soft">
-                角色：{effectivePersona.role}
-              </span>
+              {!!effectivePersona.role && (
+                <span className="px-3 py-1.5 rounded-full bg-surface-soft">
+                  角色：{effectivePersona.role}
+                </span>
+              )}
               {!!effectivePersona.persona && (
                 <span className="px-3 py-1.5 rounded-full bg-surface-soft">
                   人设：{effectivePersona.persona}
                 </span>
               )}
-              <span className="px-3 py-1.5 rounded-full bg-surface-soft">
-                语气：{effectivePersona.tone}
-              </span>
+              {!!effectivePersona.tone && (
+                <span className="px-3 py-1.5 rounded-full bg-surface-soft">
+                  语气：{effectivePersona.tone}
+                </span>
+              )}
               <span className="px-3 py-1.5 rounded-full bg-surface-soft">
                 直接程度：{
                   DIRECTNESS_OPTIONS.find((option) => option.value === effectivePersona.directness)?.label || '平衡'
@@ -304,23 +296,6 @@ function PersonaSettingsView({
                 <p className="text-xs text-text-3 mt-3">
                   描述你希望它怎么说话。可以写你喜欢的感觉，也可以写你不喜欢的风格。留空时继续使用默认设置。
                 </p>
-
-                <div className="mt-5">
-                  <p className="text-xs font-semibold text-text-2 mb-3">快捷灵感</p>
-                  <div className="flex flex-wrap gap-2">
-                    {TONE_SUGGESTIONS.map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => onToneSuggestion(suggestion)}
-                        disabled={isPersonaSaving}
-                        className="px-3 py-2 rounded-full bg-blue-soft text-blue text-xs font-semibold transition-colors hover:bg-blue hover:text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </section>
 
               <section className="rounded-3xl border border-line bg-white p-5">
@@ -387,22 +362,6 @@ function PersonaSettingsView({
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-line bg-white p-5">
-                <p className="text-sm font-semibold text-text">应用范围</p>
-                <div className="mt-4 space-y-3">
-                  <div className="rounded-2xl border border-line-soft bg-surface-soft px-4 py-3">
-                    <p className="text-sm font-semibold text-text">设为默认</p>
-                    <p className="text-xs text-text-2 mt-1">用于之后的新会话。</p>
-                  </div>
-                  <div className="rounded-2xl border border-line-soft bg-surface-soft px-4 py-3">
-                    <p className="text-sm font-semibold text-text">仅当前会话生效</p>
-                    <p className="text-xs text-text-2 mt-1">
-                      只影响这一次聊天，不改默认设置。
-                      {!currentSession?._id && ' 当前还没有可写入的会话。'}
-                    </p>
-                  </div>
-                </div>
-              </section>
             </>
           )}
         </div>
@@ -458,6 +417,7 @@ function AIPanel({ open, onClose }) {
     isPersonaViewOpen,
     isPersonaLoading,
     isPersonaSaving,
+    isStopping,
     personaDraft,
     effectivePersona,
     personaDirty,
@@ -473,10 +433,10 @@ function AIPanel({ open, onClose }) {
     openPersonaSettings,
     closePersonaSettings,
     updatePersonaField,
-    applyToneSuggestion,
     resetPersonaDraft,
     saveDefaultPersona,
     saveSessionPersona,
+    cancelActiveRequest,
     clearError,
   } = useAIStore();
 
@@ -537,12 +497,14 @@ function AIPanel({ open, onClose }) {
   }, [input, isLoading, sendMessage]);
 
   const handleRegenerate = useCallback(async () => {
+    if (isLoading) return;
+
     try {
       await regenerateMessage();
     } catch {
       // Error handled in store.
     }
-  }, [regenerateMessage]);
+  }, [isLoading, regenerateMessage]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -734,12 +696,17 @@ function AIPanel({ open, onClose }) {
                 disabled={isLoading}
               />
               <button
-                className="primary-button flex-shrink-0 h-10 px-4 inline-flex items-center justify-center gap-[7px] border-0 rounded-full text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleSend}
+                className={`flex-shrink-0 h-10 px-4 inline-flex items-center justify-center gap-[7px] border-0 rounded-full text-white font-bold shadow-sm transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isLoading
+                    ? 'bg-[#f25f5c] hover:bg-[#df4f4c]'
+                    : 'primary-button bg-blue hover:-translate-y-px hover:bg-blue-2'
+                }`}
+                onClick={isLoading ? cancelActiveRequest : handleSend}
                 type="button"
-                disabled={isLoading || !input.trim()}
+                disabled={!isLoading && !input.trim()}
               >
-                <Icon name="send" />
+                <Icon name={isLoading ? 'close' : 'send'} />
+                <span>{isLoading ? (isStopping ? '停止中' : '停止') : '发送'}</span>
               </button>
             </div>
         </>
@@ -755,7 +722,6 @@ function AIPanel({ open, onClose }) {
           error={error}
           onBack={handleBackFromPersona}
           onFieldChange={updatePersonaField}
-          onToneSuggestion={applyToneSuggestion}
           onReset={handleResetPersonaDraft}
           onSaveDefault={handleSaveDefaultPersona}
           onSaveSession={handleSaveSessionPersona}

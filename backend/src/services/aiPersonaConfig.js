@@ -11,9 +11,9 @@ export const AI_PERSONA_TEXT_LIMITS = {
 };
 
 export const DEFAULT_AI_PERSONA = {
-  role: '温暖陪伴者',
+  role: '',
   persona: '',
-  tone: '像熟人聊天，不要像客服；真诚、自然、有边界',
+  tone: '',
   directness: 'balanced',
   verbosity: 'medium',
   customInstruction: '',

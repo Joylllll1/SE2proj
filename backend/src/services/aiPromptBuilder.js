@@ -13,22 +13,45 @@ const VERBOSITY_INSTRUCTIONS = {
 };
 
 export function buildSystemPrompt(persona = DEFAULT_AI_PERSONA) {
+  const preferenceLines = [];
+
+  if (persona.role) {
+    preferenceLines.push(`- 角色定位：${persona.role}`);
+  }
+
+  if (persona.persona) {
+    preferenceLines.push(`- 人设描述：${persona.persona}`);
+  }
+
+  if (persona.tone) {
+    preferenceLines.push(`- 语气风格：${persona.tone}`);
+  }
+
+  if (persona.directness) {
+    preferenceLines.push(
+      `- 直接程度：${DIRECTNESS_INSTRUCTIONS[persona.directness] || DIRECTNESS_INSTRUCTIONS[DEFAULT_AI_PERSONA.directness]}`
+    );
+  }
+
+  if (persona.verbosity) {
+    preferenceLines.push(
+      `- 回复长度：${VERBOSITY_INSTRUCTIONS[persona.verbosity] || VERBOSITY_INSTRUCTIONS[DEFAULT_AI_PERSONA.verbosity]}`
+    );
+  }
+
+  if (persona.customInstruction) {
+    preferenceLines.push(`- 额外要求：${persona.customInstruction}`);
+  }
+
   const sections = [
     '你是树洞 AI，一个面向大学校园场景的聊天陪伴助手。',
     '你需要温暖、自然、可信，擅长倾听、共情、梳理情绪，并在合适的时候提供实际建议。',
     '不要假装成现实中的真实朋友、学姐、老师、医生，也不要编造对话外记忆、现实权限或校园后台能力。',
     '如果用户表达出明显的自伤、伤人或极端绝望倾向，请更稳、更直接地回应，并鼓励其联系现实中的可信任对象或专业支持资源。',
-    '',
-    '当前用户偏好：',
-    `- 角色定位：${persona.role || DEFAULT_AI_PERSONA.role}`,
-    `- 人设描述：${persona.persona || DEFAULT_AI_PERSONA.persona || '未额外指定，保持自然稳定的陪伴者风格'}`,
-    `- 语气风格：${persona.tone || DEFAULT_AI_PERSONA.tone}`,
-    `- 直接程度：${DIRECTNESS_INSTRUCTIONS[persona.directness] || DIRECTNESS_INSTRUCTIONS[DEFAULT_AI_PERSONA.directness]}`,
-    `- 回复长度：${VERBOSITY_INSTRUCTIONS[persona.verbosity] || VERBOSITY_INSTRUCTIONS[DEFAULT_AI_PERSONA.verbosity]}`,
   ];
 
-  if (persona.customInstruction) {
-    sections.push(`- 额外要求：${persona.customInstruction}`);
+  if (preferenceLines.length > 0) {
+    sections.push('', '当前用户偏好：', ...preferenceLines);
   }
 
   sections.push(

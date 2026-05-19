@@ -1,16 +1,48 @@
 import * as aiService from '../services/aiService.js';
 import * as aiPersonaService from '../services/aiPersonaService.js';
 
+function createRequestAbortSignal(req) {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+
+  req.on('aborted', abort);
+  req.on('close', abort);
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      req.off('aborted', abort);
+      req.off('close', abort);
+    },
+  };
+}
+
 export const sendMessage = async (req, res) => {
   const { sessionId, message } = req.body;
-  const result = await aiService.sendMessage(req.user.id, sessionId, message);
-  res.json({ success: true, data: result });
+  const { signal, cleanup } = createRequestAbortSignal(req);
+
+  try {
+    const result = await aiService.sendMessage(req.user.id, sessionId, message, { signal });
+    if (!signal.aborted) {
+      res.json({ success: true, data: result });
+    }
+  } finally {
+    cleanup();
+  }
 };
 
 export const regenerateMessage = async (req, res) => {
   const { id } = req.params;
-  const result = await aiService.regenerateMessage(req.user.id, id);
-  res.json({ success: true, data: result });
+  const { signal, cleanup } = createRequestAbortSignal(req);
+
+  try {
+    const result = await aiService.regenerateMessage(req.user.id, id, { signal });
+    if (!signal.aborted) {
+      res.json({ success: true, data: result });
+    }
+  } finally {
+    cleanup();
+  }
 };
 
 export const getSessions = async (req, res) => {

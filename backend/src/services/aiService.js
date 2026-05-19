@@ -44,7 +44,7 @@ function serializeSession(session, effectivePersona) {
 }
 
 // 调用 LLM API
-async function callLLM(messages) {
+async function callLLM(messages, signal) {
   const { apiUrl, apiKey, model } = getLLMConfig();
 
   if (!apiKey) {
@@ -57,6 +57,7 @@ async function callLLM(messages) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
+    signal,
     body: JSON.stringify({
       model,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
@@ -75,7 +76,7 @@ async function callLLM(messages) {
 }
 
 // 发送消息并获取 AI 回复
-export const sendMessage = async (userId, sessionId, content) => {
+export const sendMessage = async (userId, sessionId, content, options = {}) => {
   // 获取或创建会话
   let session;
   if (sessionId) {
@@ -126,8 +127,12 @@ export const sendMessage = async (userId, sessionId, content) => {
   // 调用 LLM
   let aiContent;
   try {
-    aiContent = await callLLM(llmMessages);
+    aiContent = await callLLM(llmMessages, options.signal);
   } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
+    }
+
     if (error.isOperational) {
       throw new AppError(error.message, error.statusCode, error.errorCode, {
         session: serializeSession(session, effectivePersona),
@@ -171,7 +176,7 @@ export const sendMessage = async (userId, sessionId, content) => {
 };
 
 // 重新生成最后一条 AI 回复
-export const regenerateMessage = async (userId, sessionId) => {
+export const regenerateMessage = async (userId, sessionId, options = {}) => {
   const session = await AISession.findOne({ _id: sessionId, user: userId });
   if (!session) {
     throw new AppError('会话不存在', 404, 'SESSION_NOT_FOUND');
@@ -206,7 +211,15 @@ export const regenerateMessage = async (userId, sessionId) => {
   ];
 
   // 调用 LLM
-  const aiContent = await callLLM(llmMessages);
+  let aiContent;
+  try {
+    aiContent = await callLLM(llmMessages, options.signal);
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
+    }
+    throw error;
+  }
 
   // 更新 AI 消息
   lastMessage.content = aiContent;

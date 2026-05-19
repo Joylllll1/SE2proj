@@ -1,9 +1,10 @@
 import { request } from './apiClient.js';
 
-export const sendMessage = async (sessionId, message) => {
+export const sendMessage = async (sessionId, message, options = {}) => {
   const data = await request('/api/ai/chat', {
     method: 'POST',
     body: JSON.stringify({ sessionId, message }),
+    ...options,
   });
   return data;
 };
@@ -32,9 +33,10 @@ export const deleteSession = async (sessionId) => {
   return { success: true };
 };
 
-export const regenerateMessage = async (sessionId) => {
+export const regenerateMessage = async (sessionId, options = {}) => {
   const data = await request(`/api/ai/sessions/${sessionId}/regenerate`, {
     method: 'POST',
+    ...options,
   });
   return data.data;
 };

@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import * as aiService from '../services/aiService';
 
 const DEFAULT_AI_PERSONA = {
-  role: '温暖陪伴者',
+  role: '',
   persona: '',
-  tone: '像熟人聊天，不要像客服；真诚、自然、有边界',
+  tone: '',
   directness: 'balanced',
   verbosity: 'medium',
   customInstruction: '',
@@ -76,11 +76,13 @@ const useAIStore = create((set, get) => ({
   isPersonaSaving: false,
   personaDirty: false,
   personaDirtyFields: {},
+  isStopping: false,
   defaultPersona: {},
   defaultEffectivePersona: { ...DEFAULT_AI_PERSONA },
   sessionPersona: {},
   effectivePersona: { ...DEFAULT_AI_PERSONA },
   personaDraft: { ...EMPTY_AI_PERSONA },
+  activeRequestController: null,
   error: null,
 
   // Actions
@@ -150,6 +152,7 @@ const useAIStore = create((set, get) => ({
 
   sendMessage: async (content) => {
     const { currentSession, messages } = get();
+    const controller = new AbortController();
 
     const tempUserMessage = {
       _id: 'temp-' + Date.now(),
@@ -157,10 +160,17 @@ const useAIStore = create((set, get) => ({
       content,
       createdAt: new Date().toISOString(),
     };
-    set({ messages: [...messages, tempUserMessage], isLoading: true });
+    set({
+      messages: [...messages, tempUserMessage],
+      isLoading: true,
+      isStopping: false,
+      activeRequestController: controller,
+    });
 
     try {
-      const result = await aiService.sendMessage(currentSession?._id, content);
+      const result = await aiService.sendMessage(currentSession?._id, content, {
+        signal: controller.signal,
+      });
       const { data } = result;
 
       set((state) => ({
@@ -173,10 +183,17 @@ const useAIStore = create((set, get) => ({
         sessionPersona: data.session?.aiPersona || state.sessionPersona,
         effectivePersona: withPersonaDefaults(data.session?.effectivePersona || state.effectivePersona),
         isLoading: false,
+        isStopping: false,
+        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
       }));
 
       await get().fetchSessions();
     } catch (err) {
+      if (err.name === 'AbortError') {
+        await get().syncCurrentSessionAfterAbort();
+        return;
+      }
+
       const savedMessage = err.data?.savedMessage;
       const savedSession = err.data?.session;
 
@@ -188,6 +205,8 @@ const useAIStore = create((set, get) => ({
         sessionPersona: savedSession?.aiPersona || state.sessionPersona,
         effectivePersona: withPersonaDefaults(savedSession?.effectivePersona || state.effectivePersona),
         isLoading: false,
+        isStopping: false,
+        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
         error: err.message,
       }));
       throw err;
@@ -197,11 +216,18 @@ const useAIStore = create((set, get) => ({
   regenerateMessage: async () => {
     const { currentSession, messages } = get();
     if (!currentSession) return;
+    const controller = new AbortController();
 
-    set({ isLoading: true });
+    set({
+      isLoading: true,
+      isStopping: false,
+      activeRequestController: controller,
+    });
 
     try {
-      const result = await aiService.regenerateMessage(currentSession._id);
+      const result = await aiService.regenerateMessage(currentSession._id, {
+        signal: controller.signal,
+      });
 
       const newMessages = [...messages];
       for (let i = newMessages.length - 1; i >= 0; i--) {
@@ -211,15 +237,27 @@ const useAIStore = create((set, get) => ({
         }
       }
 
-      set({
+      set((state) => ({
         messages: newMessages,
         currentSession: result.session || currentSession,
-        sessionPersona: result.session?.aiPersona || get().sessionPersona,
-        effectivePersona: withPersonaDefaults(result.session?.effectivePersona || get().effectivePersona),
+        sessionPersona: result.session?.aiPersona || state.sessionPersona,
+        effectivePersona: withPersonaDefaults(result.session?.effectivePersona || state.effectivePersona),
         isLoading: false,
-      });
+        isStopping: false,
+        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
+      }));
     } catch (err) {
-      set({ isLoading: false, error: err.message });
+      if (err.name === 'AbortError') {
+        await get().syncCurrentSessionAfterAbort();
+        return;
+      }
+
+      set((state) => ({
+        isLoading: false,
+        isStopping: false,
+        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
+        error: err.message,
+      }));
       throw err;
     }
   },
@@ -230,6 +268,56 @@ const useAIStore = create((set, get) => ({
 
   closeSessionList: () => {
     set({ showSessionList: false });
+  },
+
+  cancelActiveRequest: () => {
+    const controller = get().activeRequestController;
+    if (!controller) return;
+
+    set({ isStopping: true });
+    controller.abort();
+  },
+
+  syncCurrentSessionAfterAbort: async () => {
+    const { currentSession } = get();
+
+    if (!currentSession?._id) {
+      set((state) => ({
+        messages: state.messages.filter((message) => !String(message._id).startsWith('temp-')),
+        isLoading: false,
+        isStopping: false,
+        activeRequestController: null,
+        error: null,
+      }));
+      return;
+    }
+
+    try {
+      const [sessionData, sessions] = await Promise.all([
+        aiService.getSession(currentSession._id),
+        aiService.getSessions(),
+      ]);
+
+      set({
+        sessions,
+        currentSession: sessionData.session,
+        messages: sessionData.messages,
+        sessionPersona: sessionData.session.aiPersona || {},
+        effectivePersona: withPersonaDefaults(sessionData.session.effectivePersona),
+        isLoading: false,
+        isStopping: false,
+        activeRequestController: null,
+        error: null,
+      });
+    } catch {
+      set((state) => ({
+        messages: state.messages.filter((message) => !String(message._id).startsWith('temp-')),
+        isLoading: false,
+        isStopping: false,
+        activeRequestController: null,
+        error: null,
+      }));
+    }
   },
 
   openPersonaSettings: async () => {
@@ -301,20 +389,6 @@ const useAIStore = create((set, get) => ({
       personaDirtyFields: {
         ...state.personaDirtyFields,
         [field]: true,
-      },
-    }));
-  },
-
-  applyToneSuggestion: (tone) => {
-    set((state) => ({
-      personaDraft: {
-        ...state.personaDraft,
-        tone,
-      },
-      personaDirty: true,
-      personaDirtyFields: {
-        ...state.personaDirtyFields,
-        tone: true,
       },
     }));
   },
