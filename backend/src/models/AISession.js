@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import aiPersonaSchema from './schemas/aiPersonaSchema.js';
 
 const aiSessionSchema = new mongoose.Schema(
   {
@@ -12,6 +13,10 @@ const aiSessionSchema = new mongoose.Schema(
       type: String,
       default: '新会话',
       maxlength: 20,
+    },
+    aiPersona: {
+      type: aiPersonaSchema,
+      default: undefined,
     },
   },
   {

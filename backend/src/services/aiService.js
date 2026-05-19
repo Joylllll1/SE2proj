@@ -1,6 +1,8 @@
 import AISession from '../models/AISession.js';
 import AIMessage from '../models/AIMessage.js';
 import AppError from '../utils/AppError.js';
+import { buildSystemPrompt } from './aiPromptBuilder.js';
+import { resolveEffectivePersona } from './aiPersonaService.js';
 
 const MAX_CONTEXT_MESSAGES = 20; // 保留最近 20 条消息作为上下文
 const MAX_SESSION_TITLE_LENGTH = 20;
@@ -22,6 +24,23 @@ function generateSessionTitle(content) {
   }
 
   return `${trimmed.slice(0, MAX_SESSION_TITLE_LENGTH - 3)}...`;
+}
+
+function serializeSession(session, effectivePersona) {
+  const rawPersona = session?.aiPersona
+    ? typeof session.aiPersona.toObject === 'function'
+      ? session.aiPersona.toObject()
+      : session.aiPersona
+    : null;
+
+  return {
+    _id: session._id,
+    title: session.title,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    aiPersona: rawPersona,
+    effectivePersona,
+  };
 }
 
 // 调用 LLM API
@@ -98,8 +117,9 @@ export const sendMessage = async (userId, sessionId, content) => {
   historyMessages.reverse();
 
   // 构建 LLM 消息格式
+  const effectivePersona = await resolveEffectivePersona(userId, session);
   const llmMessages = [
-    { role: 'system', content: '你是树洞 AI，一个温暖、友善的校园树洞助手。你擅长倾听学生的心声，提供情绪支持和建议。请用亲切、自然的语气回复。' },
+    { role: 'system', content: buildSystemPrompt(effectivePersona) },
     ...historyMessages.map(m => ({ role: m.role, content: m.content })),
   ];
 
@@ -110,11 +130,7 @@ export const sendMessage = async (userId, sessionId, content) => {
   } catch (error) {
     if (error.isOperational) {
       throw new AppError(error.message, error.statusCode, error.errorCode, {
-        session: {
-          _id: session._id,
-          title: session.title,
-          updatedAt: session.updatedAt,
-        },
+        session: serializeSession(session, effectivePersona),
         savedMessage: {
           _id: userMessage._id,
           role: userMessage.role,
@@ -138,11 +154,7 @@ export const sendMessage = async (userId, sessionId, content) => {
   await session.save();
 
   return {
-    session: {
-      _id: session._id,
-      title: session.title,
-      updatedAt: session.updatedAt,
-    },
+    session: serializeSession(session, effectivePersona),
     userMessage: {
       _id: userMessage._id,
       role: userMessage.role,
@@ -187,8 +199,9 @@ export const regenerateMessage = async (userId, sessionId) => {
   historyMessages.reverse();
 
   // 构建 LLM 消息格式
+  const effectivePersona = await resolveEffectivePersona(userId, session);
   const llmMessages = [
-    { role: 'system', content: '你是树洞 AI，一个温暖、友善的校园树洞助手。你擅长倾听学生的心声，提供情绪支持和建议。请用亲切、自然的语气回复。' },
+    { role: 'system', content: buildSystemPrompt(effectivePersona) },
     ...historyMessages.map(m => ({ role: m.role, content: m.content })),
   ];
 
@@ -203,11 +216,7 @@ export const regenerateMessage = async (userId, sessionId) => {
   await session.save();
 
   return {
-    session: {
-      _id: session._id,
-      title: session.title,
-      updatedAt: session.updatedAt,
-    },
+    session: serializeSession(session, effectivePersona),
     message: {
       _id: lastMessage._id,
       role: lastMessage.role,
@@ -228,6 +237,7 @@ export const getSessions = async (userId) => {
     title: s.title,
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
+    hasPersonaOverride: Boolean(s.aiPersona && Object.keys(s.aiPersona).length > 0),
   }));
 };
 
@@ -241,13 +251,10 @@ export const getSession = async (userId, sessionId) => {
   const messages = await AIMessage.find({ session: sessionId })
     .sort({ createdAt: 1 })
     .lean();
+  const effectivePersona = await resolveEffectivePersona(userId, session);
 
   return {
-    session: {
-      _id: session._id,
-      title: session.title,
-      createdAt: session.createdAt,
-    },
+    session: serializeSession(session, effectivePersona),
     messages: messages.map(m => ({
       _id: m._id,
       role: m.role,
@@ -263,14 +270,10 @@ export const createSession = async (userId) => {
     user: userId,
     title: '新会话',
   });
+  const effectivePersona = await resolveEffectivePersona(userId, session);
 
   return {
-    session: {
-      _id: session._id,
-      title: session.title,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-    },
+    session: serializeSession(session, effectivePersona),
   };
 };
 

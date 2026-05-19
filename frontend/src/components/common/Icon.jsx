@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Icon = ({ name, filled = false }) => {
+const Icon = ({ name, filled = false, className = '', size, style }) => {
   const paths = {
     dynamic_feed: 'M4 5.5h16M4 12h10M4 18.5h13',
     campaign: 'M5 13h3l8 4V7l-8 4H5v2Zm3 0v5',
@@ -56,12 +56,26 @@ const Icon = ({ name, filled = false }) => {
     close: 'M6 6l12 12M6 18L18 6',
     description: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
     menu: 'M3 6h18M3 12h18M3 18h18',
+    settings: 'M19.1 12.9c.04-.3.07-.6.07-.9s-.03-.6-.08-.9l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.6-.22l-2.49 1a7.03 7.03 0 0 0-1.56-.9l-.38-2.65a.5.5 0 0 0-.5-.42h-4a.5.5 0 0 0-.5.42l-.38 2.65c-.56.23-1.08.53-1.56.9l-2.49-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.05.3-.08.6-.08.9s.03.6.08.9L2.2 14.55a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .6.22l2.49-1c.48.37 1 .67 1.56.9l.38 2.65a.5.5 0 0 0 .5.42h4a.5.5 0 0 0 .5-.42l.38-2.65c.56-.23 1.08-.53 1.56-.9l2.49 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.64zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z',
     refresh: 'M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
     content_copy: 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z',
   };
 
+  const iconStyle = size
+    ? {
+      width: size,
+      height: size,
+      ...style,
+    }
+    : style;
+
   return (
-    <svg className={`app-icon ${filled ? 'filled' : ''}`} viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      className={`app-icon ${filled ? 'filled' : ''} ${className}`.trim()}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={iconStyle}
+    >
       <path d={paths[name] ?? paths.dynamic_feed} />
     </svg>
   );

@@ -1,6 +1,67 @@
 import { create } from 'zustand';
 import * as aiService from '../services/aiService';
 
+const DEFAULT_AI_PERSONA = {
+  role: '温暖陪伴者',
+  tone: '像熟人聊天，不要像客服；真诚、自然、有边界',
+  directness: 'balanced',
+  verbosity: 'medium',
+  customInstruction: '',
+};
+
+const EMPTY_AI_PERSONA = {
+  role: '',
+  tone: '',
+  directness: '',
+  verbosity: '',
+  customInstruction: '',
+};
+
+const AI_PERSONA_FIELDS = Object.keys(EMPTY_AI_PERSONA);
+
+function withPersonaDefaults(persona = {}) {
+  return {
+    ...DEFAULT_AI_PERSONA,
+    ...persona,
+  };
+}
+
+function toPersonaDraft(persona = {}) {
+  return {
+    ...EMPTY_AI_PERSONA,
+    ...persona,
+  };
+}
+
+function compactPersonaDraft(persona = {}) {
+  return Object.entries(persona).reduce((result, [key, value]) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) {
+        result[key] = trimmed;
+      }
+      return result;
+    }
+
+    if (value !== undefined && value !== null && value !== '') {
+      result[key] = value;
+    }
+
+    return result;
+  }, {});
+}
+
+function compactDefaultPersonaDraft(persona = {}) {
+  const compacted = compactPersonaDraft(persona);
+
+  return Object.entries(compacted).reduce((result, [key, value]) => {
+    if (DEFAULT_AI_PERSONA[key] !== value) {
+      result[key] = value;
+    }
+    return result;
+  }, {});
+}
+
 const useAIStore = create((set, get) => ({
   // State
   sessions: [],
@@ -8,6 +69,16 @@ const useAIStore = create((set, get) => ({
   messages: [],
   showSessionList: false,
   isLoading: false,
+  isPersonaViewOpen: false,
+  isPersonaLoading: false,
+  isPersonaSaving: false,
+  personaDirty: false,
+  personaDirtyFields: {},
+  defaultPersona: {},
+  defaultEffectivePersona: { ...DEFAULT_AI_PERSONA },
+  sessionPersona: {},
+  effectivePersona: { ...DEFAULT_AI_PERSONA },
+  personaDraft: { ...EMPTY_AI_PERSONA },
   error: null,
 
   // Actions
@@ -31,6 +102,8 @@ const useAIStore = create((set, get) => ({
         currentSession: session,
         messages: [],
         showSessionList: false,
+        sessionPersona: session.aiPersona || {},
+        effectivePersona: withPersonaDefaults(session.effectivePersona),
       });
       return session;
     } catch (err) {
@@ -46,6 +119,8 @@ const useAIStore = create((set, get) => ({
         currentSession: session,
         messages,
         showSessionList: false,
+        sessionPersona: session.aiPersona || {},
+        effectivePersona: withPersonaDefaults(session.effectivePersona),
       });
     } catch (err) {
       set({ error: err.message });
@@ -59,7 +134,6 @@ const useAIStore = create((set, get) => ({
       const newSessions = sessions.filter(s => s._id !== sessionId);
       set({ sessions: newSessions });
 
-      // If deleted current session, switch to another or create new
       if (currentSession?._id === sessionId) {
         if (newSessions.length > 0) {
           await get().switchSession(newSessions[0]._id);
@@ -75,7 +149,6 @@ const useAIStore = create((set, get) => ({
   sendMessage: async (content) => {
     const { currentSession, messages } = get();
 
-    // Add optimistic user message
     const tempUserMessage = {
       _id: 'temp-' + Date.now(),
       role: 'user',
@@ -95,10 +168,11 @@ const useAIStore = create((set, get) => ({
           data.assistantMessage,
         ],
         currentSession: data.session || state.currentSession,
+        sessionPersona: data.session?.aiPersona || state.sessionPersona,
+        effectivePersona: withPersonaDefaults(data.session?.effectivePersona || state.effectivePersona),
         isLoading: false,
       }));
 
-      // Refresh sessions list to update title
       await get().fetchSessions();
     } catch (err) {
       const savedMessage = err.data?.savedMessage;
@@ -109,6 +183,8 @@ const useAIStore = create((set, get) => ({
           ? [...state.messages.filter(m => m._id !== tempUserMessage._id), savedMessage]
           : state.messages.filter(m => m._id !== tempUserMessage._id),
         currentSession: savedSession || state.currentSession,
+        sessionPersona: savedSession?.aiPersona || state.sessionPersona,
+        effectivePersona: withPersonaDefaults(savedSession?.effectivePersona || state.effectivePersona),
         isLoading: false,
         error: err.message,
       }));
@@ -123,20 +199,21 @@ const useAIStore = create((set, get) => ({
     set({ isLoading: true });
 
     try {
-      const newMessage = await aiService.regenerateMessage(currentSession._id);
+      const result = await aiService.regenerateMessage(currentSession._id);
 
-      // Replace last AI message
       const newMessages = [...messages];
       for (let i = newMessages.length - 1; i >= 0; i--) {
         if (newMessages[i].role === 'assistant') {
-          newMessages[i] = newMessage;
+          newMessages[i] = result.message;
           break;
         }
       }
 
       set({
         messages: newMessages,
-        currentSession: newMessage.session || currentSession,
+        currentSession: result.session || currentSession,
+        sessionPersona: result.session?.aiPersona || get().sessionPersona,
+        effectivePersona: withPersonaDefaults(result.session?.effectivePersona || get().effectivePersona),
         isLoading: false,
       });
     } catch (err) {
@@ -151,6 +228,205 @@ const useAIStore = create((set, get) => ({
 
   closeSessionList: () => {
     set({ showSessionList: false });
+  },
+
+  openPersonaSettings: async () => {
+    const { currentSession } = get();
+
+    set({
+      isPersonaViewOpen: true,
+      isPersonaLoading: true,
+      isPersonaSaving: false,
+      personaDirty: false,
+      personaDirtyFields: {},
+      showSessionList: false,
+      error: null,
+    });
+
+    try {
+      const defaultData = await aiService.getProfile();
+      let sessionData = null;
+
+      if (currentSession?._id) {
+        sessionData = await aiService.getSessionPersona(currentSession._id);
+      }
+
+      const effectivePersona = withPersonaDefaults(
+        sessionData?.effectivePersona || defaultData.effectivePersona
+      );
+
+      set((state) => ({
+        defaultPersona: defaultData.persona || {},
+        defaultEffectivePersona: withPersonaDefaults(defaultData.effectivePersona),
+        sessionPersona: sessionData?.persona || {},
+        effectivePersona,
+        personaDraft: toPersonaDraft(effectivePersona),
+        isPersonaLoading: false,
+        currentSession: state.currentSession
+          ? {
+            ...state.currentSession,
+            aiPersona: sessionData?.persona || state.currentSession.aiPersona || {},
+            effectivePersona,
+          }
+          : state.currentSession,
+      }));
+    } catch (err) {
+      set({
+        isPersonaLoading: false,
+        error: err.message,
+      });
+      throw err;
+    }
+  },
+
+  closePersonaSettings: () => {
+    set({
+      isPersonaViewOpen: false,
+      isPersonaLoading: false,
+      isPersonaSaving: false,
+      personaDirty: false,
+      personaDirtyFields: {},
+    });
+  },
+
+  updatePersonaField: (field, value) => {
+    set((state) => ({
+      personaDraft: {
+        ...state.personaDraft,
+        [field]: value,
+      },
+      personaDirty: true,
+      personaDirtyFields: {
+        ...state.personaDirtyFields,
+        [field]: true,
+      },
+    }));
+  },
+
+  applyToneSuggestion: (tone) => {
+    set((state) => ({
+      personaDraft: {
+        ...state.personaDraft,
+        tone,
+      },
+      personaDirty: true,
+      personaDirtyFields: {
+        ...state.personaDirtyFields,
+        tone: true,
+      },
+    }));
+  },
+
+  resetPersonaDraft: () => {
+    set({
+      personaDraft: { ...EMPTY_AI_PERSONA },
+      personaDirty: true,
+      personaDirtyFields: AI_PERSONA_FIELDS.reduce((result, field) => {
+        result[field] = true;
+        return result;
+      }, {}),
+    });
+  },
+
+  saveDefaultPersona: async () => {
+    const { currentSession, defaultEffectivePersona, personaDraft, personaDirtyFields } = get();
+
+    set({ isPersonaSaving: true, error: null });
+
+    try {
+      const nextDefaultDraft = { ...defaultEffectivePersona };
+      for (const field of Object.keys(personaDirtyFields)) {
+        nextDefaultDraft[field] = personaDraft[field];
+      }
+
+      const profile = await aiService.updateProfile(compactDefaultPersonaDraft(nextDefaultDraft));
+      let nextState = {
+        defaultPersona: profile.persona || {},
+        defaultEffectivePersona: withPersonaDefaults(profile.effectivePersona),
+        isPersonaSaving: false,
+        personaDirty: false,
+        personaDirtyFields: {},
+      };
+
+      if (currentSession?._id) {
+        const sessionData = await aiService.getSessionPersona(currentSession._id);
+        const effectivePersona = withPersonaDefaults(sessionData.effectivePersona);
+
+        nextState = {
+          ...nextState,
+          sessionPersona: sessionData.persona || {},
+          effectivePersona,
+          personaDraft: toPersonaDraft(effectivePersona),
+          currentSession: {
+            ...currentSession,
+            aiPersona: sessionData.persona || {},
+            effectivePersona,
+          },
+          sessions: get().sessions.map((session) => (
+            session._id === currentSession._id
+              ? {
+                ...session,
+                hasPersonaOverride: Boolean(sessionData.persona && Object.keys(sessionData.persona).length > 0),
+              }
+              : session
+          )),
+        };
+      } else {
+        nextState = {
+          ...nextState,
+          effectivePersona: withPersonaDefaults(profile.effectivePersona),
+          personaDraft: toPersonaDraft(profile.effectivePersona),
+        };
+      }
+
+      set(nextState);
+      return nextState;
+    } catch (err) {
+      set({ isPersonaSaving: false, error: err.message });
+      throw err;
+    }
+  },
+
+  saveSessionPersona: async () => {
+    const { currentSession, personaDraft } = get();
+    if (!currentSession?._id) return null;
+
+    set({ isPersonaSaving: true, error: null });
+
+    try {
+      const result = await aiService.updateSessionPersona(
+        currentSession._id,
+        compactPersonaDraft(personaDraft)
+      );
+      const effectivePersona = withPersonaDefaults(result.effectivePersona);
+
+      set({
+        sessionPersona: result.persona || {},
+        effectivePersona,
+        personaDraft: toPersonaDraft(effectivePersona),
+        currentSession: {
+          ...currentSession,
+          aiPersona: result.persona || {},
+          effectivePersona,
+        },
+        sessions: get().sessions.map((session) => (
+          session._id === currentSession._id
+            ? {
+              ...session,
+              hasPersonaOverride: Boolean(result.persona && Object.keys(result.persona).length > 0),
+            }
+            : session
+        )),
+        isPersonaSaving: false,
+        personaDirty: false,
+        personaDirtyFields: {},
+      });
+
+      return result;
+    } catch (err) {
+      set({ isPersonaSaving: false, error: err.message });
+      throw err;
+    }
   },
 
   clearError: () => {

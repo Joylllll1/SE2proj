@@ -38,3 +38,29 @@ export const regenerateMessage = async (sessionId) => {
   });
   return data.data;
 };
+
+export const getProfile = async () => {
+  const data = await request('/api/ai/profile');
+  return data.data;
+};
+
+export const updateProfile = async (persona) => {
+  const data = await request('/api/ai/profile', {
+    method: 'PUT',
+    body: JSON.stringify({ persona }),
+  });
+  return data.data;
+};
+
+export const getSessionPersona = async (sessionId) => {
+  const data = await request(`/api/ai/sessions/${sessionId}/persona`);
+  return data.data;
+};
+
+export const updateSessionPersona = async (sessionId, persona) => {
+  const data = await request(`/api/ai/sessions/${sessionId}/persona`, {
+    method: 'PUT',
+    body: JSON.stringify({ persona }),
+  });
+  return data.data;
+};
