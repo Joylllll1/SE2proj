@@ -219,7 +219,7 @@ function AIPanel({ open, onClose }) {
         onClick={onClose}
       />
       <aside
-        className="ai-slide-content absolute top-0 right-0 bottom-0 w-[480px] flex flex-col p-6 border-l border-line bg-white shadow-md translate-x-full transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ai-slide-panel-open:translate-x-0"
+        className="ai-slide-content absolute top-0 right-0 bottom-0 w-full max-w-[840px] sm:w-[min(92vw,840px)] flex flex-col p-6 border-l border-line bg-white shadow-md translate-x-full transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ai-slide-panel-open:translate-x-0"
       >
         {/* Header */}
         <div className="ai-slide-head flex items-center justify-between mb-5">
