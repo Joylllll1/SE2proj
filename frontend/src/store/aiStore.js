@@ -15,8 +15,10 @@ const useAIStore = create((set, get) => ({
     try {
       const sessions = await aiService.getSessions();
       set({ sessions });
+      return sessions;
     } catch (err) {
       set({ error: err.message });
+      throw err;
     }
   },
 
@@ -84,13 +86,14 @@ const useAIStore = create((set, get) => ({
 
     try {
       const result = await aiService.sendMessage(currentSession?._id, content);
-
-      // Update with actual messages from server
       const { data } = result;
-      const newMessage = data.message;
 
       set((state) => ({
-        messages: [...state.messages.filter(m => m._id !== tempUserMessage._id), newMessage],
+        messages: [
+          ...state.messages.filter(m => m._id !== tempUserMessage._id),
+          data.userMessage,
+          data.assistantMessage,
+        ],
         currentSession: data.session || state.currentSession,
         isLoading: false,
       }));
@@ -98,8 +101,14 @@ const useAIStore = create((set, get) => ({
       // Refresh sessions list to update title
       await get().fetchSessions();
     } catch (err) {
+      const savedMessage = err.data?.savedMessage;
+      const savedSession = err.data?.session;
+
       set((state) => ({
-        messages: state.messages.filter(m => m._id !== tempUserMessage._id),
+        messages: savedMessage
+          ? [...state.messages.filter(m => m._id !== tempUserMessage._id), savedMessage]
+          : state.messages.filter(m => m._id !== tempUserMessage._id),
+        currentSession: savedSession || state.currentSession,
         isLoading: false,
         error: err.message,
       }));
@@ -125,7 +134,11 @@ const useAIStore = create((set, get) => ({
         }
       }
 
-      set({ messages: newMessages, isLoading: false });
+      set({
+        messages: newMessages,
+        currentSession: newMessage.session || currentSession,
+        isLoading: false,
+      });
     } catch (err) {
       set({ isLoading: false, error: err.message });
       throw err;

@@ -3,8 +3,12 @@ import Icon from '../common/Icon';
 import useAIStore from '../../store/aiStore';
 
 function formatRelativeTime(date) {
+  if (!date) return '刚刚';
+
   const now = Date.now();
   const diff = now - new Date(date).getTime();
+  if (Number.isNaN(diff)) return '刚刚';
+
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) return '刚刚';
   const minutes = Math.floor(seconds / 60);
@@ -137,13 +141,31 @@ function AIPanel({ open, onClose }) {
 
   // Load sessions on mount
   useEffect(() => {
-    if (open) {
-      fetchSessions();
-      // If no current session, create one
-      if (!currentSession && sessions.length === 0) {
-        createSession();
+    let cancelled = false;
+
+    const initializePanel = async () => {
+      if (!open) return;
+
+      try {
+        const loadedSessions = await fetchSessions();
+        if (cancelled || currentSession) return;
+
+        if (loadedSessions.length > 0) {
+          await switchSession(loadedSessions[0]._id);
+          return;
+        }
+
+        await createSession();
+      } catch {
+        // Errors are handled in the store.
       }
-    }
+    };
+
+    initializePanel();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

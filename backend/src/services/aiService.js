@@ -6,12 +6,17 @@ const LLM_API_URL = process.env.LLM_API_URL || 'https://api.deepseek.com/v1/chat
 const LLM_API_KEY = process.env.LLM_API_KEY;
 const LLM_MODEL = process.env.LLM_MODEL || 'deepseek-chat';
 const MAX_CONTEXT_MESSAGES = 20; // 保留最近 20 条消息作为上下文
+const MAX_SESSION_TITLE_LENGTH = 20;
+const DEFAULT_LLM_ERROR_MESSAGE = '服务暂时不可用，请稍后再试';
 
 // 生成会话标题（基于首条消息）
 function generateSessionTitle(content) {
-  // 截取前 20 个字符作为标题
-  const title = content.trim().slice(0, 20);
-  return title.length >= 20 ? title + '...' : title;
+  const trimmed = content.trim();
+  if (trimmed.length <= MAX_SESSION_TITLE_LENGTH) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, MAX_SESSION_TITLE_LENGTH - 3)}...`;
 }
 
 // 调用 LLM API
@@ -35,12 +40,8 @@ async function callLLM(messages) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new AppError(
-      error.error?.message || 'AI 服务调用失败',
-      502,
-      'LLM_API_ERROR'
-    );
+    await response.json().catch(() => ({}));
+    throw new AppError(DEFAULT_LLM_ERROR_MESSAGE, 502, 'LLM_API_ERROR');
   }
 
   const data = await response.json();
@@ -74,7 +75,7 @@ export const sendMessage = async (userId, sessionId, content) => {
   }
 
   // 保存用户消息
-  await AIMessage.create({
+  const userMessage = await AIMessage.create({
     session: session._id,
     role: 'user',
     content,
@@ -96,7 +97,27 @@ export const sendMessage = async (userId, sessionId, content) => {
   ];
 
   // 调用 LLM
-  const aiContent = await callLLM(llmMessages);
+  let aiContent;
+  try {
+    aiContent = await callLLM(llmMessages);
+  } catch (error) {
+    if (error.isOperational) {
+      throw new AppError(error.message, error.statusCode, error.errorCode, {
+        session: {
+          _id: session._id,
+          title: session.title,
+          updatedAt: session.updatedAt,
+        },
+        savedMessage: {
+          _id: userMessage._id,
+          role: userMessage.role,
+          content: userMessage.content,
+          createdAt: userMessage.createdAt,
+        },
+      });
+    }
+    throw error;
+  }
 
   // 保存 AI 回复
   const aiMessage = await AIMessage.create({
@@ -113,8 +134,15 @@ export const sendMessage = async (userId, sessionId, content) => {
     session: {
       _id: session._id,
       title: session.title,
+      updatedAt: session.updatedAt,
     },
-    message: {
+    userMessage: {
+      _id: userMessage._id,
+      role: userMessage.role,
+      content: userMessage.content,
+      createdAt: userMessage.createdAt,
+    },
+    assistantMessage: {
       _id: aiMessage._id,
       role: aiMessage.role,
       content: aiMessage.content,
@@ -164,8 +192,15 @@ export const regenerateMessage = async (userId, sessionId) => {
   lastMessage.content = aiContent;
   lastMessage.createdAt = new Date();
   await lastMessage.save();
+  session.updatedAt = new Date();
+  await session.save();
 
   return {
+    session: {
+      _id: session._id,
+      title: session.title,
+      updatedAt: session.updatedAt,
+    },
     message: {
       _id: lastMessage._id,
       role: lastMessage.role,
@@ -227,6 +262,7 @@ export const createSession = async (userId) => {
       _id: session._id,
       title: session.title,
       createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
     },
   };
 };

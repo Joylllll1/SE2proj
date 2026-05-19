@@ -36,5 +36,5 @@ export const regenerateMessage = async (sessionId) => {
   const data = await request(`/api/ai/sessions/${sessionId}/regenerate`, {
     method: 'POST',
   });
-  return data.data.message;
+  return data.data;
 };
