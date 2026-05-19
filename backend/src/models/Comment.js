@@ -3,7 +3,18 @@ import mongoose from 'mongoose';
 const replySchema = new mongoose.Schema(
   {
     ownerUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    content: { type: String, required: true, maxlength: 2000 },
+    content: {
+      type: String,
+      default: '',
+      maxlength: 2000,
+      validate: {
+        validator(value) {
+          return Boolean((value && value.trim()) || this.image);
+        },
+        message: '请输入内容或上传图片',
+      },
+    },
+    image: { type: String, trim: true },
     official: { type: Boolean, default: false },
     likes: { type: Number, default: 0 },
     likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
@@ -18,7 +29,18 @@ const commentSchema = new mongoose.Schema(
   {
     postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true, index: true },
     ownerUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    content: { type: String, required: true, maxlength: 2000 },
+    content: {
+      type: String,
+      default: '',
+      maxlength: 2000,
+      validate: {
+        validator(value) {
+          return Boolean((value && value.trim()) || this.image);
+        },
+        message: '请输入内容或上传图片',
+      },
+    },
+    image: { type: String, trim: true },
     official: { type: Boolean, default: false },
     likes: { type: Number, default: 0 },
     likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

@@ -4,6 +4,7 @@ import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import { getDisplayName } from '../../utils';
 import useCommentStore from '../../store/commentStore';
+import { fileToDataUrl } from '../../utils/image';
 
 // ─── Stable store selectors ───
 const selectToggleLike = (s) => s.toggleLike;
@@ -30,8 +31,8 @@ function Comment({ comment, postId, onReply, onReport }) {
     setTimeout(() => replyInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   };
 
-  const handleReplySubmit = (content) => {
-    onReply(comment.id || comment._id, content);
+  const handleReplySubmit = (content, image) => {
+    onReply(comment.id || comment._id, content, image);
     setShowReplyInput(false);
   };
 
@@ -61,7 +62,12 @@ function Comment({ comment, postId, onReply, onReport }) {
               </button>
             )}
           </div>
-          <p className="my-[9px]">{comment.content}</p>
+          {comment.content && <p className="my-[9px]">{comment.content}</p>}
+          {comment.image && (
+            <div className="comment-image-preview mt-2">
+              <img src={comment.image} alt="comment" className="max-w-full max-h-80 rounded-md object-cover" />
+            </div>
+          )}
           <div className="comment-actions flex gap-[14px] text-text-3 text-xs font-semibold">
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button type="button" onClick={handleLike} className={`inline-flex items-center gap-1 transition-colors duration-150 ${comment.isLiked ? 'text-red' : 'hover:text-red'}`}>
@@ -108,18 +114,20 @@ const CommentReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel },
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImage(URL.createObjectURL(file));
-    }
+    if (!file) return;
+
+    fileToDataUrl(file)
+      .then((url) => {
+        setImage(url);
+      })
+      .catch(() => {});
+
+    e.target.value = '';
   };
 
   const handleSubmit = () => {
     if (!text.trim() && !image) return;
-    let content = text.trim();
-    if (image) {
-      content += '\n[图片]';
-    }
-    onSubmit(content);
+    onSubmit(text.trim(), image);
     setText('');
     setImage('');
   };

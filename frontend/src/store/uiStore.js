@@ -4,7 +4,6 @@ import { loadJSON, saveJSON } from '../utils';
 // ─── URL 映射表 ───
 const PAGE_URLS = {
   home: '/',
-  trending: '/trending',
   bookmarks: '/bookmarks',
   likes: '/likes',
   announcements: '/announcements',

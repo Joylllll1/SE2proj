@@ -1,14 +1,21 @@
 import * as commentService from '../services/commentService.js';
 
 export const create = async (req, res) => {
-  const { postId, content, official } = req.body;
-  const comment = await commentService.createComment(req.user._id.toString(), postId, content, official);
+  const { postId, content, image, official } = req.body;
+  const comment = await commentService.createComment(req.user._id.toString(), postId, content, image, official);
   res.status(201).json(comment);
 };
 
 export const reply = async (req, res) => {
-  const { content, official, replyToId } = req.body;
-  const reply = await commentService.addReply(req.user._id.toString(), req.params.commentId, content, official, replyToId);
+  const { content, image, official, replyToId } = req.body;
+  const reply = await commentService.addReply(
+    req.user._id.toString(),
+    req.params.commentId,
+    content,
+    image,
+    official,
+    replyToId
+  );
   res.status(201).json(reply);
 };
 

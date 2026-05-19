@@ -3,15 +3,23 @@ import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
 import { notifyComment } from './notificationService.js';
 import { syncPostCommentCount } from './commentCountService.js';
+import { normalizeInlineImage } from '../utils/image.js';
 
-export const createComment = async (userId, postId, content, official = false) => {
+export const createComment = async (userId, postId, content, image = '', official = false) => {
   const post = await Post.findById(postId);
   if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
+  const normalizedContent = typeof content === 'string' ? content.trim() : '';
+  const normalizedImage = normalizeInlineImage(image, '评论图片');
+
+  if (!normalizedContent && !normalizedImage) {
+    throw new AppError('请输入内容或上传图片', 400, 'COMMENT_CONTENT_REQUIRED');
+  }
 
   const comment = await Comment.create({
     postId,
     ownerUserId: userId,
-    content,
+    content: normalizedContent,
+    image: normalizedImage,
     official,
   });
 
@@ -34,9 +42,15 @@ export const createComment = async (userId, postId, content, official = false) =
   };
 };
 
-export const addReply = async (userId, commentId, content, official = false, replyToId = null) => {
+export const addReply = async (userId, commentId, content, image = '', official = false, replyToId = null) => {
   const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+  const normalizedContent = typeof content === 'string' ? content.trim() : '';
+  const normalizedImage = normalizeInlineImage(image, '回复图片');
+
+  if (!normalizedContent && !normalizedImage) {
+    throw new AppError('请输入内容或上传图片', 400, 'REPLY_CONTENT_REQUIRED');
+  }
 
   // 如果 replyToId 存在，验证被回复的回复是否存在
   if (replyToId) {
@@ -44,7 +58,15 @@ export const addReply = async (userId, commentId, content, official = false, rep
     if (!parentReply || parentReply.isDeleted) throw new AppError('被回复的回复不存在', 404, 'REPLY_NOT_FOUND');
   }
 
-  const reply = { ownerUserId: userId, content, official, likes: 0, likedBy: [], replyToId };
+  const reply = {
+    ownerUserId: userId,
+    content: normalizedContent,
+    image: normalizedImage,
+    official,
+    likes: 0,
+    likedBy: [],
+    replyToId,
+  };
   comment.replies.push(reply);
   await comment.save();
 
@@ -55,6 +77,7 @@ export const addReply = async (userId, commentId, content, official = false, rep
     id: savedReply._id.toString(),
     ownerUserId: savedReply.ownerUserId.toString(),
     content: savedReply.content,
+    image: savedReply.image || '',
     official: savedReply.official,
     likes: savedReply.likes || 0,
     likedBy: [],

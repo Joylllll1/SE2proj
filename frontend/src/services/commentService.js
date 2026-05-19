@@ -1,9 +1,9 @@
 import { request } from './apiClient';
 
-export async function createComment(postId, content, official = false) {
+export async function createComment(postId, content, image = '', official = false) {
   return request('/api/comments', {
     method: 'POST',
-    body: JSON.stringify({ postId, content, official }),
+    body: JSON.stringify({ postId, content, image, official }),
   });
 }
 
@@ -19,10 +19,10 @@ export async function toggleLike(commentId) {
   return request(`/api/comments/${commentId}/like`, { method: 'POST' });
 }
 
-export async function addReply(commentId, content, official = false, replyToId = null) {
+export async function addReply(commentId, content, image = '', official = false, replyToId = null) {
   return request(`/api/comments/${commentId}/reply`, {
     method: 'POST',
-    body: JSON.stringify({ content, official, replyToId }),
+    body: JSON.stringify({ content, image, official, replyToId }),
   });
 }
 

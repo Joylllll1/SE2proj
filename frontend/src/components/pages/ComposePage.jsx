@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
 import * as draftService from '../../services/draftService';
+import { fileToDataUrl } from '../../utils/image';
 
 const selectShowToast = (s) => s.showToast;
 const selectSetUnsavedChangesHandler = (s) => s.setUnsavedChangesHandler;
@@ -136,10 +137,17 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setImageUrl(url);
-    }
+    if (!file) return;
+
+    fileToDataUrl(file)
+      .then((url) => {
+        setImageUrl(url);
+      })
+      .catch((err) => {
+        showToast(err.message || '读取图片失败');
+      });
+
+    e.target.value = '';
   };
 
   const canPublish = content.trim().length > 0;

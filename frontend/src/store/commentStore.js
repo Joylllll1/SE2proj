@@ -206,8 +206,8 @@ const useCommentStore = create((set, get) => ({
     };
   },
 
-  addComment: async (postId, content, official = false) => {
-    const comment = await commentService.createComment(postId, content, official);
+  addComment: async (postId, content, image = '', official = false) => {
+    const comment = await commentService.createComment(postId, content, image, official);
     set((state) => {
       const existing = state.commentsMap[postId] || [];
       return {
@@ -292,8 +292,8 @@ const useCommentStore = create((set, get) => ({
     }
   },
 
-  addReply: async (commentId, content, official = false, replyToId = null) => {
-    const reply = await commentService.addReply(commentId, content, official, replyToId);
+  addReply: async (commentId, content, image = '', official = false, replyToId = null) => {
+    const reply = await commentService.addReply(commentId, content, image, official, replyToId);
     set((state) => {
       const updated = { ...state.commentsMap };
       for (const postId of Object.keys(updated)) {

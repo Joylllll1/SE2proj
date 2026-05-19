@@ -4,6 +4,7 @@ import PostCard from '../common/PostCard';
 import Comment from '../common/Comment';
 import ReplyCard from '../common/ReplyCard';
 import useCommentStore from '../../store/commentStore';
+import { fileToDataUrl } from '../../utils/image';
 
 function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, onReply, onNavigate, onReport }) {
   const [commentSort, setCommentSort] = useState('time');
@@ -26,11 +27,7 @@ function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, on
 
   const handleCommentSubmit = () => {
     if (!commentText.trim() && !commentImage) return;
-    let finalContent = commentText.trim();
-    if (commentImage) {
-      finalContent += '\n[图片]';
-    }
-    onComment(finalContent);
+    onComment(commentText.trim(), commentImage);
     setCommentText('');
     setCommentImage('');
   };
@@ -42,10 +39,15 @@ function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, on
 
   const handleCommentImage = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setCommentImage(url);
-    }
+    if (!file) return;
+
+    fileToDataUrl(file)
+      .then((url) => {
+        setCommentImage(url);
+      })
+      .catch(() => {});
+
+    e.target.value = '';
   };
 
   const EMOJI_LIST = ['😊', '😂', '🥺', '😭', '❤️', '👍', '🎉', '🤔', '💪', '✨', '🙏', '😅', '🥰', '😢', '😤', '🤝', '💯', '🔥', '👀', '💕'];

@@ -1,6 +1,7 @@
 import Draft from '../models/Draft.js';
 import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
+import { normalizeInlineImage } from '../utils/image.js';
 
 const MAX_DRAFTS = 10;
 
@@ -17,7 +18,7 @@ const normalizeDraftData = (data = {}) => ({
   tags: Array.isArray(data.tags)
     ? data.tags.map((tag) => tag?.trim()).filter(Boolean)
     : [],
-  image: data.image || '',
+  image: normalizeInlineImage(data.image, '草稿图片'),
 });
 
 const assertDraftContent = (data) => {
@@ -81,6 +82,7 @@ export const publishDraft = async (draftId, userId) => {
   if (!draft.content?.trim()) {
     throw new AppError('草稿内容不能为空', 400, 'DRAFT_CONTENT_REQUIRED');
   }
+  const image = normalizeInlineImage(draft.image, '草稿图片');
 
   const post = await Post.create({
     ownerUserId: userId,
@@ -89,7 +91,7 @@ export const publishDraft = async (draftId, userId) => {
     moodType: draft.moodType || 'calm',
     mood: draft.mood || '平静',
     tags: draft.tags?.length > 0 ? draft.tags : ['树洞'],
-    images: draft.image ? [draft.image] : [],
+    images: image ? [image] : [],
   });
 
   await Draft.deleteOne({ _id: draftId });

@@ -4,6 +4,7 @@ import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import { getDisplayName } from '../../utils';
 import useCommentStore from '../../store/commentStore';
+import { fileToDataUrl } from '../../utils/image';
 
 // ─── Stable store selectors ───
 const selectToggleReplyLike = (s) => s.toggleReplyLike;
@@ -34,10 +35,10 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
     setTimeout(() => replyInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   };
 
-  const handleReplySubmit = (content) => {
+  const handleReplySubmit = (content, image) => {
     const commentId = reply.parentId;
     const replyToId = reply.id || reply._id;
-    onReply(commentId, content, replyToId);
+    onReply(commentId, content, image, replyToId);
     setShowReplyInput(false);
   };
 
@@ -94,7 +95,12 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
               </button>
             )}
           </div>
-          <p className="my-[9px]">回复 {parentAuthorName}: {reply.content}</p>
+          {reply.content && <p className="my-[9px]">回复 {parentAuthorName}: {reply.content}</p>}
+          {reply.image && (
+            <div className="comment-image-preview mt-2">
+              <img src={reply.image} alt="reply" className="max-w-full max-h-80 rounded-md object-cover" />
+            </div>
+          )}
           <div className="reply-actions flex gap-[14px] text-text-3 text-xs font-semibold">
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button
@@ -145,18 +151,20 @@ const ReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) =
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImage(URL.createObjectURL(file));
-    }
+    if (!file) return;
+
+    fileToDataUrl(file)
+      .then((url) => {
+        setImage(url);
+      })
+      .catch(() => {});
+
+    e.target.value = '';
   };
 
   const handleSubmit = () => {
     if (!text.trim() && !image) return;
-    let content = text.trim();
-    if (image) {
-      content += '\n[图片]';
-    }
-    onSubmit(content);
+    onSubmit(text.trim(), image);
     setText('');
     setImage('');
   };

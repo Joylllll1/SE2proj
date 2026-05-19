@@ -2,6 +2,7 @@ import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
 import { notifyLike } from './notificationService.js';
 import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountService.js';
+import { normalizeInlineImage } from '../utils/image.js';
 
 function toPostDto(post, userId) {
   return {
@@ -19,7 +20,21 @@ function toPostDto(post, userId) {
 }
 
 export const createPost = async (userId, data) => {
-  const post = await Post.create({ ownerUserId: userId, ...data });
+  const sourceImages = Array.isArray(data.images)
+    ? data.images
+    : data.image
+      ? [data.image]
+      : [];
+
+  const images = sourceImages
+    .map((image) => normalizeInlineImage(image, '帖子图片'))
+    .filter(Boolean);
+
+  const post = await Post.create({
+    ownerUserId: userId,
+    ...data,
+    images,
+  });
   return toPostDto(post.toObject(), userId);
 };
 

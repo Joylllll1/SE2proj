@@ -240,20 +240,20 @@ function App() {
     }
   };
 
-  const handleComment = async (content) => {
+  const handleComment = async (content, image = '') => {
     if (!selectedPost) return;
     try {
-      await addComment(selectedPost.id, content);
+      await addComment(selectedPost.id, content, image);
       usePostStore.getState().updateCommentCount(selectedPost.id, 1);
     } catch (err) {
       showToast(err.message || '评论失败');
     }
   };
 
-  const handleReply = async (commentId, content, replyToId = null) => {
+  const handleReply = async (commentId, content, image = '', replyToId = null) => {
     if (!selectedPost) return;
     try {
-      await useCommentStore.getState().addReply(commentId, content, false, replyToId);
+      await useCommentStore.getState().addReply(commentId, content, image, false, replyToId);
       usePostStore.getState().updateCommentCount(selectedPost.id, 1);
     } catch (err) {
       showToast(err.message || '回复失败');
@@ -282,7 +282,6 @@ function App() {
         />
         <main className="p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
           {activePage === 'home' && <HomePage />}
-          {activePage === 'trending' && <UnderConstruction feature="热门" />}
           {activePage === 'detail' && (
             selectedPost ? (
               <DetailPage
