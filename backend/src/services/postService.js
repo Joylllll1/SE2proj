@@ -5,10 +5,17 @@ import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountS
 import { normalizeInlineImage } from '../utils/image.js';
 
 function toPostDto(post, userId) {
+  const images = Array.isArray(post.images) && post.images.length > 0
+    ? post.images
+    : post.image
+      ? [post.image]
+      : [];
+
   return {
     ...post,
     tags: Array.isArray(post.tags) ? post.tags : [],
-    images: Array.isArray(post.images) ? post.images : [],
+    image: images[0] || '',
+    images,
     id: post._id.toString(),
     time: formatRelativeTime(post.createdAt),
     likes: post.likes || 0,
@@ -29,10 +36,22 @@ export const createPost = async (userId, data) => {
   const images = sourceImages
     .map((image) => normalizeInlineImage(image, '帖子图片'))
     .filter(Boolean);
+  const title = typeof data.title === 'string' ? data.title.trim() : '';
+  const content = typeof data.content === 'string' ? data.content.trim() : '';
+  const tags = Array.isArray(data.tags)
+    ? data.tags.map((tag) => tag?.trim()).filter(Boolean)
+    : [];
+
+  if (!content && images.length === 0) {
+    throw new AppError('请先填写内容或上传图片', 400, 'POST_CONTENT_REQUIRED');
+  }
 
   const post = await Post.create({
     ownerUserId: userId,
     ...data,
+    title: title || '无标题',
+    content,
+    tags: tags.length > 0 ? tags : ['树洞'],
     images,
   });
   return toPostDto(post.toObject(), userId);

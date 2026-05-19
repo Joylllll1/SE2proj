@@ -7,6 +7,12 @@ const MAX_DRAFTS = 10;
 
 const toDraftDto = (draft) => ({
   ...draft,
+  image: draft.image || draft.images?.[0] || '',
+  images: Array.isArray(draft.images) && draft.images.length > 0
+    ? draft.images
+    : draft.image
+      ? [draft.image]
+      : [],
   id: draft._id.toString(),
 });
 
@@ -18,12 +24,14 @@ const normalizeDraftData = (data = {}) => ({
   tags: Array.isArray(data.tags)
     ? data.tags.map((tag) => tag?.trim()).filter(Boolean)
     : [],
-  image: normalizeInlineImage(data.image, '草稿图片'),
+  images: (Array.isArray(data.images) ? data.images : data.image ? [data.image] : [])
+    .map((image) => normalizeInlineImage(image, '草稿图片'))
+    .filter(Boolean),
 });
 
 const assertDraftContent = (data) => {
-  if (!data.content) {
-    throw new AppError('请先填写内容', 400, 'DRAFT_CONTENT_REQUIRED');
+  if (!data.content && (!Array.isArray(data.images) || data.images.length === 0)) {
+    throw new AppError('请先填写内容或上传图片', 400, 'DRAFT_CONTENT_REQUIRED');
   }
 };
 
@@ -79,25 +87,34 @@ export const deleteDrafts = async (draftIds, userId) => {
 export const publishDraft = async (draftId, userId) => {
   const draft = await Draft.findOne({ _id: draftId, ownerUserId: userId });
   if (!draft) throw new AppError('草稿不存在', 404, 'DRAFT_NOT_FOUND');
-  if (!draft.content?.trim()) {
+  const images = (Array.isArray(draft.images) && draft.images.length > 0
+    ? draft.images
+    : draft.image
+      ? [draft.image]
+      : [])
+    .map((image) => normalizeInlineImage(image, '草稿图片'))
+    .filter(Boolean);
+  const content = draft.content?.trim() || '';
+  if (!content && images.length === 0) {
     throw new AppError('草稿内容不能为空', 400, 'DRAFT_CONTENT_REQUIRED');
   }
-  const image = normalizeInlineImage(draft.image, '草稿图片');
 
   const post = await Post.create({
     ownerUserId: userId,
     title: draft.title || '无标题',
-    content: draft.content || '',
+    content,
     moodType: draft.moodType || 'calm',
     mood: draft.mood || '平静',
     tags: draft.tags?.length > 0 ? draft.tags : ['树洞'],
-    images: image ? [image] : [],
+    images,
   });
 
   await Draft.deleteOne({ _id: draftId });
 
   return {
     ...post.toObject(),
+    image: post.images?.[0] || '',
+    images: Array.isArray(post.images) ? post.images : [],
     id: post._id.toString(),
     time: formatRelativeTime(post.createdAt),
     isLiked: false,

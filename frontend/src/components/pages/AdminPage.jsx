@@ -3,6 +3,7 @@ import Icon from '../common/Icon';
 import StatCard from '../common/StatCard';
 import Progress from '../common/Progress';
 import EmptyState from '../common/EmptyState';
+import { getImageGridLayout } from '../../utils/image';
 
 const SEED_REPORTS = [
   { id: '#R10283', type: '辱骂/攻击', source: '举报人: 用户1922', time: '3分钟前', risk: 'high', postId: 'P-4921', content: '这学期的期末考也太离谱了吧，出题完全不考虑学生实际复习节奏。' },
@@ -125,6 +126,12 @@ function RejectionModal({ onClose, onSubmit }) {
 // 帖子详情弹窗组件（用于举报详情查看）
 function PostDetailModal({ post, onClose }) {
   if (!post) return null;
+  const images = Array.isArray(post.images) && post.images.length > 0
+    ? post.images
+    : post.image
+      ? [post.image]
+      : [];
+  const imageLayout = getImageGridLayout(images.length);
 
   return (
     <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm animate-modal-fade-in" onClick={onClose}>
@@ -153,9 +160,13 @@ function PostDetailModal({ post, onClose }) {
           </div>
 
           {/* Image */}
-          {post.image && (
-            <div className="mb-4 rounded-xl overflow-hidden border border-line">
-              <img className="w-full max-h-80 object-cover" alt={post.title} src={post.image} />
+          {images.length > 0 && (
+            <div className={`mb-4 grid gap-2 ${imageLayout.gridClass}`}>
+              {images.map((src, index) => (
+                <div key={`${src}-${index}`} className={`overflow-hidden rounded-xl border border-line bg-surface-soft ${imageLayout.itemClass}`}>
+                  <img className="h-full w-full object-cover" alt={`${post.title} 图片 ${index + 1}`} src={src} />
+                </div>
+              ))}
             </div>
           )}
 

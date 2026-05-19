@@ -4,7 +4,7 @@ import PostCard from '../common/PostCard';
 import Comment from '../common/Comment';
 import ReplyCard from '../common/ReplyCard';
 import useCommentStore from '../../store/commentStore';
-import { fileToDataUrl } from '../../utils/image';
+import { fileToOptimizedDataUrl } from '../../utils/image';
 
 function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, onReply, onNavigate, onReport }) {
   const [commentSort, setCommentSort] = useState('time');
@@ -41,7 +41,7 @@ function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, on
     const file = e.target.files?.[0];
     if (!file) return;
 
-    fileToDataUrl(file)
+    fileToOptimizedDataUrl(file)
       .then((url) => {
         setCommentImage(url);
       })

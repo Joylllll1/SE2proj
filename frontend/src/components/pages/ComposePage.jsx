@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Icon from '../common/Icon';
 import useUiStore from '../../store/uiStore';
 import * as draftService from '../../services/draftService';
-import { fileToDataUrl } from '../../utils/image';
+import { fileToOptimizedDataUrl, getImageGridLayout, MAX_POST_IMAGES } from '../../utils/image';
 
 const selectShowToast = (s) => s.showToast;
 const selectSetUnsavedChangesHandler = (s) => s.setUnsavedChangesHandler;
@@ -13,7 +13,7 @@ const EMPTY_DRAFT = {
   content: '',
   moodType: null,
   tags: [],
-  image: '',
+  images: [],
 };
 
 function ComposePage({ onPublish, draftId: initialDraftId }) {
@@ -24,7 +24,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
+  const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
@@ -44,8 +44,6 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     ['忧伤', 'sentiment_dissatisfied', 'sad'],
   ];
 
-  const suggestedTags = ['期末周碎碎念', '食堂新品测评', '南大星空', '科研日常', '校园猫', '保研', '求建议', '校园生活', '求职实习', '情绪树洞'];
-
   const moodLabel = moodOptions.find(([, , t]) => t === moodType)?.[0] || '';
 
   const applyDraftToForm = useCallback((draft) => {
@@ -53,13 +51,18 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     setContent(draft.content || '');
     setMoodType(draft.moodType || null);
     setTags(draft.tags || []);
-    setImageUrl(draft.image || '');
+    const nextImages = Array.isArray(draft.images) && draft.images.length > 0
+      ? draft.images
+      : draft.image
+        ? [draft.image]
+        : [];
+    setImages(nextImages);
     setOriginalData({
       title: draft.title || '',
       content: draft.content || '',
       moodType: draft.moodType || null,
       tags: draft.tags || [],
-      image: draft.image || '',
+      images: nextImages,
     });
     setIsDirty(false);
   }, []);
@@ -70,8 +73,8 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     moodType,
     mood: moodLabel || '平静',
     tags: tags.length > 0 ? tags : undefined,
-    image: imageUrl || undefined,
-  }), [content, imageUrl, moodLabel, moodType, tags, title]);
+    images: images.length > 0 ? images : undefined,
+  }), [content, images, moodLabel, moodType, tags, title]);
 
   // Sync draftId when initialDraftId changes
   useEffect(() => {
@@ -119,9 +122,9 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       content !== originalData.content ||
       moodType !== originalData.moodType ||
       JSON.stringify(tags) !== JSON.stringify(originalData.tags) ||
-      imageUrl !== originalData.image;
+      JSON.stringify(images) !== JSON.stringify(originalData.images || []);
     setIsDirty(changed);
-  }, [title, content, moodType, tags, imageUrl, originalData]);
+  }, [title, content, moodType, tags, images, originalData]);
 
   const addTag = (t) => {
     const cleaned = t.trim().replace(/^#/, '');
@@ -136,12 +139,20 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
   };
 
   const handleImageSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    fileToDataUrl(file)
-      .then((url) => {
-        setImageUrl(url);
+    const remaining = MAX_POST_IMAGES - images.length;
+    if (remaining <= 0) {
+      showToast(`最多上传 ${MAX_POST_IMAGES} 张图片`);
+      e.target.value = '';
+      return;
+    }
+
+    const selectedFiles = files.slice(0, remaining);
+    Promise.all(selectedFiles.map((file) => fileToOptimizedDataUrl(file)))
+      .then((urls) => {
+        setImages((prev) => [...prev, ...urls]);
       })
       .catch((err) => {
         showToast(err.message || '读取图片失败');
@@ -150,11 +161,11 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     e.target.value = '';
   };
 
-  const canPublish = content.trim().length > 0;
+  const canPublish = content.trim().length > 0 || images.length > 0;
 
   const handleSaveDraft = useCallback(async () => {
-    if (!content.trim() && !title.trim()) {
-      showToast('请先填写内容');
+    if (!content.trim() && !title.trim() && images.length === 0) {
+      showToast('请先填写内容或上传图片');
       return;
     }
     setSaving(true);
@@ -181,7 +192,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
     } finally {
       setSaving(false);
     }
-  }, [applyDraftToForm, buildDraftPayload, content, draftId, showToast, title]);
+  }, [applyDraftToForm, buildDraftPayload, content, draftId, images.length, showToast, title]);
 
   useEffect(() => {
     saveDraftRef.current = handleSaveDraft;
@@ -211,7 +222,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
           mood: moodLabel || '平静',
           moodType: moodType || 'calm',
           tags: tags.length > 0 ? tags : ['树洞'],
-          image: imageUrl || undefined,
+          images,
         });
       }
       setDraftId(null);
@@ -302,22 +313,46 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
           placeholder="在这里写下你的内容..."
           value={content}
         />
-        {imageUrl && (
-          <div className="editor-image-preview relative p-3 border-t border-line-soft bg-[#fafbfc]">
-            <img src={imageUrl} alt="preview" className="w-full max-h-[200px] rounded-md object-cover" />
-            <button onClick={() => setImageUrl('')} type="button" className="editor-image-remove absolute top-4 right-6 grid w-7 h-7 place-items-center px-0 py-0 border-0 rounded-full bg-black/50 text-white text-lg cursor-pointer">&times;</button>
-          </div>
-        )}
         <div className="editor-tools flex flex-wrap items-center gap-3 p-[14px_20px] border-t border-line-soft bg-[#fafbfc]">
           <button type="button" className="inline-flex items-center gap-1.5 px-[10px] py-2 border border-dashed border-[#ccc] rounded-sm bg-white text-text-2 font-semibold cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <Icon name="image" /> {imageUrl ? '更换图片' : '添加图片'}
+            <Icon name="image" /> {images.length > 0 ? '继续添加图片' : '添加图片'}
           </button>
-          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageSelect} />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageSelect} />
           <button type="button" className="inline-flex items-center gap-1.5 px-[10px] py-2 border border-dashed border-[#ccc] rounded-sm bg-white text-text-2 font-semibold cursor-pointer" onClick={() => setShowTagInput(!showTagInput)}>
             <Icon name="tag" /> 添加话题
           </button>
           <span className="ml-auto text-text-3 text-[13px] font-bold">{content.length}/1000</span>
         </div>
+        {images.length > 0 && (
+          <div className="editor-image-preview border-t border-line-soft bg-[#fafbfc] p-3">
+            <div className={`grid gap-2 ${getImageGridLayout(images.length).gridClass}`}>
+              {images.map((src, index) => (
+                <div key={`${src}-${index}`} className={`relative overflow-hidden rounded-md bg-surface-soft ${getImageGridLayout(images.length).itemClass}`}>
+                  <img src={src} alt={`preview-${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    onClick={() => setImages((prev) => prev.filter((_, i) => i !== index))}
+                    type="button"
+                    className="editor-image-remove absolute top-2 right-2 grid w-7 h-7 place-items-center px-0 py-0 border-0 rounded-full bg-black/55 text-white text-lg cursor-pointer"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+              {images.length < MAX_POST_IMAGES && (
+                <button
+                  type="button"
+                  className={`grid place-items-center rounded-md border border-dashed border-line-soft bg-white text-text-2 transition-colors duration-150 hover:border-blue hover:text-blue ${getImageGridLayout(images.length + 1).itemClass}`}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <span className="flex flex-col items-center gap-1 text-sm font-semibold">
+                    <Icon name="add" />
+                    <span>继续添加</span>
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {(tags.length > 0 || showTagInput) && (
           <div className="editor-tag-area p-3 border-t border-line-soft bg-[#fafbfc]">
             {tags.length > 0 && (
@@ -343,15 +378,6 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(tagInput); } }}
                   />
                   <button type="button" className="h-9 px-[14px] border border-l-0 border-line rounded-r-sm bg-blue text-white text-sm font-bold cursor-pointer disabled:bg-surface-soft disabled:text-text-3 disabled:cursor-not-allowed" onClick={() => addTag(tagInput)} disabled={!tagInput.trim()}>添加</button>
-                </div>
-                <div className="tag-suggestions flex flex-wrap items-center gap-1.5 mt-2.5">
-                  <span className="tag-suggestions-label text-text-3 text-xs font-semibold">热门话题：</span>
-                  {suggestedTags
-                    .filter((st) => !tags.includes(st))
-                    .slice(0, 8)
-                    .map((st) => (
-                      <button key={st} className="tag-suggestion px-[10px] py-1 border border-line rounded-full bg-white text-blue text-xs font-semibold cursor-pointer transition-colors duration-150 hover:bg-blue-soft hover:border-[#b0c4de]" type="button" onClick={() => addTag(st)}>#{st}</button>
-                    ))}
                 </div>
               </>
             )}

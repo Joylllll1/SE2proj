@@ -3,11 +3,18 @@ import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import { getDisplayName, formatCount } from '../../utils';
+import { getImageGridLayout } from '../../utils/image';
 
 function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, onBookmark, onReport }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const authorName = getDisplayName(post.ownerUserId, post.id);
   const tags = Array.isArray(post.tags) ? post.tags : [];
+  const images = Array.isArray(post.images) && post.images.length > 0
+    ? post.images
+    : post.image
+      ? [post.image]
+      : [];
+  const imageLayout = getImageGridLayout(images.length);
 
   const handleReport = (targetId, reason) => {
     onReport(targetId, reason, 'post');
@@ -43,9 +50,16 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
             </div>
           </div>
           <h3 className={`m-0 mb-2 leading-snug tracking-tight ${compact ? 'text-[19px]' : 'text-xl'}`}>{post.title}</h3>
-          <p className="m-0 text-[15px] leading-relaxed text-[#344054]">{post.content}</p>
-          {post.image && <img className="w-full max-h-80 mt-3.5 rounded-md object-cover" alt={post.title} src={post.image} />}
-          {(post.images?.length > 0) && <img className="w-full max-h-80 mt-3.5 rounded-md object-cover" alt={post.title} src={post.images[0]} />}
+          {post.content && <p className="m-0 text-[15px] leading-relaxed text-[#344054]">{post.content}</p>}
+          {images.length > 0 && (
+            <div className={`post-images mt-3.5 grid gap-1.5 ${imageLayout.gridClass}`}>
+              {images.map((src, index) => (
+                <div key={`${src}-${index}`} className={`overflow-hidden rounded-md bg-surface-soft ${imageLayout.itemClass}`}>
+                  <img className="h-full w-full object-cover" alt={`${post.title || '帖子'} 图片 ${index + 1}`} src={src} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="post-footer flex items-center justify-between gap-3.5 px-5 py-[10px_20px_14px] border-t border-line-soft bg-[#fafbfc]">
           <div className="tag-row flex flex-wrap gap-2.5 text-text-3 text-xs font-semibold">

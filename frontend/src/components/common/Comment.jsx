@@ -4,7 +4,7 @@ import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import { getDisplayName } from '../../utils';
 import useCommentStore from '../../store/commentStore';
-import { fileToDataUrl } from '../../utils/image';
+import { fileToOptimizedDataUrl } from '../../utils/image';
 
 // ─── Stable store selectors ───
 const selectToggleLike = (s) => s.toggleLike;
@@ -116,7 +116,7 @@ const CommentReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel },
     const file = e.target.files?.[0];
     if (!file) return;
 
-    fileToDataUrl(file)
+    fileToOptimizedDataUrl(file)
       .then((url) => {
         setImage(url);
       })

@@ -4,7 +4,7 @@ const postSchema = new mongoose.Schema(
   {
     ownerUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     title: { type: String, required: true, trim: true, maxlength: 100 },
-    content: { type: String, required: true, maxlength: 20000 },
+    content: { type: String, maxlength: 20000 },
     tags: [{ type: String, trim: true }],
     images: [{ type: String }],
     campus: { type: String, default: '仙林' },

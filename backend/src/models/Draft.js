@@ -8,6 +8,7 @@ const draftSchema = new mongoose.Schema(
     moodType: { type: String },
     mood: { type: String },
     tags: [{ type: String, trim: true }],
+    images: [{ type: String }],
     image: { type: String },
   },
   { timestamps: true },

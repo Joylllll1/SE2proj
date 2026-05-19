@@ -232,8 +232,15 @@ function App() {
 
   const handlePublish = async (postData) => {
     try {
-      const { image, ...rest } = postData;
-      await usePostStore.getState().addPost({ ...rest, images: image ? [image] : [] });
+      const images = Array.isArray(postData.images)
+        ? postData.images
+        : postData.image
+          ? [postData.image]
+          : [];
+      const payload = { ...postData, images };
+      delete payload.image;
+      delete payload.images;
+      await usePostStore.getState().addPost({ ...payload, images });
     } catch (err) {
       showToast(err.message || '发布失败');
       throw err;
