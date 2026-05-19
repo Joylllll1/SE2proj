@@ -11,31 +11,38 @@ export function fileToDataUrl(file) {
   });
 }
 
-function loadImage(source) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('读取图片失败'));
-    image.src = source;
-  });
-}
-
 export async function fileToOptimizedDataUrl(file, options = {}) {
   const {
-    maxDimension = 1600,
-    quality = 0.82,
+    maxDimension = 1280,
+    quality = 0.72,
   } = options;
 
   if (!file?.type?.startsWith('image/')) {
     return fileToDataUrl(file);
   }
 
-  const sourceUrl = URL.createObjectURL(file);
+  let imageSource;
+  let revokeUrl = null;
+
+  if (typeof createImageBitmap === 'function') {
+    imageSource = await createImageBitmap(file);
+  } else {
+    const sourceUrl = URL.createObjectURL(file);
+    revokeUrl = sourceUrl;
+    imageSource = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('读取图片失败'));
+      image.src = sourceUrl;
+    });
+  }
+
   try {
-    const image = await loadImage(sourceUrl);
-    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
+    const widthBase = imageSource.width;
+    const heightBase = imageSource.height;
+    const scale = Math.min(1, maxDimension / Math.max(widthBase, heightBase));
+    const width = Math.max(1, Math.round(widthBase * scale));
+    const height = Math.max(1, Math.round(heightBase * scale));
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -46,11 +53,18 @@ export async function fileToOptimizedDataUrl(file, options = {}) {
       return fileToDataUrl(file);
     }
 
-    ctx.drawImage(image, 0, 0, width, height);
-    const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    return canvas.toDataURL(mimeType, quality);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(imageSource, 0, 0, width, height);
+
+    return canvas.toDataURL('image/jpeg', quality);
   } finally {
-    URL.revokeObjectURL(sourceUrl);
+    if (typeof imageSource?.close === 'function') {
+      imageSource.close();
+    }
+    if (revokeUrl) {
+      URL.revokeObjectURL(revokeUrl);
+    }
   }
 }
 
