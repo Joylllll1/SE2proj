@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Icon from '../common/Icon';
+import RichMessageContent from '../common/RichMessageContent';
 import useAIStore from '../../store/aiStore';
 import useUiStore from '../../store/uiStore';
 
@@ -88,7 +89,7 @@ function MessageBubble({ message, isLastAssistant, onRegenerate }) {
               : 'bg-blue text-white rounded-tr-sm'
           }`}
         >
-          {message.content}
+          <RichMessageContent content={message.content} isUser={!isAI} />
         </div>
       </div>
     </div>
