@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import Icon from '../common/Icon';
-import RichMessageContent from '../common/RichMessageContent';
 import useAIStore from '../../store/aiStore';
 import useUiStore from '../../store/uiStore';
+
+const RichMessageContent = lazy(() => import('../common/RichMessageContent'));
 
 const DIRECTNESS_OPTIONS = [
   { value: 'soft', label: '委婉', description: '先接住情绪，再慢慢给建议' },
@@ -89,7 +90,9 @@ function MessageBubble({ message, isLastAssistant, onRegenerate }) {
               : 'bg-blue text-white rounded-tr-sm'
           }`}
         >
-          <RichMessageContent content={message.content} isUser={!isAI} />
+          <Suspense fallback={<p className="my-0 whitespace-pre-wrap break-words">{message.content}</p>}>
+            <RichMessageContent content={message.content} isUser={!isAI} />
+          </Suspense>
         </div>
       </div>
     </div>
