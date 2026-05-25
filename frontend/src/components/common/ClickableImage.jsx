@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import ImageLightbox from './ImageLightbox';
+import React, { lazy, Suspense, useState } from 'react';
+
+const ImageLightbox = lazy(() => import('./ImageLightbox'));
 
 function ClickableImage({
   src,
@@ -35,11 +36,13 @@ function ClickableImage({
       </button>
 
       {open && (
-        <ImageLightbox
-          images={previewImages}
-          initialIndex={imageIndex}
-          onClose={() => setOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <ImageLightbox
+            images={previewImages}
+            initialIndex={imageIndex}
+            onClose={() => setOpen(false)}
+          />
+        </Suspense>
       )}
     </>
   );

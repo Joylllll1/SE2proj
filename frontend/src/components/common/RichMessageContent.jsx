@@ -1,15 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
-
-function cleanMathDelimiters(value = '') {
-  return value
-    .replace(/\\\[(.*?)\\\]/gs, '$$$1$$')
-    .replace(/\\\((.*?)\\\)/gs, '$1$');
-}
 
 const markdownComponents = {
   p({ children }) {
@@ -103,13 +94,12 @@ export default function RichMessageContent({ content, isUser = false }) {
   }
 
   return (
-    <div className="space-y-3 overflow-hidden [word-break:break-word] [&_.katex-display]:my-3 [&_.katex-display]:overflow-x-auto [&_.katex]:text-[1.02em]">
+    <div className="space-y-3 overflow-hidden [word-break:break-word]">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        remarkPlugins={[remarkGfm]}
         components={markdownComponents}
       >
-        {cleanMathDelimiters(content)}
+        {content}
       </ReactMarkdown>
     </div>
   );
