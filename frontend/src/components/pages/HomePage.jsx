@@ -21,6 +21,7 @@ const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
 const selectUser = (s) => s.user;
 const selectAccessToken = (s) => s.accessToken;
+const selectRemovePostById = (s) => s.removePostById;
 
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
@@ -35,6 +36,7 @@ export default function HomePage() {
   const showToast = useUiStore(selectShowToast);
   const user = useAuthStore(selectUser);
   const accessToken = useAuthStore(selectAccessToken);
+  const removePostById = usePostStore(selectRemovePostById);
 
   // ── Hooks ──
   const { openPost } = usePostActions();
@@ -53,7 +55,7 @@ export default function HomePage() {
       if (intervalId) return;
       intervalId = setInterval(() => {
         if (!document.hidden) {
-          fetchPosts();
+          fetchPosts(1, '', { silent: true });
         }
       }, 60000);
     };
@@ -70,7 +72,18 @@ export default function HomePage() {
     const es = new EventSource(`/api/stream?token=${encodeURIComponent(accessToken)}`);
 
     es.addEventListener('new-post', () => {
-      fetchPosts();
+      fetchPosts(1, '', { silent: true });
+    });
+
+    es.addEventListener('post-deleted', (event) => {
+      try {
+        const data = JSON.parse(event.data || '{}');
+        if (data.postId) {
+          removePostById(data.postId);
+        }
+      } catch {
+        // Ignore malformed SSE payloads from older clients or transient errors.
+      }
     });
 
     es.onerror = () => {
@@ -84,7 +97,7 @@ export default function HomePage() {
       }
       es.close();
     };
-  }, [accessToken, fetchPosts, user]);
+  }, [accessToken, fetchPosts, removePostById, user]);
 
   const userId = user?._id || null;
 

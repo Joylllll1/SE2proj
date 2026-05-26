@@ -105,6 +105,11 @@ export const deletePost = async (userId, postId) => {
   }
   post.isDeleted = true;
   await post.save();
+  try {
+    broadcast('post-deleted', { postId: post._id.toString() });
+  } catch (error) {
+    console.error('SSE broadcast failed after post deletion:', error);
+  }
 };
 
 export const toggleLike = async (userId, postId) => {

@@ -66,6 +66,7 @@ const selectCommentsMap = (s) => s.commentsMap;
 const selectFetchComments = (s) => s.fetchComments;
 const selectAddComment = (s) => s.addComment;
 const selectPosts = (s) => s.posts;
+const selectClearSelectedPost = (s) => s.clearSelectedPost;
 const selectBookmarkFolders = (s) => s.bookmarkFolders;
 const selectUpdateFolders = (s) => s.updateFolders;
 const selectUpdateBookmarkFolders = (s) => s.updateBookmarkFolders;
@@ -138,6 +139,7 @@ function App() {
 
   // ── Bookmarks page needs ──
   const posts = usePostStore(selectPosts);
+  const clearSelectedPost = usePostStore(selectClearSelectedPost);
   const bookmarkFolders = useBookmarkStore(selectBookmarkFolders);
   const updateFolders = useBookmarkStore(selectUpdateFolders);
   const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
@@ -251,7 +253,11 @@ function App() {
 
   const handleDeletePost = async (postId) => {
     try {
-      await usePostStore.getState().deletePost(postId);
+      await usePostStore.getState().deletePost(postId, { clearSelectedPost: false });
+      if (activePage === 'detail') {
+        navigate('home', undefined, { force: true });
+        clearSelectedPost();
+      }
       showToast('帖子已删除');
     } catch (err) {
       showToast(err.message || '删除失败');
@@ -313,7 +319,7 @@ function App() {
                 onBookmark={() => toggleBookmark(selectedPost.id)}
                 onComment={handleComment}
                 onReply={handleReply}
-                onDelete={(postId) => handleDeletePost(postId).then(() => navigate('home'))}
+                onDelete={handleDeletePost}
                 onNavigate={navigate}
                 onReport={handleReport}
               />

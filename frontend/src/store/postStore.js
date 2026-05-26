@@ -43,8 +43,11 @@ const usePostStore = create((set, get) => ({
   pendingUnlikePostIds: [],
   submittingUnlikePostIds: [],
 
-  fetchPosts: async (page = 1, query = '') => {
-    set({ loading: true });
+  fetchPosts: async (page = 1, query = '', options = {}) => {
+    const shouldShowLoading = !options.silent && get().posts.length === 0;
+    if (shouldShowLoading) {
+      set({ loading: true });
+    }
     try {
       const data = await postService.fetchPosts(page, query);
       set({
@@ -63,13 +66,25 @@ const usePostStore = create((set, get) => ({
     return data;
   },
 
-  deletePost: async (postId) => {
-    await postService.deletePost(postId);
+  removePostById: (postId, options = {}) => {
+    const shouldClearSelectedPost = options.clearSelectedPost !== false;
     set((state) => ({
       myPosts: state.myPosts.filter((p) => p.id !== postId),
       posts: state.posts.filter((p) => p.id !== postId),
-      selectedPost: state.selectedPost?.id === postId ? null : state.selectedPost,
+      selectedPost:
+        shouldClearSelectedPost && state.selectedPost?.id === postId
+          ? null
+          : state.selectedPost,
     }));
+  },
+
+  clearSelectedPost: () => {
+    set({ selectedPost: null });
+  },
+
+  deletePost: async (postId, options = {}) => {
+    await postService.deletePost(postId);
+    get().removePostById(postId, options);
   },
 
   addPost: async (post) => {
