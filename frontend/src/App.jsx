@@ -108,6 +108,7 @@ function App() {
   const discardPendingNavigation = useUiStore(selectDiscardPendingNavigation);
   const navigate = useUiStore(selectNavigate);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  const currentUserId = useAuthStore((s) => s.user?._id);
   const isAdminRoute = activePage === 'admin' || ADMIN_ROUTE_PAGES.includes(activePage);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
@@ -247,8 +248,6 @@ function App() {
       throw err;
     }
   };
-
-  const currentUserId = useAuthStore((s) => s.user?._id);
 
   const handleDeletePost = async (postId) => {
     try {
