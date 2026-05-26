@@ -1,6 +1,7 @@
 import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
 import { notifyLike } from './notificationService.js';
+import { broadcast } from './sseManager.js';
 import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountService.js';
 import { normalizeInlineImage } from '../utils/image.js';
 
@@ -54,6 +55,11 @@ export const createPost = async (userId, data) => {
     tags: tags.length > 0 ? tags : ['树洞'],
     images,
   });
+  try {
+    broadcast('new-post', {});
+  } catch (error) {
+    console.error('SSE broadcast failed after post creation:', error);
+  }
   return toPostDto(post.toObject(), userId);
 };
 

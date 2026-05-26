@@ -2,7 +2,7 @@
 
 > 记录已确认但未排期的功能需求，方便后续拾起。
 
-## 实时推送升级（SSE 替代轮询）
+## 实时推送升级（SSE 替代轮询）✅ 已完成
 
 **背景**：首页当前使用 60s 轮询检查新帖子，最长有 60s 延迟。
 
@@ -16,17 +16,27 @@
 ### 实现要点
 
 **后端**：
-- Express 路由 `GET /api/events`
-- PostService/createPost 完成后通知 SSE 客户端
-- 客户端断连自动清理
+- ~~Express 路由 `GET /api/events`~~ → 实际为 `GET /api/stream?token=<jwt>`（`/api/events` 已被校园活动占用）
+- PostService/createPost 完成后通过 `broadcast('new-post')` 通知 SSE 客户端
+- 客户端断连自动清理，30s 心跳保活
 
 **前端**：
-- `HomePage.jsx` 中用 `new EventSource('/api/events')` 替换轮询 `setInterval`
-- 收到事件后调 `fetchPosts()` 增量更新
+- `HomePage.jsx` 中用 `new EventSource('/api/stream?token=...')` 替换轮询 `setInterval`
+- 收到 `new-post` 事件后调 `fetchPosts()` 增量更新
+- 未登录用户降级到 60s 轮询
+
+**新增文件**：
+- `backend/src/services/sseManager.js` — SSE 连接管理器
+- `backend/src/routes/sseRoutes.js` — SSE 路由
+
+**修改文件**：
+- `backend/src/index.js` — 挂载 `/api/stream` 路由
+- `backend/src/services/postService.js` — createPost 后广播事件
+- `frontend/src/components/pages/HomePage.jsx` — SSE 替换轮询
 
 ### 优先级
 
-低 — 当前 60s 轮询对校园匿名社区可接受。建议排在以下功能之后：
+~~低 — 当前 60s 轮询对校园匿名社区可接受。建议排在以下功能之后：~~
 - [ ] 我的喜爱页面
 - [ ] 后台管理功能
 - [ ] 博主回复管理
