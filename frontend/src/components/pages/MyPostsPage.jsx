@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useState } from 'react';
 import Icon from '../common/Icon';
 import ConfirmLeaveDialog from '../common/ConfirmLeaveDialog';
 import EmptyState from '../common/EmptyState';
 import usePostStore from '../../store/postStore';
 import useAuthStore from '../../store/authStore';
+import { hasSearchQuery, matchPostQuery } from '../../utils/search';
 
 function MyPostsPage({ onNavigate }) {
   const myPosts = usePostStore((s) => s.myPosts);
@@ -15,6 +16,8 @@ function MyPostsPage({ onNavigate }) {
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const loadMyPosts = useCallback(async () => {
     setLoading(true);
@@ -49,6 +52,9 @@ function MyPostsPage({ onNavigate }) {
       setDeleting(false);
     }
   };
+
+  const searching = hasSearchQuery(deferredSearchQuery);
+  const filteredPosts = myPosts.filter((post) => matchPostQuery(post, deferredSearchQuery));
 
   if (loading) {
     return (
@@ -96,43 +102,79 @@ function MyPostsPage({ onNavigate }) {
           description="去首页发布你的第一篇帖子吧"
         />
       ) : (
-        <section className="grid gap-3 mt-6">
-          {myPosts.map((post) => {
-            const isOwner = currentUserId && post.ownerUserId === currentUserId;
-            return (
-              <div
-                key={post.id}
-                className="flex items-center justify-between gap-4 p-4 rounded-xl border border-line bg-surface backdrop-blur-sm shadow-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md"
-              >
-                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => handleOpenPost(post)}>
-                  <div className="font-semibold text-text truncate">{post.title}</div>
-                  <div className="flex items-center gap-3 mt-1.5 text-xs text-text-3">
-                    <span>{post.time}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Icon name="favorite" style={{ fontSize: '14px' }} /> {post.likes || 0}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Icon name="chat_bubble" style={{ fontSize: '14px' }} /> {post.comments || 0}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Icon name="bookmark" style={{ fontSize: '14px' }} /> {post.saves || 0}
-                    </span>
-                  </div>
-                </div>
-                {isOwner && (
-                  <button
-                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 border border-line rounded-full bg-white text-text-2 text-xs font-semibold transition-all duration-150 hover:border-red/40 hover:text-red hover:bg-red-soft/50"
-                    onClick={() => setDeleteTarget(post)}
-                    type="button"
+        <>
+          <section className="mt-6 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+            <div className="search-box flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3">
+              <Icon name="search" className="text-text-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="搜索我的帖子：标题、正文、标签"
+                className="w-full border-0 bg-transparent text-sm text-text outline-none"
+              />
+              {searching && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="flex-shrink-0 text-xs font-semibold text-text-3 transition-colors duration-150 hover:text-text"
+                >
+                  清空
+                </button>
+              )}
+            </div>
+            <div className="mt-3 text-xs text-text-3">
+              {searching ? `找到 ${filteredPosts.length} 篇匹配的帖子` : `共 ${myPosts.length} 篇帖子`}
+            </div>
+          </section>
+
+          {filteredPosts.length === 0 ? (
+            <section className="mt-6">
+              <EmptyState
+                title="没有找到匹配的帖子"
+                description="换个关键词试试，比如标题、正文里的词或者标签。"
+              />
+            </section>
+          ) : (
+            <section className="grid gap-3 mt-6">
+              {filteredPosts.map((post) => {
+                const isOwner = currentUserId && post.ownerUserId === currentUserId;
+                return (
+                  <div
+                    key={post.id}
+                    className="flex items-center justify-between gap-4 p-4 rounded-xl border border-line bg-surface backdrop-blur-sm shadow-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md"
                   >
-                    <Icon name="delete" style={{ fontSize: '15px' }} />
-                    删除
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </section>
+                    <div className="min-w-0 flex-1 cursor-pointer" onClick={() => handleOpenPost(post)}>
+                      <div className="font-semibold text-text truncate">{post.title}</div>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-text-3">
+                        <span>{post.time}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="favorite" style={{ fontSize: '14px' }} /> {post.likes || 0}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="chat_bubble" style={{ fontSize: '14px' }} /> {post.comments || 0}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="bookmark" style={{ fontSize: '14px' }} /> {post.saves || 0}
+                        </span>
+                      </div>
+                    </div>
+                    {isOwner && (
+                      <button
+                        className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 border border-line rounded-full bg-white text-text-2 text-xs font-semibold transition-all duration-150 hover:border-red/40 hover:text-red hover:bg-red-soft/50"
+                        onClick={() => setDeleteTarget(post)}
+                        type="button"
+                      >
+                        <Icon name="delete" style={{ fontSize: '15px' }} />
+                        删除
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </section>
+          )}
+        </>
       )}
 
       <ConfirmLeaveDialog
