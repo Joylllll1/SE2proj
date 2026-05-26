@@ -34,6 +34,10 @@ export async function fetchSavedPosts() {
   return request('/api/posts/saved');
 }
 
+export async function fetchMyPosts() {
+  return request('/api/posts/mine');
+}
+
 export async function toggleCommentLike(commentId) {
   return request(`/api/comments/${commentId}/like`, { method: 'POST' });
 }

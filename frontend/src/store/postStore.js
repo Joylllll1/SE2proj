@@ -39,6 +39,7 @@ const usePostStore = create((set, get) => ({
   likedPosts: [],
   selectedPost: null,
   loading: false,
+  myPosts: [],
   pendingUnlikePostIds: [],
   submittingUnlikePostIds: [],
 
@@ -54,6 +55,24 @@ const usePostStore = create((set, get) => ({
     } catch {
       set({ loading: false });
     }
+  },
+
+  fetchMyPosts: async () => {
+    try {
+      const data = await postService.fetchMyPosts();
+      set({ myPosts: data });
+    } catch {
+      // Silently fail — page will show empty state
+    }
+  },
+
+  deletePost: async (postId) => {
+    await postService.deletePost(postId);
+    set((state) => ({
+      myPosts: state.myPosts.filter((p) => p.id !== postId),
+      posts: state.posts.filter((p) => p.id !== postId),
+      selectedPost: state.selectedPost?.id === postId ? null : state.selectedPost,
+    }));
   },
 
   addPost: async (post) => {

@@ -180,6 +180,19 @@ export const getSavedPosts = async (userId) => {
   }));
 };
 
+export const getMyPosts = async (userId) => {
+  const posts = await Post.find({ ownerUserId: userId, isDeleted: false })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const visibleCommentCounts = await getVisibleCommentCounts(posts.map((post) => post._id.toString()));
+
+  return posts.map((p) => toPostDto({
+    ...p,
+    visibleCommentCount: visibleCommentCounts.get(p._id.toString()) || 0,
+  }, userId));
+};
+
 // ─── Helpers ───
 
 function formatRelativeTime(date) {
