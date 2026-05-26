@@ -47,7 +47,7 @@ No tests exist yet (`npm test` is a placeholder in both packages).
 
 ## Key Architecture
 
-1. **Anonymous ID system** (`utils.js`): Per-post anonymous display names derived by `hash(userId + postId)` → picks from `ADJECTIVES` + `ANIMALS` arrays (e.g., "温柔的小蓝鲸"). Same user = same name within a post, different across posts.
+1. **Anonymous ID system** (`utils.js`): Per-post anonymous display names derived by `hash(userId + postId)` → picks from a list of English given names (e.g., "Alice", "Bob", "Charlie"). Same user = same name within a post, different across posts.
 
 2. **Backend layered architecture** (documented in `docs/wiki/`):
    - Routes → Controllers → Services → Models
