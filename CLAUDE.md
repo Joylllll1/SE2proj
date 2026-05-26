@@ -16,6 +16,8 @@ NJU树洞 — 面向南京大学师生的半匿名表达、互助交流与内容
 - 想了解架构设计 → [架构设计](docs/wiki/architecture.md)
 - 历史技术决策 → [决策记录](docs/wiki/decisions/)
 - 环境搭建 → [环境配置](docs/wiki/setup.md)
+- Landing Page 设计 → [Landing Page](docs/wiki/landing-page.md)
+- 待办与后续规划 → [待办事项](docs/wiki/todo.md)
 
 ## Commands
 
@@ -56,7 +58,7 @@ No tests exist yet (`npm test` is a placeholder in both packages).
 
 3. **Frontend layered architecture**: `components/` split into `pages/`, `features/`, `layout/`, `common/`. State in Zustand stores (`store/`). API calls in `services/`. Business logic in `hooks/`.
 
-4. **OpenSpec workflow**: `explore` → `propose` → `apply` → `archive` (skills in `.claude/skills/`)
+4. **OpenSpec workflow**: `explore` → `propose` → `apply` → `archive`. Detailed conventions in [项目约定](docs/wiki/conventions.md).
 
 ## Frontend Component Organization
 
@@ -78,9 +80,16 @@ frontend/src/
 ## Git Conventions
 
 - Branch names: `feature/<module>-<desc>`, `fix/<module>-<desc>`, `docs/<desc>`
-- Commit prefix: `[AI-assisted]` or `[Human-written]` + conventional commit message
+- Commit prefix: `[AI-assisted]` or `[Human-written]` + conventional commit message, e.g. `[AI-assisted] feat(auth): implement JWT login`
 - AI-generated code must be reviewed by at least one team member
-- Main branch: `main`, active development: `frontend`
+- Security-related code (auth, anonymous mapping, permission control) requires additional review
+- Main branch: `main`
+
+## Delete Strategy
+
+- Posts & comments: logic delete (`isDeleted: true`)
+- Users: ban/mute, never physically deleted
+- Drafts: physical delete (drafts are not formal content)
 
 ## Important Notes
 
