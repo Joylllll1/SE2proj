@@ -8,6 +8,7 @@ import AppError from '../utils/AppError.js';
 import { sendBanNotification, sendUnbanNotification } from './emailService.js';
 import { notifyBanned, notifyUnbanned } from './notificationService.js';
 import { syncPostCommentCount } from './commentCountService.js';
+import { broadcast } from './sseManager.js';
 
 async function resolveAssociatedPostId(targetId, targetType) {
   if (targetType === 'post') {
@@ -495,6 +496,12 @@ export async function deletePost(postId, adminId, reason) {
     targetPostId: postId,
     reason,
   });
+
+  try {
+    broadcast('post-deleted', { postId: post._id.toString() });
+  } catch (error) {
+    console.error('SSE broadcast failed after admin post deletion:', error);
+  }
 
   return post;
 }

@@ -16,6 +16,7 @@ import DetailPage from './components/pages/DetailPage';
 import ComposePage from './components/pages/ComposePage';
 import DraftsPage from './components/pages/DraftsPage';
 import LikesPage from './components/pages/LikesPage';
+import MyPostsPage from './components/pages/MyPostsPage';
 import AdminDashboard from './components/pages/AdminDashboard';
 import AnnouncementsPage from './components/pages/AnnouncementsPage';
 import UnderConstruction from './components/common/UnderConstruction';
@@ -65,6 +66,7 @@ const selectCommentsMap = (s) => s.commentsMap;
 const selectFetchComments = (s) => s.fetchComments;
 const selectAddComment = (s) => s.addComment;
 const selectPosts = (s) => s.posts;
+const selectClearSelectedPost = (s) => s.clearSelectedPost;
 const selectBookmarkFolders = (s) => s.bookmarkFolders;
 const selectUpdateFolders = (s) => s.updateFolders;
 const selectUpdateBookmarkFolders = (s) => s.updateBookmarkFolders;
@@ -107,6 +109,7 @@ function App() {
   const discardPendingNavigation = useUiStore(selectDiscardPendingNavigation);
   const navigate = useUiStore(selectNavigate);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  const currentUserId = useAuthStore((s) => s.user?._id);
   const isAdminRoute = activePage === 'admin' || ADMIN_ROUTE_PAGES.includes(activePage);
 
   // ── 已登录用户不可访问 auth 页面（如通过后退回到 /login） ──
@@ -136,6 +139,7 @@ function App() {
 
   // ── Bookmarks page needs ──
   const posts = usePostStore(selectPosts);
+  const clearSelectedPost = usePostStore(selectClearSelectedPost);
   const bookmarkFolders = useBookmarkStore(selectBookmarkFolders);
   const updateFolders = useBookmarkStore(selectUpdateFolders);
   const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
@@ -247,6 +251,20 @@ function App() {
     }
   };
 
+  const handleDeletePost = async (postId) => {
+    try {
+      await usePostStore.getState().deletePost(postId, { clearSelectedPost: false });
+      if (activePage === 'detail') {
+        navigate('home', undefined, { force: true });
+        clearSelectedPost();
+      }
+      showToast('帖子已删除');
+    } catch (err) {
+      showToast(err.message || '删除失败');
+      throw err;
+    }
+  };
+
   const handleComment = async (content, image = '') => {
     if (!selectedPost) return;
     try {
@@ -296,10 +314,12 @@ function App() {
                 comments={comments}
                 liked={detailPost?.isLiked}
                 bookmarked={detailPost?.isSaved}
+                isOwner={currentUserId && detailPost?.ownerUserId === currentUserId}
                 onLike={() => toggleLike(selectedPost.id)}
                 onBookmark={() => toggleBookmark(selectedPost.id)}
                 onComment={handleComment}
                 onReply={handleReply}
+                onDelete={handleDeletePost}
                 onNavigate={navigate}
                 onReport={handleReport}
               />
@@ -338,6 +358,9 @@ function App() {
               title="无权访问管理后台"
               description="当前账号没有管理员权限。"
             />
+          )}
+          {activePage === 'myposts' && (
+            <MyPostsPage onNavigate={navigate} />
           )}
           {activePage === 'settings' && <SettingsPage />}
           {activePage === 'settings-password' && <PasswordChangePage />}

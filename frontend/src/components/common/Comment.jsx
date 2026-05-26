@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import ClickableImage from './ClickableImage';
 import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
@@ -65,7 +66,11 @@ function Comment({ comment, postId, onReply, onReport }) {
           {comment.content && <p className="my-[9px]">{comment.content}</p>}
           {comment.image && (
             <div className="comment-image-preview mt-2">
-              <img src={comment.image} alt="comment" className="max-w-full max-h-80 rounded-md object-cover" />
+              <ClickableImage
+                src={comment.image}
+                alt="comment"
+                className="max-w-full max-h-80 rounded-md object-cover"
+              />
             </div>
           )}
           <div className="comment-actions flex gap-[14px] text-text-3 text-xs font-semibold">

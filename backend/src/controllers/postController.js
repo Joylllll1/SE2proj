@@ -38,3 +38,8 @@ export const getSaved = async (req, res) => {
   const posts = await postService.getSavedPosts(userId);
   res.json(posts);
 };
+
+export const mine = async (req, res) => {
+  const posts = await postService.getMyPosts(req.user._id.toString());
+  res.json(posts);
+};

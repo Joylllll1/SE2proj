@@ -20,6 +20,8 @@ const selectQuery = (s) => s.query;
 const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
 const selectUser = (s) => s.user;
+const selectAccessToken = (s) => s.accessToken;
+const selectRemovePostById = (s) => s.removePostById;
 
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
@@ -33,6 +35,8 @@ export default function HomePage() {
   const navigate = useUiStore(selectNavigate);
   const showToast = useUiStore(selectShowToast);
   const user = useAuthStore(selectUser);
+  const accessToken = useAuthStore(selectAccessToken);
+  const removePostById = usePostStore(selectRemovePostById);
 
   // ── Hooks ──
   const { openPost } = usePostActions();
@@ -43,15 +47,57 @@ export default function HomePage() {
     fetchPosts();
   }, [fetchPosts]);
 
-  // ── Auto-polling every 60s ──
+  // ── SSE: 实时接收新帖子推送（需登录），降级到轮询 ──
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!document.hidden) {
-        fetchPosts();
+    let intervalId = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => {
+        if (!document.hidden) {
+          fetchPosts(1, '', { silent: true });
+        }
+      }, 60000);
+    };
+
+    if (!user || !accessToken) {
+      startPolling();
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }
+
+    const es = new EventSource(`/api/stream?token=${encodeURIComponent(accessToken)}`);
+
+    es.addEventListener('new-post', () => {
+      fetchPosts(1, '', { silent: true });
+    });
+
+    es.addEventListener('post-deleted', (event) => {
+      try {
+        const data = JSON.parse(event.data || '{}');
+        if (data.postId) {
+          removePostById(data.postId);
+        }
+      } catch {
+        // Ignore malformed SSE payloads from older clients or transient errors.
       }
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [fetchPosts]);
+    });
+
+    es.onerror = () => {
+      es.close();
+      startPolling();
+    };
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      es.close();
+    };
+  }, [accessToken, fetchPosts, removePostById, user]);
 
   const userId = user?._id || null;
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
+import ClickableImage from './ClickableImage';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import { getDisplayName, formatCount } from '../../utils';
@@ -55,7 +56,13 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
             <div className={`post-images mt-3.5 grid gap-1.5 ${imageLayout.gridClass}`}>
               {images.map((src, index) => (
                 <div key={`${src}-${index}`} className={`overflow-hidden rounded-md bg-surface-soft ${imageLayout.itemClass}`}>
-                  <img className="h-full w-full object-cover" alt={`${post.title || '帖子'} 图片 ${index + 1}`} src={src} />
+                  <ClickableImage
+                    src={src}
+                    alt={`${post.title || '帖子'} 图片 ${index + 1}`}
+                    className="h-full w-full object-cover"
+                    images={images}
+                    imageIndex={index}
+                  />
                 </div>
               ))}
             </div>
