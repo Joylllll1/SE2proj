@@ -1,9 +1,10 @@
-import React, { useCallback, useDeferredValue, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Icon from '../common/Icon';
 import ConfirmLeaveDialog from '../common/ConfirmLeaveDialog';
 import EmptyState from '../common/EmptyState';
 import usePostStore from '../../store/postStore';
 import useAuthStore from '../../store/authStore';
+import useUiStore from '../../store/uiStore';
 import { hasSearchQuery, matchPostQuery } from '../../utils/search';
 
 function MyPostsPage({ onNavigate }) {
@@ -12,12 +13,11 @@ function MyPostsPage({ onNavigate }) {
   const deletePost = usePostStore((s) => s.deletePost);
   const setSelectedPost = usePostStore((s) => s.setSelectedPost);
   const currentUserId = useAuthStore((s) => s.user?._id);
+  const query = useUiStore((s) => s.query);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const loadMyPosts = useCallback(async () => {
     setLoading(true);
@@ -53,8 +53,8 @@ function MyPostsPage({ onNavigate }) {
     }
   };
 
-  const searching = hasSearchQuery(deferredSearchQuery);
-  const filteredPosts = myPosts.filter((post) => matchPostQuery(post, deferredSearchQuery));
+  const searching = hasSearchQuery(query);
+  const filteredPosts = myPosts.filter((post) => matchPostQuery(post, query));
 
   if (loading) {
     return (
@@ -103,36 +103,17 @@ function MyPostsPage({ onNavigate }) {
         />
       ) : (
         <>
-          <section className="mt-6 rounded-2xl border border-line bg-surface p-4 shadow-sm">
-            <div className="search-box flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3">
-              <Icon name="search" className="text-text-3" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="搜索我的帖子：标题、正文、标签"
-                className="w-full border-0 bg-transparent text-sm text-text outline-none"
-              />
-              {searching && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="flex-shrink-0 text-xs font-semibold text-text-3 transition-colors duration-150 hover:text-text"
-                >
-                  清空
-                </button>
-              )}
-            </div>
-            <div className="mt-3 text-xs text-text-3">
-              {searching ? `找到 ${filteredPosts.length} 篇匹配的帖子` : `共 ${myPosts.length} 篇帖子`}
-            </div>
-          </section>
+          {searching && (
+            <p className="result-hint mt-6 mb-[14px] text-text-2 text-sm">
+              搜索 &quot;{query}&quot; 找到 {filteredPosts.length} 条相关帖子。
+            </p>
+          )}
 
           {filteredPosts.length === 0 ? (
             <section className="mt-6">
               <EmptyState
-                title="没有找到匹配的帖子"
-                description="换个关键词试试，比如标题、正文里的词或者标签。"
+                title={searching ? '没有找到匹配的帖子' : '还没有发布过帖子'}
+                description={searching ? '换个关键词试试，比如标题、正文里的词或者标签。' : '去首页发布你的第一篇帖子吧'}
               />
             </section>
           ) : (
