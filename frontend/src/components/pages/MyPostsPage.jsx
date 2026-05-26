@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Icon from '../common/Icon';
 import ConfirmLeaveDialog from '../common/ConfirmLeaveDialog';
 import EmptyState from '../common/EmptyState';
@@ -9,13 +9,33 @@ function MyPostsPage({ onNavigate }) {
   const myPosts = usePostStore((s) => s.myPosts);
   const fetchMyPosts = usePostStore((s) => s.fetchMyPosts);
   const deletePost = usePostStore((s) => s.deletePost);
+  const setSelectedPost = usePostStore((s) => s.setSelectedPost);
   const currentUserId = useAuthStore((s) => s.user?._id);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const loadMyPosts = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      await fetchMyPosts();
+    } catch (error) {
+      setLoadError(error?.message || '加载我的帖子失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchMyPosts]);
 
   useEffect(() => {
-    fetchMyPosts();
-  }, [fetchMyPosts]);
+    loadMyPosts();
+  }, [loadMyPosts]);
+
+  const handleOpenPost = (post) => {
+    setSelectedPost(post);
+    onNavigate('detail', { selectedPost: post });
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -24,11 +44,41 @@ function MyPostsPage({ onNavigate }) {
       await deletePost(deleteTarget.id);
       setDeleteTarget(null);
     } catch {
-      // Silently fail — post remains in list
+      // Keep dialog open so the user can retry or cancel.
     } finally {
       setDeleting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="collection-page max-w-[1180px] mx-auto">
+        <section className="grid place-items-center rounded-md border border-line bg-surface p-12 text-center text-text-2">
+          正在加载你的帖子...
+        </section>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="collection-page max-w-[1180px] mx-auto">
+        <section className="grid gap-4 place-items-center rounded-md border border-line bg-surface p-12 text-center">
+          <div>
+            <h3 className="m-0 text-text">加载失败</h3>
+            <p className="mt-2 mb-0 text-text-2">{loadError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={loadMyPosts}
+            className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-text-2 transition-colors duration-150 hover:text-text hover:border-blue/40"
+          >
+            重试
+          </button>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
@@ -54,7 +104,7 @@ function MyPostsPage({ onNavigate }) {
                 key={post.id}
                 className="flex items-center justify-between gap-4 p-4 rounded-xl border border-line bg-surface backdrop-blur-sm shadow-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md"
               >
-                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onNavigate('detail', { selectedPost: post })}>
+                <div className="min-w-0 flex-1 cursor-pointer" onClick={() => handleOpenPost(post)}>
                   <div className="font-semibold text-text truncate">{post.title}</div>
                   <div className="flex items-center gap-3 mt-1.5 text-xs text-text-3">
                     <span>{post.time}</span>

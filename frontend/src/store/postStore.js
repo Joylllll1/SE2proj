@@ -58,12 +58,9 @@ const usePostStore = create((set, get) => ({
   },
 
   fetchMyPosts: async () => {
-    try {
-      const data = await postService.fetchMyPosts();
-      set({ myPosts: data });
-    } catch {
-      // Silently fail — page will show empty state
-    }
+    const data = await postService.fetchMyPosts();
+    set({ myPosts: data });
+    return data;
   },
 
   deletePost: async (postId) => {

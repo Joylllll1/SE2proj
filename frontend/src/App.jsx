@@ -255,6 +255,7 @@ function App() {
       showToast('帖子已删除');
     } catch (err) {
       showToast(err.message || '删除失败');
+      throw err;
     }
   };
 
