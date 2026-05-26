@@ -10,12 +10,13 @@ import useAuthStore from '../../store/authStore';
 import usePostActions from '../../hooks/usePostActions';
 import useLikeBookmark from '../../hooks/useLikeBookmark';
 import * as reportService from '../../services/reportService';
+import { matchPostQuery } from '../../utils/search';
 
 // ─── Stable store selectors ───
 const selectLoading = (s) => s.loading;
 const selectFetchPosts = (s) => s.fetchPosts;
-const selectGetFilteredPosts = (s) => s.getFilteredPosts;
 const selectGetPostLikeView = (s) => s.getPostLikeView;
+const selectPosts = (s) => s.posts;
 const selectQuery = (s) => s.query;
 const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
@@ -29,8 +30,8 @@ export default function HomePage() {
   // ── Stores ──
   const loading = usePostStore(selectLoading);
   const fetchPosts = usePostStore(selectFetchPosts);
-  const getFilteredPosts = usePostStore(selectGetFilteredPosts);
   const getPostLikeView = usePostStore(selectGetPostLikeView);
+  const posts = usePostStore(selectPosts);
   const query = useUiStore(selectQuery);
   const navigate = useUiStore(selectNavigate);
   const showToast = useUiStore(selectShowToast);
@@ -101,7 +102,7 @@ export default function HomePage() {
 
   const userId = user?._id || null;
 
-  const visiblePosts = getFilteredPosts(query);
+  const visiblePosts = posts.filter((post) => matchPostQuery(post, query));
 
   const sorted = [...visiblePosts].sort((a, b) => {
     if (sort === 'likes') return b.likes - a.likes;
