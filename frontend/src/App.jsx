@@ -16,6 +16,7 @@ import DetailPage from './components/pages/DetailPage';
 import ComposePage from './components/pages/ComposePage';
 import DraftsPage from './components/pages/DraftsPage';
 import LikesPage from './components/pages/LikesPage';
+import MyPostsPage from './components/pages/MyPostsPage';
 import AdminDashboard from './components/pages/AdminDashboard';
 import AnnouncementsPage from './components/pages/AnnouncementsPage';
 import UnderConstruction from './components/common/UnderConstruction';
@@ -247,6 +248,17 @@ function App() {
     }
   };
 
+  const currentUserId = useAuthStore((s) => s.user?._id);
+
+  const handleDeletePost = async (postId) => {
+    try {
+      await usePostStore.getState().deletePost(postId);
+      showToast('帖子已删除');
+    } catch (err) {
+      showToast(err.message || '删除失败');
+    }
+  };
+
   const handleComment = async (content, image = '') => {
     if (!selectedPost) return;
     try {
@@ -296,10 +308,12 @@ function App() {
                 comments={comments}
                 liked={detailPost?.isLiked}
                 bookmarked={detailPost?.isSaved}
+                isOwner={currentUserId && detailPost?.ownerUserId === currentUserId}
                 onLike={() => toggleLike(selectedPost.id)}
                 onBookmark={() => toggleBookmark(selectedPost.id)}
                 onComment={handleComment}
                 onReply={handleReply}
+                onDelete={(postId) => handleDeletePost(postId).then(() => navigate('home'))}
                 onNavigate={navigate}
                 onReport={handleReport}
               />
@@ -338,6 +352,9 @@ function App() {
               title="无权访问管理后台"
               description="当前账号没有管理员权限。"
             />
+          )}
+          {activePage === 'myposts' && (
+            <MyPostsPage onNavigate={navigate} />
           )}
           {activePage === 'settings' && <SettingsPage />}
           {activePage === 'settings-password' && <PasswordChangePage />}

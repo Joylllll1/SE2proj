@@ -3,13 +3,15 @@ import Icon from '../common/Icon';
 import PostCard from '../common/PostCard';
 import Comment from '../common/Comment';
 import ReplyCard from '../common/ReplyCard';
+import ConfirmLeaveDialog from '../common/ConfirmLeaveDialog';
 import useCommentStore from '../../store/commentStore';
 import { fileToOptimizedDataUrl } from '../../utils/image';
 
-function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, onReply, onNavigate, onReport }) {
+function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onComment, onReply, onDelete, onNavigate, onReport }) {
   const [commentSort, setCommentSort] = useState('time');
   const getFlatComments = useCommentStore((s) => s.getFlatComments);
   const primaryTag = Array.isArray(post.tags) && post.tags.length > 0 ? post.tags[0] : '未分类';
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // 主评论输入框
   const [commentText, setCommentText] = useState('');
@@ -78,12 +80,23 @@ function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, on
           onBookmark={onBookmark}
           onReport={onReport}
         />
-        <div className="owner-tools flex items-center gap-3 mt-4 p-3 rounded-md bg-surface-tint">
-          <Icon name="shield_person" />
-          <div className="flex-1">
-            <strong className="text-sm font-bold">帖主管理工具 (即将上线)</strong>
+        {isOwner && (
+          <div className="owner-tools flex items-center gap-3 mt-4 p-3 rounded-md bg-surface-tint">
+            <Icon name="shield_person" />
+            <div className="flex-1">
+              <strong className="text-sm font-bold">帖主管理</strong>
+              <span className="text-text-2 text-[13px]">你可以管理这篇帖子</span>
+            </div>
+            <button
+              className="inline-flex items-center gap-1.5 px-4 py-2 border-0 rounded-full text-white bg-red text-sm font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+              onClick={() => setShowDeleteConfirm(true)}
+              type="button"
+            >
+              <Icon name="delete" />
+              删除帖子
+            </button>
           </div>
-        </div>
+        )}
       </section>
 
       <section className="comments-section mt-7">
@@ -176,6 +189,20 @@ function DetailPage({ post, liked, bookmarked, onLike, onBookmark, onComment, on
           })}
         </div>
       </section>
+
+      <ConfirmLeaveDialog
+        open={showDeleteConfirm}
+        title="删除帖子"
+        description="确定要删除这篇帖子吗？此操作不可撤销。"
+        confirmText="确认删除"
+        cancelText="取消"
+        mode="discard"
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          onDelete(post.id);
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

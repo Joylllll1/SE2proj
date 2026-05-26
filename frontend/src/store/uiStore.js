@@ -6,6 +6,7 @@ const PAGE_URLS = {
   home: '/',
   bookmarks: '/bookmarks',
   likes: '/likes',
+  myposts: '/myposts',
   announcements: '/announcements',
   drafts: '/drafts',
   admin: '/admin',

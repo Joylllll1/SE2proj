@@ -9,6 +9,7 @@ const navItems = [
   { id: 'drafts', label: '草稿箱', icon: 'description' },
   { id: 'likes', label: '我的喜爱', icon: 'favorite' },
   { id: 'bookmarks', label: '我的收藏', icon: 'bookmark' },
+  { id: 'myposts', label: '我的帖子', icon: 'description' },
   { id: 'settings', label: '个人设置', icon: 'person' },
 ];
 
