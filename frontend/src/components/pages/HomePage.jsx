@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '../common/Icon';
 import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
@@ -16,6 +16,7 @@ import { matchPostQuery } from '../../utils/search';
 const selectLoading = (s) => s.loading;
 const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectPosts = (s) => s.posts;
+const selectFetchPosts = (s) => s.fetchPosts;
 const selectQuery = (s) => s.query;
 const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
@@ -27,6 +28,7 @@ export default function HomePage() {
   const loading = usePostStore(selectLoading);
   const getPostLikeView = usePostStore(selectGetPostLikeView);
   const posts = usePostStore(selectPosts);
+  const fetchPosts = usePostStore(selectFetchPosts);
   const query = useUiStore(selectQuery);
   const navigate = useUiStore(selectNavigate);
   const showToast = useUiStore(selectShowToast);
@@ -37,6 +39,10 @@ export default function HomePage() {
   const { toggleLike, toggleBookmark } = useLikeBookmark();
 
   const userId = user?._id || null;
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   const visiblePosts = posts.filter((post) => matchPostQuery(post, query));
 

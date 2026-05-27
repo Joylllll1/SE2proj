@@ -4,7 +4,6 @@ import HomePage from './HomePage';
 import useAuthStore from '../../store/authStore';
 import usePostStore from '../../store/postStore';
 import useUiStore from '../../store/uiStore';
-import * as postService from '../../services/postService';
 
 vi.mock('../../services/postService', () => ({
   fetchPosts: vi.fn(),
@@ -70,16 +69,6 @@ class MockEventSource {
   }
 }
 
-function createDeferred() {
-  let resolve;
-  let reject;
-  const promise = new Promise((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
-
 const existingPosts = [
   {
     id: 'post-1',
@@ -126,6 +115,9 @@ describe('HomePage SSE updates', () => {
       showToast: vi.fn(),
     });
     usePostStore.setState({
+      fetchPosts: vi.fn().mockResolvedValue(undefined),
+    });
+    usePostStore.setState({
       posts: existingPosts,
       likedPosts: [],
       loading: false,
@@ -141,6 +133,19 @@ describe('HomePage SSE updates', () => {
 
     expect(screen.getByText('Existing post')).toBeInTheDocument();
     expect(screen.queryByText('加载中...')).not.toBeInTheDocument();
+  });
+
+  it('fetches posts on first mount', () => {
+    const fetchPosts = vi.fn().mockResolvedValue(undefined);
+    usePostStore.setState({
+      posts: [],
+      loading: false,
+      fetchPosts,
+    });
+
+    render(<HomePage />);
+
+    expect(fetchPosts).toHaveBeenCalledTimes(1);
   });
 
   it('removes a deleted post when store removes it', async () => {
