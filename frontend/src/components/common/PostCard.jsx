@@ -25,10 +25,10 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
   return (
     <>
       <article className={`post-card ${compact ? 'compact' : ''} relative overflow-hidden rounded-md border border-line-soft bg-surface shadow-sm transition-transform duration-150 hover:-translate-y-px hover:shadow-sm`}>
-        <div className="block w-full p-[18px_20px_14px] cursor-pointer" onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
-          <div className="post-header flex items-start justify-between gap-3.5 mb-4">
-            <div className="user-block flex items-center gap-[11px]">
-              <div className="anon-avatar grid w-[38px] h-[38px] flex-none place-items-center border border-line rounded-[10px] bg-surface-soft text-text-3">
+        <div className="block w-full p-[18px_20px_14px] max-sm:p-3 cursor-pointer" onClick={onOpen} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
+          <div className="post-header flex items-start justify-between gap-3.5 max-sm:gap-2.5 mb-4 max-sm:mb-3">
+            <div className="user-block flex items-center gap-[11px] max-sm:gap-2">
+              <div className="anon-avatar grid w-[38px] h-[38px] max-sm:w-8 max-sm:h-8 flex-none place-items-center border border-line rounded-[10px] bg-surface-soft text-text-3">
                 <Icon name="person" />
               </div>
               <div>
@@ -50,10 +50,10 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
               )}
             </div>
           </div>
-          <h3 className={`m-0 mb-2 leading-snug tracking-tight ${compact ? 'text-[19px]' : 'text-xl'}`}>{post.title}</h3>
-          {post.content && <p className="m-0 text-[15px] leading-relaxed text-[#344054]">{post.content}</p>}
+          <h3 className={`m-0 mb-2 leading-snug tracking-tight ${compact ? 'text-[19px]' : 'text-xl max-sm:text-base'}`}>{post.title}</h3>
+          {post.content && <p className="m-0 text-[15px] max-sm:text-[13px] leading-relaxed text-[#344054]">{post.content}</p>}
           {images.length > 0 && (
-            <div className={`post-images mt-3.5 grid gap-1.5 ${imageLayout.gridClass}`}>
+            <div className={`post-images mt-3.5 grid gap-1.5 max-sm:grid-cols-1 ${imageLayout.gridClass}`}>
               {images.map((src, index) => (
                 <div key={`${src}-${index}`} className={`overflow-hidden rounded-md bg-surface-soft ${imageLayout.itemClass}`}>
                   <ClickableImage
@@ -68,13 +68,13 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
             </div>
           )}
         </div>
-        <div className="post-footer flex items-center justify-between gap-3.5 px-5 py-[10px_20px_14px] border-t border-line-soft bg-[#fafbfc]">
-          <div className="tag-row flex flex-wrap gap-2.5 text-text-3 text-xs font-semibold">
+        <div className="post-footer flex items-center justify-between gap-3.5 max-sm:gap-2 px-5 max-sm:px-3 py-[10px_20px_14px] max-sm:py-2 border-t border-line-soft bg-[#fafbfc]">
+          <div className="tag-row flex flex-wrap gap-2.5 max-sm:gap-1.5 text-text-3 text-xs font-semibold">
             {tags.map((tag) => (
               <span key={tag} className="text-blue">#{tag}</span>
             ))}
           </div>
-          <div className="metrics flex flex-wrap gap-2.5 text-text-3 text-xs font-semibold">
+          <div className="metrics flex flex-wrap gap-2.5 max-sm:gap-2 text-text-3 text-xs font-semibold">
             <span className={`metric-btn cursor-pointer transition-colors duration-150 hover:scale-108 ${liked ? 'active text-red' : ''}`} onClick={(e) => { e.stopPropagation(); onLike(); }}>
               <Icon name={liked ? 'favorite' : 'favorite_border'} /> {formatCount(post.likes)}
             </span>

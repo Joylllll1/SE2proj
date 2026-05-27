@@ -126,7 +126,7 @@ function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onRep
         </button>
       </section>
 
-      <div className="category-row flex flex-wrap gap-3 my-[22px] items-center">
+      <div className="category-row flex flex-wrap gap-3 max-sm:gap-1 my-[22px] items-center">
         {collectionFolders.map((folder) => {
           const folderPosts = getBookmarksForFolder(folder.id);
           const count = folderPosts.length;
@@ -214,7 +214,7 @@ function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onRep
           description={searching ? '换个关键词试试。' : '浏览树洞时点击书签图标即可收藏。'}
         />
       ) : (
-          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
+          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1] max-sm:[column-gap:12px]">
             {filteredFolderPosts.map((post) => {
               const postView = getPostLikeView(post);
               return (

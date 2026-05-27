@@ -106,7 +106,7 @@ function HeroCarousel({ onNavigate, carouselItems = [], onCarouselItemClick }) {
           style={{ transform: `translateX(-${active * 100}%)` }}
         >
           {slides.map((slide, i) => (
-            <div key={i} className="min-h-[280px] w-full flex-shrink-0 grid grid-cols-[1fr_0.88fr] gap-6 p-7 max-md:grid-cols-1 max-md:p-5">
+            <div key={i} className="min-h-[280px] max-sm:min-h-[200px] w-full flex-shrink-0 grid grid-cols-[1fr_0.88fr] gap-6 max-sm:gap-4 p-7 max-md:grid-cols-1 max-md:p-5 max-sm:p-4">
               <SlideContent slide={slide} handleSlideClick={handleSlideClick} />
             </div>
           ))}

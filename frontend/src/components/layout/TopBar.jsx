@@ -65,7 +65,7 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
   };
 
   return (
-    <header className="topbar sticky top-0 z-20 flex items-center justify-between gap-5 h-[60px] px-7 border-b border-line bg-white/82 backdrop-blur-xs">
+    <header className="topbar sticky top-0 z-20 flex items-center justify-between gap-5 h-[60px] px-7 border-b border-line bg-white/82 backdrop-blur-xs max-sm:h-[48px] max-sm:px-3 max-sm:gap-2">
       <div className="search-box flex items-center gap-2 w-[min(480px,100%)] h-[38px] px-[14px] border border-line rounded-full bg-white text-text-3 shadow-xs">
         <Icon name="search" />
         <input
@@ -76,7 +76,7 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
           value={query}
         />
       </div>
-      <div className="topbar-actions flex items-center gap-2.5">
+      <div className="topbar-actions flex items-center gap-2.5 max-sm:gap-1.5">
         <button className="ai-topbar-btn flex items-center gap-1.5 h-[38px] px-4 border-0 rounded-full text-white bg-gradient-to-br from-blue to-[#6c5ce7] text-[13px] font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md" onClick={onAIOpen} type="button" aria-label="树洞 AI">
           <Icon name="smart_toy" filled />
           <span>AI</span>
@@ -140,7 +140,7 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
             </div>
           )}
         </div>
-        <button className="icon-button grid w-[38px] h-[38px] place-items-center rounded-full border border-line bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px" type="button" aria-label="个人设置" onClick={() => onNavigate('settings')}>
+        <button className="icon-button max-sm:hidden grid w-[38px] h-[38px] place-items-center rounded-full border border-line bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px" type="button" aria-label="个人设置" onClick={() => onNavigate('settings')}>
           <Icon name="person" />
         </button>
       </div>

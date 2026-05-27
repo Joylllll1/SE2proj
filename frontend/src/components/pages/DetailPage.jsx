@@ -56,7 +56,7 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
 
   return (
     <div className="detail-layout max-w-[1180px] mx-auto">
-      <section className="detail-card p-[18px] rounded-lg border border-line-soft bg-surface shadow-sm">
+      <section className="detail-card p-[18px] max-sm:p-3 rounded-lg border border-line-soft bg-surface shadow-sm">
         <div className="breadcrumb mb-[14px] text-text-3 text-[13px] font-semibold">
           <button className="breadcrumb-link px-0 py-0 border-0 bg-transparent text-text-3 text-inherit font-semibold cursor-pointer transition-colors duration-150 hover:text-blue" onClick={() => onNavigate('home')} type="button">动态首页</button>
           <span>/ {primaryTag} / 帖子详情</span>
@@ -66,7 +66,7 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
             <p className="eyebrow mb-[14px] text-blue text-xs font-bold tracking-widest uppercase">Thread Detail</p>
             <h1 className="m-0 text-[clamp(30px,4vw,40px)] tracking-tight">讨论详情</h1>
           </div>
-          <div className="detail-summary flex flex-wrap gap-2 p-[10px_12px] rounded-sm border border-line bg-white/80 shadow-xs">
+          <div className="detail-summary flex flex-wrap gap-2 max-sm:gap-1 p-[10px_12px] rounded-sm border border-line bg-white/80 shadow-xs">
             <span className="text-text-2 text-xs font-bold">匿名连续讨论</span>
             <span className="text-text-2 text-xs font-bold">支持帖主管理评论</span>
           </div>
@@ -81,7 +81,7 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
           onReport={onReport}
         />
         {isOwner && (
-          <div className="owner-tools flex items-center gap-3 mt-4 p-3 rounded-md bg-surface-tint">
+          <div className="owner-tools flex items-center gap-3 max-sm:flex-col max-sm:items-stretch mt-4 p-3 rounded-md bg-surface-tint">
             <Icon name="shield_person" />
             <div className="flex-1">
               <strong className="text-sm font-bold">帖主管理</strong>
@@ -127,16 +127,16 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
         </div>
 
         {/* 主评论输入框 */}
-        <div className="comment-input p-[14px] rounded-md border border-line-soft bg-surface">
+        <div className="comment-input p-[14px] max-sm:p-3 rounded-md border border-line-soft bg-surface">
           <textarea
-            className="w-full min-h-[86px] border-0 outline-0 bg-transparent text-text resize-y"
+            className="w-full min-h-[86px] max-sm:min-h-[60px] border-0 outline-0 bg-transparent text-text resize-y"
             placeholder="发布你的神回复，或给楼主一点支持..."
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
           />
           {commentImage && (
             <div className="comment-image-preview relative mt-2.5">
-              <img src={commentImage} alt="preview" className="max-w-[200px] max-h-[150px] rounded-md object-cover" />
+              <img src={commentImage} alt="preview" className="max-w-[200px] max-h-[150px] max-sm:max-w-[120px] max-sm:max-h-[90px] rounded-md object-cover" />
               <button type="button" className="comment-image-remove absolute top-1.5 left-1.5 grid w-6 h-6 place-items-center px-0 py-0 border-0 rounded-full bg-black/60 text-white text-base cursor-pointer" onClick={() => setCommentImage('')}>&times;</button>
             </div>
           )}
@@ -157,7 +157,7 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
               </button>
               <input ref={commentFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleCommentImage} />
             </span>
-            <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleCommentSubmit} type="button" disabled={!commentText.trim() && !commentImage}>
+            <button className="primary-button inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] max-sm:px-3 max-sm:text-sm text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleCommentSubmit} type="button" disabled={!commentText.trim() && !commentImage}>
               发表评论
             </button>
           </div>

@@ -39,11 +39,11 @@ function Comment({ comment, postId, onReply, onReport }) {
 
   return (
     <>
-      <article className={`comment ${comment.official ? 'official' : ''} flex gap-[12px] relative`}>
-        <div className="anon-avatar small grid w-[34px] h-[34px] flex-none place-items-center border border-line rounded-[8px] bg-surface-soft text-text-3">
+      <article className={`comment ${comment.official ? 'official' : ''} flex gap-[12px] max-sm:gap-2 relative`}>
+        <div className="anon-avatar small grid w-[34px] h-[34px] max-sm:w-7 max-sm:h-7 flex-none place-items-center border border-line rounded-[8px] bg-surface-soft text-text-3">
           <Icon name={comment.official ? 'verified_user' : 'person'} />
         </div>
-        <div className="comment-body flex-1 p-4 rounded-md border border-line-soft bg-surface">
+        <div className="comment-body flex-1 p-4 max-sm:p-3 rounded-md border border-line-soft bg-surface">
           <div className="comment-meta flex items-center justify-between gap-[8px]">
             <div className="flex items-center gap-[8px]">
               <div>
@@ -73,7 +73,7 @@ function Comment({ comment, postId, onReply, onReport }) {
               />
             </div>
           )}
-          <div className="comment-actions flex gap-[14px] text-text-3 text-xs font-semibold">
+          <div className="comment-actions flex gap-[14px] max-sm:gap-2 text-text-3 text-xs font-semibold">
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button type="button" onClick={handleLike} className={`inline-flex items-center gap-1 transition-colors duration-150 ${comment.isLiked ? 'text-red' : 'hover:text-red'}`}>
               <Icon name={comment.isLiked ? 'favorite' : 'favorite_border'} /> {comment.likes}
@@ -138,7 +138,7 @@ const CommentReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel },
   };
 
   return (
-    <div ref={ref} className="comment-reply-input mt-3 p-[14px] rounded-md border border-blue bg-blue-soft">
+    <div ref={ref} className="comment-reply-input mt-3 p-[14px] max-sm:p-3 rounded-md border border-blue bg-blue-soft">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-blue font-semibold">回复 {replyToName}</span>
         <button type="button" className="text-text-3 hover:text-text" onClick={onCancel}>取消</button>

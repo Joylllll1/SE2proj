@@ -21,8 +21,11 @@ function getNotificationPreferences(user) {
 
 function SettingsPage() {
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const showToast = useUiStore((s) => s.showToast);
   const navigate = useUiStore((s) => s.navigate);
+  const unsavedChangesHandler = useUiStore((s) => s.unsavedChangesHandler);
+  const requestNavigationConfirmation = useUiStore((s) => s.requestNavigationConfirmation);
   const [prefs, setPrefs] = useState(() => getNotificationPreferences(user));
   const [savingKey, setSavingKey] = useState(null);
   const prefsRef = useRef(prefs);
@@ -61,6 +64,32 @@ function SettingsPage() {
       setSavingKey(null);
     }
   }, [showToast]);
+
+  const handleLogout = () => {
+    if (!unsavedChangesHandler) {
+      Promise.resolve(logout()).finally(() => {
+        navigate('login', undefined, { force: true });
+      });
+      return;
+    }
+
+    requestNavigationConfirmation({
+      pendingNavigation: {
+        mode: 'discard',
+        action: async () => {
+          await logout();
+          navigate('login', undefined, { force: true });
+        },
+      },
+      dialog: {
+        title: '退出登录？',
+        description: '当前内容还没有保存。退出后本次修改会丢失，你需要重新登录才能继续编辑。',
+        confirmText: '退出登录',
+        cancelText: '继续编辑',
+        mode: 'discard',
+      },
+    });
+  };
 
   return (
     <div className="settings-page max-w-[960px] mx-auto">
@@ -123,6 +152,18 @@ function SettingsPage() {
               <button className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-[14px] py-[7px] bg-white text-text-2 text-[13px] font-semibold transition-all duration-150" type="button" onClick={() => navigate('settings-password')}>修改</button>
             </div>
           </div>
+        </section>
+
+        {/* 退出登录 — 移动端（侧边栏隐藏时可见） */}
+        <section className="settings-card overflow-hidden rounded-md border border-red/30 bg-surface shadow-sm lg:hidden">
+          <button
+            className="flex items-center justify-center gap-2 w-full px-5 py-[14px] border-0 bg-transparent text-red text-sm font-bold transition-colors duration-150 hover:bg-red-50"
+            onClick={handleLogout}
+            type="button"
+          >
+            <Icon name="logout" />
+            <span>退出登录</span>
+          </button>
         </section>
       </div>
     </div>

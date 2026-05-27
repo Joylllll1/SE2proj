@@ -269,7 +269,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         filteredPosts.length === 0 ? (
           <EmptyState title={searching ? '没有找到匹配的点赞帖子' : '还没有赞过的帖子'} />
         ) : (
-          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
+          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1] max-sm:[column-gap:12px]">
             {filteredPosts.map((post) => {
               return (
                 <div key={post.id} className="inline-block w-full mb-[18px]">

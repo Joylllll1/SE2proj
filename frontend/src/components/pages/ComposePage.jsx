@@ -281,8 +281,8 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
 
   return (
     <div className="compose-page max-w-[1180px] mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <section className="compose-heading max-w-[760px] mb-0">
+      <div className="flex items-center justify-between mb-6 max-sm:flex-col max-sm:items-stretch max-sm:gap-3">
+        <section className="compose-heading max-w-[760px] mb-0 max-sm:mb-4">
           <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Create Treehole</p>
           <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">发布新动态</h1>
           {lastSavedAt ? (
@@ -301,19 +301,19 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
       </div>
       <section className="editor-card overflow-hidden rounded-lg border border-line-soft bg-surface shadow-sm">
         <input
-          className="w-full p-[18px_20px] border-b border-line-soft bg-transparent text-xl font-bold"
+          className="w-full p-[18px_20px] max-sm:p-[14px] border-b border-line-soft bg-transparent text-xl max-sm:text-lg font-bold"
           placeholder="在此输入标题（选填）"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <textarea
-          className="w-full min-h-[240px] p-5 border-0 bg-transparent text-base leading-relaxed resize-y"
+          className="w-full min-h-[240px] max-sm:min-h-[180px] p-5 max-sm:p-3 border-0 bg-transparent text-base leading-relaxed resize-y"
           maxLength={1000}
           onChange={(e) => setContent(e.target.value)}
           placeholder="在这里写下你的内容..."
           value={content}
         />
-        <div className="editor-tools flex flex-wrap items-center gap-3 p-[14px_20px] border-t border-line-soft bg-[#fafbfc]">
+        <div className="editor-tools flex flex-wrap items-center gap-3 max-sm:gap-1.5 p-[14px_20px] max-sm:p-3 border-t border-line-soft bg-[#fafbfc]">
           <button type="button" className="inline-flex items-center gap-1.5 px-[10px] py-2 border border-dashed border-[#ccc] rounded-sm bg-white text-text-2 font-semibold cursor-pointer" onClick={() => fileInputRef.current?.click()}>
             <Icon name="image" /> {images.length > 0 ? '继续添加图片' : '添加图片'}
           </button>
@@ -324,8 +324,8 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
           <span className="ml-auto text-text-3 text-[13px] font-bold">{content.length}/1000</span>
         </div>
         {images.length > 0 && (
-          <div className="editor-image-preview border-t border-line-soft bg-[#fafbfc] p-3">
-            <div className={`grid gap-2 ${getImageGridLayout(images.length).gridClass}`}>
+          <div className="editor-image-preview border-t border-line-soft bg-[#fafbfc] p-3 max-sm:p-2">
+            <div className={`grid gap-2 max-sm:grid-cols-1 ${getImageGridLayout(images.length).gridClass}`}>
               {images.map((src, index) => (
                 <div key={`${src}-${index}`} className={`relative overflow-hidden rounded-md bg-surface-soft ${getImageGridLayout(images.length).itemClass}`}>
                   <img src={src} alt={`preview-${index + 1}`} className="h-full w-full object-cover" />
@@ -383,7 +383,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
             )}
           </div>
         )}
-        <div className="emotion-picker flex flex-wrap items-center gap-3 p-[14px_20px] border-t border-line-soft bg-[#fafbfc]">
+        <div className="emotion-picker flex flex-wrap items-center gap-3 max-sm:gap-1.5 p-[14px_20px] max-sm:p-3 border-t border-line-soft bg-[#fafbfc]">
           {moodOptions.map(([label, icon, type]) => (
             <button
               className={`mood mood-${type} inline-flex items-center gap-[5px] px-[10px] py-2 border border-transparent rounded-full text-xs font-semibold leading-none cursor-pointer ${moodType === type ? 'selected' : ''}`}
@@ -395,7 +395,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
             </button>
           ))}
         </div>
-        <div className="publish-row flex flex-wrap items-center justify-between gap-3 p-[14px_20px] border-t border-line-soft bg-[#fafbfc]">
+        <div className="publish-row flex flex-wrap items-center justify-between gap-3 p-[14px_20px] max-sm:p-3 border-t border-line-soft bg-[#fafbfc]">
           <p className="publish-hint m-0 text-text-3 text-sm font-medium">将以匿名身份发布，身份在帖子内保持一致</p>
           <div className="flex flex-wrap gap-2.5">
             <button

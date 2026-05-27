@@ -1607,7 +1607,7 @@ h1, h2, h3, p {
 
 /* Sidebar - Glassmorphism with warm tint */
 .sidebar {
-  @apply sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-white/60 backdrop-blur-md z-30 max-md:hidden;
+  @apply sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-white/60 backdrop-blur-md z-30 max-lg:hidden;
 }
 
 .sidebar-top {
@@ -1693,7 +1693,7 @@ h1, h2, h3, p {
 
 /* Mobile nav - Glassmorphism */
 .mobile-nav {
-  @apply fixed right-3 bottom-3 left-3 z-50 grid grid-cols-5 gap-1 p-2 border border-line rounded-[24px] bg-white/80 backdrop-blur-md shadow-glass max-lg:hidden;
+  @apply lg:hidden fixed right-3 bottom-3 left-3 z-50 grid grid-cols-4 gap-1 p-2 border border-line rounded-[24px] bg-white/80 backdrop-blur-md shadow-glass;
 }
 
 .mobile-nav button {
@@ -2317,5 +2317,8 @@ h1, h2, h3, p {
   }
   .auth-title {
     @apply text-xl;
+  }
+  .auth-email-select {
+    @apply w-[140px];
   }
 }

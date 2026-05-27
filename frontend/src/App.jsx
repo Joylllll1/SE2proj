@@ -3,7 +3,9 @@ import Toast from './components/common/Toast';
 import ConfirmLeaveDialog from './components/common/ConfirmLeaveDialog';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
+import MobileNav from './components/layout/MobileNav';
 import AIPanel from './components/features/AIPanel';
+import Icon from './components/common/Icon';
 import HomePage from './components/pages/HomePage';
 import SettingsPage from './components/pages/SettingsPage';
 import PasswordChangePage from './components/pages/PasswordChangePage';
@@ -365,6 +367,17 @@ function App() {
           {activePage === 'settings' && <SettingsPage />}
           {activePage === 'settings-password' && <PasswordChangePage />}
         </main>
+        <MobileNav activePage={activePage} onNavigate={navigate} />
+        {activePage !== 'compose' && (
+          <button
+            className="fab-compose max-sm:bottom-[90px]"
+            onClick={() => navigate('compose')}
+            type="button"
+            aria-label="发布新动态"
+          >
+            <Icon name="edit_square" />
+          </button>
+        )}
       </div>
       <AIPanel open={aiOpen} onClose={closeAi} />
       {toast && <Toast message={toast} onDone={clearToast} />}

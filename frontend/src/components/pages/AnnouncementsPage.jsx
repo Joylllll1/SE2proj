@@ -373,7 +373,7 @@ function AnnouncementsPage({ showToast }) {
   return (
     <div className="announcements-page max-w-[1180px] mx-auto">
       {/* Header */}
-      <section className="section-head large flex items-center justify-between gap-[18px]">
+      <section className="section-head large flex items-center justify-between gap-[18px] max-sm:flex-col max-sm:items-stretch max-sm:gap-3">
         <div>
           <p className="eyebrow mb-6 text-blue text-xs font-bold tracking-widest uppercase">Campus Center</p>
           <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">校园公告</h1>
@@ -682,7 +682,7 @@ function AnnouncementsPage({ showToast }) {
                 return (
                   <div
                     key={event._id}
-                    className="flex items-center gap-4 p-4 border border-line-soft rounded-lg bg-white"
+                    className="flex items-center gap-4 max-sm:flex-col max-sm:items-start p-4 border border-line-soft rounded-lg bg-white"
                   >
                     {event.image && (
                       <img
@@ -751,7 +751,7 @@ function AnnouncementsPage({ showToast }) {
               alt={selectedAnnouncement.title}
               className="w-full h-[240px] object-cover rounded-t-lg"
             />
-            <div className="p-6">
+            <div className="p-6 max-sm:p-4">
               <span className="pill blue inline-flex items-center gap-[5px] w-fit rounded-full px-3 py-2 text-xs font-semibold text-white bg-blue">
                 {selectedAnnouncement.type}
               </span>
@@ -801,9 +801,9 @@ function AnnouncementsPage({ showToast }) {
             onClick={(e) => e.stopPropagation()}
           >
             {posterPreview && (
-              <img src={posterPreview} alt="poster preview" className="w-full h-[240px] object-cover rounded-t-lg" />
+              <img src={posterPreview} alt="poster preview" className="w-full h-[240px] max-sm:h-[180px] object-cover rounded-t-lg" />
             )}
-            <div className="p-6">
+            <div className="p-6 max-sm:p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl tracking-tight">发布新活动</h2>
                 <button

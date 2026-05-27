@@ -28,7 +28,7 @@ function ConfirmLeaveDialog({
         aria-modal="true"
         aria-labelledby="leave-dialog-title"
       >
-        <div className="relative overflow-hidden px-6 pt-6 pb-4">
+        <div className="relative overflow-hidden px-6 pt-6 pb-4 max-sm:px-4 max-sm:pt-4 max-sm:pb-3">
           <div className="absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top_left,rgba(232,180,184,0.34),transparent_62%),radial-gradient(circle_at_top_right,rgba(196,168,184,0.18),transparent_54%)]" />
           <div className="relative flex items-start gap-4">
             <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-[16px] border border-line bg-surface-soft text-blue shadow-xs">
@@ -45,7 +45,7 @@ function ConfirmLeaveDialog({
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line-soft bg-[rgba(255,255,255,0.72)] px-6 py-5">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line-soft bg-[rgba(255,255,255,0.72)] px-6 py-5 max-sm:px-4 max-sm:py-3">
           <button
             className="inline-flex min-w-[112px] items-center justify-center rounded-full border border-line bg-white px-4 py-[11px] text-sm font-semibold text-text-2 transition-all duration-150 hover:bg-surface-soft hover:text-text"
             onClick={onCancel}

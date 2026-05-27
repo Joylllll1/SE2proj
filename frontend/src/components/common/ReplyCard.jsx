@@ -51,11 +51,11 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
 
   return (
     <>
-      <article className="reply-card flex gap-[12px] relative">
-        <div className="anon-avatar small grid w-[34px] h-[34px] flex-none place-items-center border border-line rounded-[8px] bg-surface-soft text-text-3">
+      <article className="reply-card flex gap-[12px] max-sm:gap-2 relative">
+        <div className="anon-avatar small grid w-[34px] h-[34px] max-sm:w-7 max-sm:h-7 flex-none place-items-center border border-line rounded-[8px] bg-surface-soft text-text-3">
           <Icon name={reply.official ? 'verified_user' : 'person'} />
         </div>
-        <div className="reply-body flex-1 p-4 rounded-md border border-line-soft bg-surface">
+        <div className="reply-body flex-1 p-4 max-sm:p-3 rounded-md border border-line-soft bg-surface">
           {/* 被回复内容引用 */}
           <div className="quoted-content p-2 mb-3 rounded-md bg-[#f5f5f5] border border-[#e0e0e0] text-text-2 text-sm">
             <div>
@@ -106,7 +106,7 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
               />
             </div>
           )}
-          <div className="reply-actions flex gap-[14px] text-text-3 text-xs font-semibold">
+          <div className="reply-actions flex gap-[14px] max-sm:gap-2 text-text-3 text-xs font-semibold">
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button
               type="button"
@@ -175,7 +175,7 @@ const ReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) =
   };
 
   return (
-    <div ref={ref} className="reply-input mt-3 p-[14px] rounded-md border border-blue bg-blue-soft">
+    <div ref={ref} className="reply-input mt-3 p-[14px] max-sm:p-3 rounded-md border border-blue bg-blue-soft">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-blue font-semibold">回复 {replyToName}</span>
         <button type="button" className="text-text-3 hover:text-text" onClick={onCancel}>取消</button>
