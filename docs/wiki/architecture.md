@@ -88,6 +88,35 @@
   → 返回用户 ID + 帖子 ID
 ```
 
+### 实时同步流程（SSE）
+
+```
+客户端建立 EventSource('/api/stream?token=<jwt>')
+  → SSE Route 校验 JWT
+  → sseManager 将连接登记到 Map<userId, Set<client>>
+
+业务事件发生（发帖 / 删帖 / 评论 / 回复）
+  → 对应 Service 完成数据库写入
+  → Service 调用 broadcast(eventName, payload)
+  → 在线客户端收到事件
+  → 前端按页面场景刷新 store 或移除本地数据
+```
+
+当前已接入的事件：
+
+- `new-post`：首页在线用户静默刷新帖子列表
+- `post-deleted`：首页在线用户同步移除已删除帖子
+- `comment-created`：帖子详情页同步插入评论并更新评论数
+- `comment-deleted`：帖子详情页同步移除评论子树并更新评论数
+- `reply-created`：帖子详情页同步插入回复并更新评论数
+- `reply-deleted`：帖子详情页同步移除回复并更新评论数
+
+当前未接入 SSE、仍保留轮询或显式刷新：
+
+- 通知中心：`30s` 轮询 + 页面重新可见时立即刷新
+- 点赞 / 收藏状态
+- 活动相关更新
+
 ## 架构原则
 
 1. **渐进式改进**：在现有代码基础上完善分层，不推倒重来（ADR-001）
@@ -108,28 +137,28 @@
 
 ## 当前实现状态
 
-> ⚠️ 以上架构是**目标架构**。当前代码处于逐步演进的早期阶段，实现与文档存在差距。
+> 以下内容描述当前仓库中的实际落地情况，而不是最初的目标占位状态。
 
-### 前端现状（与目标架构的差距）
+### 前端现状
 
-| 层面 | 目标（文档） | 当前实际 |
-|------|-------------|----------|
-| 状态管理 | Zustand Store（5 个 store） | `App.jsx` 中所有状态通过 `useState` + `useEffect` + `localStorage` |
-| Hooks | `useAuth.js`, `usePosts.js` 等 | 尚未创建，逻辑在组件内 |
-| Services | Axios API 封装 | 尚未创建，使用 localStorage 作为数据层 |
-| 组件分层 | Pages / Features / Layout / Common | 所有组件平铺在 `components/` 下 |
-| 路由 | React Router | 通过 `activePage` 字符串变量条件渲染 |
+| 层面 | 当前实际 |
+|------|----------|
+| 状态管理 | 已使用 Zustand，核心 store 包括 `authStore`、`postStore`、`commentStore`、`bookmarkStore`、`notificationStore`、`uiStore` 等 |
+| Hooks | 已有 `useAuth`、`usePostActions`、`useLikeBookmark`、`useEventActions`、`useNotificationPolling` 等逻辑封装 |
+| Services | 已有 `services/` API 封装，统一通过 `apiClient` 发请求 |
+| 组件分层 | 已按 `pages / features / layout / common` 分层组织 |
+| 路由方式 | 仍以 `activePage` + `history API` 的轻量 SPA 路由为主，未引入 React Router |
+| 实时同步 | 已有全局 `/api/stream` SSE 连接，首页和详情页消费部分实时事件 |
 
 ### 后端现状
 
-- `backend/package.json` 已配置，依赖（Express, Mongoose, dotenv, cors 等）已声明
-- `backend/src/` 目录尚未创建，routes/controllers/services/models/middlewares/utils 均不存在
-- 无数据库连接、无中间件、无接口
+- 已具备完整 `routes / controllers / services / models / middlewares / utils` 分层
+- 已接入 MongoDB 与 Mongoose，正式内容使用逻辑删除
+- 已实现认证、帖子、评论、草稿、通知、活动、管理后台、AI、SSE 等模块
+- SSE 入口为 `GET /api/stream?token=<jwt>`，由 `sseManager` 维护在线连接
 
-### 迁移计划（按优先级）
+### 当前仍保留的历史/现实约束
 
-1. 安装 zustand 依赖 → 创建 store 目录和 uiStore（toast、loading 等轻量状态）
-2. 创建 services 层封装 localStorage 读写（后续替换为 Axios 调用）
-3. 创建 hooks 层将组件业务逻辑提取出来
-4. 重构 App.jsx：将帖子、评论、收藏等状态拆分到对应 store
-5. 后端实现时先创建项目骨架（入口、中间件、路由注册），再按模块迭代
+1. 前端尚未迁移到 React Router，页面切换与部分数据加载仍集中在 `App.jsx`
+2. 通知暂未接入 SSE，仍使用轮询策略
+3. 图片仍以内联 base64 Data URL 为主，列表接口存在传输偏重问题
