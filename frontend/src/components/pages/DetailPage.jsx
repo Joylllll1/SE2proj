@@ -7,6 +7,11 @@ import ConfirmLeaveDialog from '../common/ConfirmLeaveDialog';
 import useCommentStore from '../../store/commentStore';
 import { fileToOptimizedDataUrl } from '../../utils/image';
 
+function getCommentTimeValue(item) {
+  const timeValue = Date.parse(item?.createdAt || '');
+  return Number.isNaN(timeValue) ? 0 : timeValue;
+}
+
 function DetailPage({
   post,
   liked,
@@ -38,8 +43,12 @@ function DetailPage({
   const flatComments = getFlatComments(post.id);
 
   const sortedFlatComments = [...flatComments].sort((a, b) => {
-    if (commentSort === 'likes') return (b.likes || 0) - (a.likes || 0);
-    return 0;
+    if (commentSort === 'likes') {
+      const likeDiff = (b.likes || 0) - (a.likes || 0);
+      if (likeDiff !== 0) return likeDiff;
+    }
+
+    return getCommentTimeValue(b) - getCommentTimeValue(a);
   });
 
   const handleCommentSubmit = () => {
