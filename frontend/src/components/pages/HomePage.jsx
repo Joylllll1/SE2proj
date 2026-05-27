@@ -21,6 +21,11 @@ const selectQuery = (s) => s.query;
 const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
 
+function getPostTimeValue(post) {
+  const timeValue = Date.parse(post?.createdAt || '');
+  return Number.isNaN(timeValue) ? 0 : timeValue;
+}
+
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
 
@@ -47,8 +52,12 @@ export default function HomePage() {
   const visiblePosts = posts.filter((post) => matchPostQuery(post, query));
 
   const sorted = [...visiblePosts].sort((a, b) => {
-    if (sort === 'likes') return b.likes - a.likes;
-    return 0;
+    if (sort === 'likes') {
+      const likeDiff = (b.likes || 0) - (a.likes || 0);
+      if (likeDiff !== 0) return likeDiff;
+    }
+
+    return getPostTimeValue(b) - getPostTimeValue(a);
   });
 
   const handleReport = async (postId, reason, targetType = 'post') => {

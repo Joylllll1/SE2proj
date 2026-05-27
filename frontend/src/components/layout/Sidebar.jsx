@@ -6,7 +6,7 @@ import useUiStore from '../../store/uiStore';
 const navItems = [
   { id: 'home', label: '动态首页', icon: 'home' },
   { id: 'announcements', label: '校园公告', icon: 'campaign' },
-  { id: 'drafts', label: '草稿箱', icon: 'description' },
+  { id: 'drafts', label: '草稿箱', icon: 'edit' },
   { id: 'likes', label: '我的喜爱', icon: 'favorite' },
   { id: 'bookmarks', label: '我的收藏', icon: 'bookmark' },
   { id: 'myposts', label: '我的帖子', icon: 'description' },
