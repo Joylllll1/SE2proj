@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Icon from '../common/Icon';
 import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
@@ -14,91 +14,27 @@ import { matchPostQuery } from '../../utils/search';
 
 // ─── Stable store selectors ───
 const selectLoading = (s) => s.loading;
-const selectFetchPosts = (s) => s.fetchPosts;
 const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectPosts = (s) => s.posts;
 const selectQuery = (s) => s.query;
 const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
-const selectUser = (s) => s.user;
-const selectAccessToken = (s) => s.accessToken;
-const selectRemovePostById = (s) => s.removePostById;
 
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
 
   // ── Stores ──
   const loading = usePostStore(selectLoading);
-  const fetchPosts = usePostStore(selectFetchPosts);
   const getPostLikeView = usePostStore(selectGetPostLikeView);
   const posts = usePostStore(selectPosts);
   const query = useUiStore(selectQuery);
   const navigate = useUiStore(selectNavigate);
   const showToast = useUiStore(selectShowToast);
-  const user = useAuthStore(selectUser);
-  const accessToken = useAuthStore(selectAccessToken);
-  const removePostById = usePostStore(selectRemovePostById);
+  const user = useAuthStore((s) => s.user);
 
   // ── Hooks ──
   const { openPost } = usePostActions();
   const { toggleLike, toggleBookmark } = useLikeBookmark();
-
-  // ── Fetch posts on mount ──
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
-
-  // ── SSE: 实时接收新帖子推送（需登录），降级到轮询 ──
-  useEffect(() => {
-    let intervalId = null;
-
-    const startPolling = () => {
-      if (intervalId) return;
-      intervalId = setInterval(() => {
-        if (!document.hidden) {
-          fetchPosts(1, '', { silent: true });
-        }
-      }, 60000);
-    };
-
-    if (!user || !accessToken) {
-      startPolling();
-      return () => {
-        if (intervalId) {
-          clearInterval(intervalId);
-        }
-      };
-    }
-
-    const es = new EventSource(`/api/stream?token=${encodeURIComponent(accessToken)}`);
-
-    es.addEventListener('new-post', () => {
-      fetchPosts(1, '', { silent: true });
-    });
-
-    es.addEventListener('post-deleted', (event) => {
-      try {
-        const data = JSON.parse(event.data || '{}');
-        if (data.postId) {
-          removePostById(data.postId);
-        }
-      } catch {
-        // Ignore malformed SSE payloads from older clients or transient errors.
-      }
-    });
-
-    es.onerror = () => {
-      es.close();
-      startPolling();
-    };
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      es.close();
-    };
-  }, [accessToken, fetchPosts, removePostById, user]);
 
   const userId = user?._id || null;
 

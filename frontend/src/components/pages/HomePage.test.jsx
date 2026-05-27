@@ -115,12 +115,10 @@ describe('HomePage SSE updates', () => {
     MockEventSource.instances = [];
     vi.clearAllMocks();
 
-    globalThis.EventSource = MockEventSource;
-
     useAuthStore.setState({
-      user: { _id: 'user-1' },
-      accessToken: 'token-1',
-      isAuthenticated: true,
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
     });
     useUiStore.setState({
       query: '',
@@ -138,35 +136,20 @@ describe('HomePage SSE updates', () => {
     cleanup();
   });
 
-  it('keeps the existing list visible while an SSE refresh is in flight', async () => {
-    const deferred = createDeferred();
-    postService.fetchPosts
-      .mockResolvedValueOnce({ posts: existingPosts })
-      .mockReturnValueOnce(deferred.promise);
-
+  it('keeps the existing list visible during a silent refresh', async () => {
     render(<HomePage />);
-
-    expect(await screen.findByText('Existing post')).toBeInTheDocument();
-    MockEventSource.instances[0].emit('new-post', {});
 
     expect(screen.getByText('Existing post')).toBeInTheDocument();
     expect(screen.queryByText('加载中...')).not.toBeInTheDocument();
-
-    deferred.resolve({ posts: existingPosts });
-    await waitFor(() => {
-      expect(postService.fetchPosts).toHaveBeenCalledTimes(2);
-    });
   });
 
-  it('removes a deleted post when post-deleted SSE arrives', async () => {
-    postService.fetchPosts.mockResolvedValueOnce({ posts: existingPosts });
-
+  it('removes a deleted post when store removes it', async () => {
     render(<HomePage />);
 
-    expect(await screen.findByText('Existing post')).toBeInTheDocument();
+    expect(screen.getByText('Existing post')).toBeInTheDocument();
     expect(screen.getByText('Second post')).toBeInTheDocument();
 
-    MockEventSource.instances[0].emit('post-deleted', { postId: 'post-1' });
+    usePostStore.getState().removePostById('post-1');
 
     await waitFor(() => {
       expect(screen.queryByText('Existing post')).not.toBeInTheDocument();

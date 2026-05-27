@@ -7,7 +7,22 @@ import ConfirmLeaveDialog from '../common/ConfirmLeaveDialog';
 import useCommentStore from '../../store/commentStore';
 import { fileToOptimizedDataUrl } from '../../utils/image';
 
-function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onComment, onReply, onDelete, onNavigate, onReport }) {
+function DetailPage({
+  post,
+  liked,
+  bookmarked,
+  isOwner,
+  currentUserId,
+  onLike,
+  onBookmark,
+  onComment,
+  onReply,
+  onDeleteComment,
+  onDeleteReply,
+  onDelete,
+  onNavigate,
+  onReport,
+}) {
   const [commentSort, setCommentSort] = useState('time');
   const getFlatComments = useCommentStore((s) => s.getFlatComments);
   const primaryTag = Array.isArray(post.tags) && post.tags.length > 0 ? post.tags[0] : '未分类';
@@ -172,7 +187,9 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
                   key={item.id || item._id}
                   reply={item}
                   postId={post.id}
+                  currentUserId={currentUserId}
                   onReply={onReply}
+                  onDelete={onDeleteReply}
                   onReport={onReport}
                 />
               );
@@ -182,7 +199,9 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
                 key={item.id || item._id}
                 comment={item}
                 postId={post.id}
+                currentUserId={currentUserId}
                 onReply={onReply}
+                onDelete={onDeleteComment}
                 onReport={onReport}
               />
             );

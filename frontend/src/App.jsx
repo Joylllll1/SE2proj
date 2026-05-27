@@ -65,6 +65,12 @@ const selectBookmarks = (s) => s.bookmarks;
 const selectCommentsMap = (s) => s.commentsMap;
 const selectFetchComments = (s) => s.fetchComments;
 const selectAddComment = (s) => s.addComment;
+const selectDeleteComment = (s) => s.deleteComment;
+const selectDeleteReply = (s) => s.deleteReply;
+const selectUpsertComment = (s) => s.upsertComment;
+const selectRemoveComment = (s) => s.removeComment;
+const selectUpsertReply = (s) => s.upsertReply;
+const selectRemoveReply = (s) => s.removeReply;
 const selectPosts = (s) => s.posts;
 const selectClearSelectedPost = (s) => s.clearSelectedPost;
 const selectBookmarkFolders = (s) => s.bookmarkFolders;
@@ -131,7 +137,15 @@ function App() {
   const comments = commentsMap[selectedPost?.id] || [];
   const fetchComments = useCommentStore(selectFetchComments);
   const addComment = useCommentStore(selectAddComment);
+  const deleteComment = useCommentStore(selectDeleteComment);
+  const deleteReply = useCommentStore(selectDeleteReply);
+  const upsertComment = useCommentStore(selectUpsertComment);
+  const removeComment = useCommentStore(selectRemoveComment);
+  const upsertReply = useCommentStore(selectUpsertReply);
+  const removeReply = useCommentStore(selectRemoveReply);
   const detailPost = selectedPost ? getPostLikeView(selectedPost) : null;
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
 
   // ── Hooks ──
   const { toggleLike, toggleBookmark, selectFolder: handleSelectFolder } = useLikeBookmark();
@@ -144,6 +158,142 @@ function App() {
   const updateFolders = useBookmarkStore(selectUpdateFolders);
   const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
   const resetNotifications = useNotificationStore(selectResetNotifications);
+
+  // ── Global SSE connection ──
+  React.useEffect(() => {
+    let intervalId = null;
+
+    const startPolling = () => {
+      if (intervalId) return;
+      intervalId = window.setInterval(() => {
+        if (activePage === 'home' && !document.hidden) {
+          usePostStore.getState().fetchPosts(1, '', { silent: true });
+        }
+      }, 60000);
+    };
+
+    if (!user || !accessToken) {
+      startPolling();
+      return () => {
+        if (intervalId) {
+          window.clearInterval(intervalId);
+        }
+      };
+    }
+
+    const es = new EventSource(`/api/stream?token=${encodeURIComponent(accessToken)}`);
+
+    es.addEventListener('new-post', () => {
+      if (activePage === 'home') {
+        usePostStore.getState().fetchPosts(1, '', { silent: true });
+      }
+    });
+
+    es.addEventListener('post-deleted', (event) => {
+      try {
+        const data = JSON.parse(event.data || '{}');
+        if (data.postId) {
+          usePostStore.getState().removePostById(data.postId);
+        }
+      } catch {
+        // Ignore malformed SSE payloads from older clients or transient errors.
+      }
+    });
+
+    es.onerror = () => {
+      es.close();
+      startPolling();
+    };
+
+    const currentPostId = selectedPost?.id;
+    const parseCurrentPostEvent = (event) => {
+      if (activePage !== 'detail' || !currentPostId) return null;
+      try {
+        const data = JSON.parse(event.data || '{}');
+        return data.postId === currentPostId ? data : null;
+      } catch {
+        return null;
+      }
+    };
+
+    es.addEventListener('comment-created', (event) => {
+      const data = parseCurrentPostEvent(event);
+      if (data?.comment) {
+        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+        const alreadyExists = existingComments.some(
+          (comment) => (comment.id || comment._id) === (data.comment.id || data.comment._id),
+        );
+        upsertComment(currentPostId, data.comment);
+        if (!alreadyExists) {
+          usePostStore.getState().updateCommentCount(currentPostId, 1);
+        }
+      }
+    });
+
+    es.addEventListener('comment-deleted', (event) => {
+      const data = parseCurrentPostEvent(event);
+      if (data?.commentId) {
+        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+        const existedBeforeRemoval = existingComments.some(
+          (comment) => (comment.id || comment._id) === data.commentId,
+        );
+        removeComment(currentPostId, data.commentId);
+        if (existedBeforeRemoval) {
+          usePostStore.getState().updateCommentCount(currentPostId, -1);
+        }
+      }
+    });
+
+    es.addEventListener('reply-created', (event) => {
+      const data = parseCurrentPostEvent(event);
+      if (data?.commentId && data?.reply) {
+        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+        const parentComment = existingComments.find(
+          (comment) => (comment.id || comment._id) === data.commentId,
+        );
+        const alreadyExists = (parentComment?.replies || []).some(
+          (reply) => (reply.id || reply._id) === (data.reply.id || data.reply._id),
+        );
+        upsertReply(currentPostId, data.commentId, data.reply);
+        if (!alreadyExists) {
+          usePostStore.getState().updateCommentCount(currentPostId, 1);
+        }
+      }
+    });
+
+    es.addEventListener('reply-deleted', (event) => {
+      const data = parseCurrentPostEvent(event);
+      if (data?.commentId && data?.replyId) {
+        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+        const parentComment = existingComments.find(
+          (comment) => (comment.id || comment._id) === data.commentId,
+        );
+        const existedBeforeRemoval = (parentComment?.replies || []).some(
+          (reply) => (reply.id || reply._id) === data.replyId,
+        );
+        removeReply(currentPostId, data.commentId, data.replyId);
+        if (existedBeforeRemoval) {
+          usePostStore.getState().updateCommentCount(currentPostId, -1);
+        }
+      }
+    });
+
+    return () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+      es.close();
+    };
+  }, [
+    accessToken,
+    activePage,
+    removeComment,
+    removeReply,
+    selectedPost?.id,
+    upsertComment,
+    upsertReply,
+    user,
+  ]);
 
   // ── Load comments when entering detail page ──
   React.useEffect(() => {
@@ -269,7 +419,6 @@ function App() {
     if (!selectedPost) return;
     try {
       await addComment(selectedPost.id, content, image);
-      usePostStore.getState().updateCommentCount(selectedPost.id, 1);
     } catch (err) {
       showToast(err.message || '评论失败');
     }
@@ -279,9 +428,28 @@ function App() {
     if (!selectedPost) return;
     try {
       await useCommentStore.getState().addReply(commentId, content, image, false, replyToId);
-      usePostStore.getState().updateCommentCount(selectedPost.id, 1);
     } catch (err) {
       showToast(err.message || '回复失败');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!selectedPost) return;
+    try {
+      await deleteComment(commentId);
+      showToast('评论已删除');
+    } catch (err) {
+      showToast(err.message || '删除评论失败');
+    }
+  };
+
+  const handleDeleteReply = async (commentId, replyId) => {
+    if (!selectedPost) return;
+    try {
+      await deleteReply(commentId, replyId);
+      showToast('回复已删除');
+    } catch (err) {
+      showToast(err.message || '删除回复失败');
     }
   };
 
@@ -315,10 +483,13 @@ function App() {
                 liked={detailPost?.isLiked}
                 bookmarked={detailPost?.isSaved}
                 isOwner={currentUserId && detailPost?.ownerUserId === currentUserId}
+                currentUserId={currentUserId}
                 onLike={() => toggleLike(selectedPost.id)}
                 onBookmark={() => toggleBookmark(selectedPost.id)}
                 onComment={handleComment}
                 onReply={handleReply}
+                onDeleteComment={handleDeleteComment}
+                onDeleteReply={handleDeleteReply}
                 onDelete={handleDeletePost}
                 onNavigate={navigate}
                 onReport={handleReport}
