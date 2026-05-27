@@ -381,4 +381,70 @@ describe('App detail deletion flow', () => {
     expect(usePostStore.getState().posts[0].comments).toBe(1);
     expect(screen.getByTestId('detail-comment-count')).toHaveTextContent('1');
   });
+
+  it('removes deleted comment with its replies and decrements count by the whole subtree once', async () => {
+    useCommentStore.setState({
+      commentsMap: {
+        'post-1': [
+          {
+            id: 'comment-1',
+            ownerUserId: 'user-2',
+            content: 'existing',
+            replies: [
+              {
+                id: 'reply-1',
+                ownerUserId: 'user-3',
+                content: 'reply one',
+              },
+              {
+                id: 'reply-2',
+                ownerUserId: 'user-4',
+                content: 'reply two',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    usePostStore.setState({
+      selectedPost: {
+        id: 'post-1',
+        ownerUserId: 'user-1',
+        title: 'Detail post',
+        tags: ['树洞'],
+        comments: 3,
+      },
+      posts: [
+        {
+          id: 'post-1',
+          ownerUserId: 'user-1',
+          title: 'Detail post',
+          tags: ['树洞'],
+          comments: 3,
+        },
+      ],
+      getPostLikeView: (post) => post,
+    });
+
+    render(<App />);
+
+    const es = MockEventSource.instances[0];
+    es.emit('comment-deleted', {
+      postId: 'post-1',
+      commentId: 'comment-1',
+      deletedReplyCount: 2,
+    });
+    es.emit('comment-deleted', {
+      postId: 'post-1',
+      commentId: 'comment-1',
+      deletedReplyCount: 2,
+    });
+
+    await waitFor(() => {
+      expect(useCommentStore.getState().commentsMap['post-1']).toHaveLength(0);
+    });
+
+    expect(usePostStore.getState().posts[0].comments).toBe(0);
+    expect(screen.getByTestId('detail-comment-count')).toHaveTextContent('0');
+  });
 });

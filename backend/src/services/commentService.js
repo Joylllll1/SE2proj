@@ -142,6 +142,7 @@ export const deleteComment = async (userId, commentId) => {
     throw new AppError('无权删除此评论', 403, 'FORBIDDEN');
   }
 
+  const deletedReplyCount = (comment.replies || []).filter((reply) => !reply.isDeleted).length;
   comment.isDeleted = true;
   await comment.save();
 
@@ -150,6 +151,7 @@ export const deleteComment = async (userId, commentId) => {
   const result = {
     postId: comment.postId.toString(),
     commentId: comment._id.toString(),
+    deletedReplyCount,
   };
 
   try {

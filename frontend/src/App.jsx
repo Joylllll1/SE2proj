@@ -234,12 +234,16 @@ function App() {
       const data = parseCurrentPostEvent(event);
       if (data?.commentId) {
         const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const existedBeforeRemoval = existingComments.some(
+        const deletedComment = existingComments.find(
           (comment) => (comment.id || comment._id) === data.commentId,
         );
+        const existedBeforeRemoval = Boolean(deletedComment);
+        const removedItemCount = existedBeforeRemoval
+          ? 1 + ((deletedComment?.replies || []).filter((reply) => !reply.isDeleted).length)
+          : 0;
         removeComment(currentPostId, data.commentId);
-        if (existedBeforeRemoval) {
-          usePostStore.getState().updateCommentCount(currentPostId, -1);
+        if (removedItemCount > 0) {
+          usePostStore.getState().updateCommentCount(currentPostId, -removedItemCount);
         }
       }
     });
