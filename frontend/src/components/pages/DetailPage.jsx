@@ -80,9 +80,18 @@ function DetailPage({
 
   return (
     <div className="detail-layout max-w-[1180px] mx-auto">
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded-full bg-white text-text-2 text-sm font-semibold shadow-xs transition-all duration-150 hover:-translate-y-px hover:shadow-sm hover:text-blue hover:border-blue"
+          onClick={() => onNavigate('home')}
+          type="button"
+        >
+          <Icon name="arrow_back" size="18" />
+          返回首页
+        </button>
+      </div>
       <section className="detail-card p-[18px] rounded-lg border border-line-soft bg-surface shadow-sm">
         <div className="breadcrumb mb-[14px] text-text-3 text-[13px] font-semibold">
-          <button className="breadcrumb-link px-0 py-0 border-0 bg-transparent text-text-3 text-inherit font-semibold cursor-pointer transition-colors duration-150 hover:text-blue" onClick={() => onNavigate('home')} type="button">动态首页</button>
           <span>/ {primaryTag} / 帖子详情</span>
         </div>
         <div className="detail-heading flex items-end justify-between gap-[18px] mb-4 max-sm:flex-col max-sm:items-stretch">
