@@ -106,10 +106,21 @@ export default function HomePage() {
   useEffect(() => {
     if (feedScrollToken > 0 && feedHeadRef.current && window.innerWidth < 640) {
       const el = feedHeadRef.current;
-      const topbar = document.querySelector('.topbar');
-      const topbarH = topbar ? topbar.getBoundingClientRect().height : 48;
-      el.style.scrollMarginTop = `${topbarH + 4}px`;
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const scrollToFeed = () => {
+        const topbar = document.querySelector('.topbar');
+        const topbarH = topbar ? topbar.getBoundingClientRect().height : 48;
+        el.style.scrollMarginTop = `${topbarH + 4}px`;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+      // On mobile the keyboard closes after search confirm, which resizes
+      // the viewport. Wait for that animation to finish before scrolling.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToFeed();
+          // Re-scroll after keyboard-close viewport change settles
+          setTimeout(scrollToFeed, 250);
+        });
+      });
       useUiStore.setState({ feedScrollToken: 0 });
     }
   }, [feedScrollToken]);

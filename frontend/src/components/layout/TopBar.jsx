@@ -55,14 +55,18 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
       if (showNotifs && notifDropdownRef.current && !notifDropdownRef.current.contains(event.target)) {
         setShowNotifs(false);
       }
-      if (searchExpanded && searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+      if (searchExpanded && searchContainerRef.current
+          && !searchContainerRef.current.contains(event.target)
+          && !event.target.closest('.search-action-btn')) {
         collapseSearch(!!query.trim());
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchend', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchend', handleClickOutside);
     };
   }, [showNotifs, searchExpanded, collapseSearch, query]);
 
