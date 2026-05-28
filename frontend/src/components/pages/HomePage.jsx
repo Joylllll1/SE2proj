@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Icon from '../common/Icon';
 import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
@@ -22,9 +22,11 @@ const selectShowToast = (s) => s.showToast;
 const selectUser = (s) => s.user;
 const selectAccessToken = (s) => s.accessToken;
 const selectRemovePostById = (s) => s.removePostById;
+const selectFeedScrollToken = (s) => s.feedScrollToken;
 
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
+  const feedHeadRef = useRef(null);
 
   // ── Stores ──
   const loading = usePostStore(selectLoading);
@@ -37,6 +39,7 @@ export default function HomePage() {
   const user = useAuthStore(selectUser);
   const accessToken = useAuthStore(selectAccessToken);
   const removePostById = usePostStore(selectRemovePostById);
+  const feedScrollToken = useUiStore(selectFeedScrollToken);
 
   // ── Hooks ──
   const { openPost } = usePostActions();
@@ -99,6 +102,18 @@ export default function HomePage() {
     };
   }, [accessToken, fetchPosts, removePostById, user]);
 
+  // Scroll to feed section when search confirms from TopBar (mobile only)
+  useEffect(() => {
+    if (feedScrollToken > 0 && feedHeadRef.current && window.innerWidth < 640) {
+      const el = feedHeadRef.current;
+      const topbar = document.querySelector('.topbar');
+      const topbarH = topbar ? topbar.getBoundingClientRect().height : 48;
+      el.style.scrollMarginTop = `${topbarH + 4}px`;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      useUiStore.setState({ feedScrollToken: 0 });
+    }
+  }, [feedScrollToken]);
+
   const userId = user?._id || null;
 
   const visiblePosts = getFilteredPosts(query);
@@ -143,7 +158,7 @@ export default function HomePage() {
             <p className="eyebrow mb-1.5 text-blue text-xs font-bold tracking-widest uppercase">Anonymous Feed</p>
             <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">全站动态</h1>
           </div>
-          <div className="tabs flex flex-wrap gap-2 max-sm:w-full" aria-label="动态排序">
+          <div ref={feedHeadRef} className="tabs flex flex-wrap gap-2 max-sm:w-full" aria-label="动态排序">
             {[
               ['latest', '最新发布'],
               ['likes', '高赞共鸣'],

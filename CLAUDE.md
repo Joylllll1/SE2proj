@@ -58,7 +58,19 @@ No tests exist yet (`npm test` is a placeholder in both packages).
 
 3. **Frontend layered architecture**: `components/` split into `pages/`, `features/`, `layout/`, `common/`. State in Zustand stores (`store/`). API calls in `services/`. Business logic in `hooks/`.
 
-4. **OpenSpec workflow**: `explore` → `propose` → `apply` → `archive`. Detailed conventions in [项目约定](docs/wiki/conventions.md).
+4. **Mobile UI architecture** (width < 640px):
+   - **Bottom nav**: 5-item bar with center compose button (`.mobile-nav`, `.mobile-nav-item`, `.mobile-compose-btn` in tailwind.css). "我的" uses `matchPages` array to stay active across `my`, `bookmarks`, `likes`, `myposts` sub-pages.
+   - **Search expansion**: TopBar search box expands to full width on mobile. `searchExpanded` state toggled by `focus`/click-outside/ESC. On confirm with content, `requestFeedScroll()` triggers HomePage to `scrollIntoView` the feed tabs.
+   - **`safe-area-inset`**: TopBar and MobileNav account for notched screens via `env(safe-area-inset-*)`.
+   - **No FAB**: Compose entry point is solely the MobileNav center button (the floating action button was removed).
+
+5. **MyPage hub** ([MyPage.jsx](frontend/src/components/pages/MyPage.jsx)): Tabbed sub-navigation aggregating "我的帖子", "我的收藏", "我的喜爱". Collection pages (`BookmarksPage`, `LikesPage`, `MyPostsPage`) accept a `compact` prop to hide their hero section when embedded.
+
+6. **CSS approach**: Layout component styles use semantic CSS classes defined in `tailwind.css` (`.mobile-nav`, `.search-box`, `.collection-page`, `.my-page`, etc.) rather than long inline Tailwind class strings. Reusable utility classes (`.primary-button`, `.pill`, `.masonry-grid`, etc.) live there as well.
+
+7. **Scroll signal**: `uiStore.feedScrollToken` — incremented by `requestFeedScroll()` (e.g. after search confirm). HomePage's `useEffect` watches it and calls `scrollIntoView({ behavior: 'smooth' })` on the feed tabs, then resets the token to 0. Mobile-only guard (`window.innerWidth < 640`).
+
+8. **OpenSpec workflow**: `explore` → `propose` → `apply` → `archive`. Detailed conventions in [项目约定](docs/wiki/conventions.md).
 
 ## Frontend Component Organization
 
@@ -66,6 +78,7 @@ No tests exist yet (`npm test` is a placeholder in both packages).
 frontend/src/
 ├── components/
 │   ├── pages/        # Page-level components (routed via activePage state)
+│   │   └── MyPage.jsx  # Mobile hub: tabbed nav for my posts/bookmarks/likes
 │   ├── features/     # Feature-specific components (post/comment/report/AI/etc.)
 │   ├── layout/       # Layout components (Sidebar, TopBar, MobileNav)
 │   └── common/       # Reusable primitives (Modal, Toast, Icon, Card, etc.)
