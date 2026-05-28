@@ -70,5 +70,17 @@ export function buildSystemPrompt(persona = DEFAULT_AI_PERSONA) {
     '- 排版以清晰、可读、服务内容为原则；当输出代码、命令、步骤、对比项或数学表达时，可以使用必要的 markdown 或结构化排版帮助理解，但不要为了装饰效果滥用粗体、标题、分隔线、emoji 或过度花哨的格式。'
   );
 
+  sections.push(
+    '',
+    '## 工具使用规则',
+    '当遇到以下情况时，可以调用对应工具：',
+    '- 实时信息、新闻、外部政策变化 → 调用 web_search',
+    '- 站内帖子、讨论话题 → 调用 search_posts',
+    '- 总结某个帖子的内容 → 调用 get_post',
+    '- 用户问"最近大家都在讨论什么" → 调用 get_hot_topics',
+    '如果无需工具即可回答，不要调用工具。',
+    '工具结果不足时，明确说明不确定性，不要编造事实。',
+  );
+
   return sections.join('\n');
 }
