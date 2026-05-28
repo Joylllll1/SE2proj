@@ -431,6 +431,8 @@ function AIPanel({ open, onClose }) {
     isPersonaLoading,
     isPersonaSaving,
     isStopping,
+    streamingContent,
+    toolStatus,
     personaDraft,
     effectivePersona,
     personaDirty,
@@ -675,6 +677,15 @@ function AIPanel({ open, onClose }) {
                   onRegenerate={handleRegenerate}
                 />
               ))}
+              {/* In-progress streaming content */}
+              {isLoading && streamingContent && (
+                <div className="flex justify-start mb-4">
+                  <div className="px-4 py-3 rounded-2xl bg-surface-soft rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap break-words max-w-[85%]">
+                    {streamingContent}
+                    <span className="inline-block w-1.5 h-4 bg-blue ml-0.5 animate-pulse" />
+                  </div>
+                </div>
+              )}
               {isLoading && (
                 <div className="flex justify-start mb-4">
                   <div className="px-4 py-3 rounded-2xl bg-surface-soft rounded-tl-sm">
@@ -683,6 +694,14 @@ function AIPanel({ open, onClose }) {
                       <span className="w-2 h-2 bg-blue rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
                       <span className="w-2 h-2 bg-blue rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                     </div>
+                  </div>
+                </div>
+              )}
+              {toolStatus && (
+                <div className="flex justify-start mb-4">
+                  <div className="px-4 py-2 rounded-2xl bg-surface-soft rounded-tl-sm text-sm text-text-2 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                    {toolStatus}
                   </div>
                 </div>
               )}
