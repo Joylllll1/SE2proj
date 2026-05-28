@@ -30,12 +30,26 @@ export const sendMessage = async (req, res) => {
   const { sessionId, message } = req.body;
   const { signal, cleanup } = createRequestAbortSignal(req, res);
 
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const emitEvent = (str) => {
+    if (!signal.aborted && res.writable && !res.writableEnded) res.write(str);
+  };
+
   try {
-    const result = await aiService.sendMessage(req.user.id, sessionId, message, { signal });
-    if (!signal.aborted) {
-      res.json({ success: true, data: result });
+    await aiService.sendMessage(req.user.id, sessionId, message, { signal, emitEvent });
+  } catch (error) {
+    if (!signal.aborted && !res.writableEnded) {
+      const { sseError } = await import('../services/llm/sseEvents.js');
+      res.write(sseError(error.isOperational ? error.message : '服务暂时不可用'));
     }
   } finally {
+    if (!signal.aborted && !res.writableEnded) res.end();
     cleanup();
   }
 };
@@ -44,12 +58,26 @@ export const regenerateMessage = async (req, res) => {
   const { id } = req.params;
   const { signal, cleanup } = createRequestAbortSignal(req, res);
 
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const emitEvent = (str) => {
+    if (!signal.aborted && res.writable && !res.writableEnded) res.write(str);
+  };
+
   try {
-    const result = await aiService.regenerateMessage(req.user.id, id, { signal });
-    if (!signal.aborted) {
-      res.json({ success: true, data: result });
+    await aiService.regenerateMessage(req.user.id, id, { signal, emitEvent });
+  } catch (error) {
+    if (!signal.aborted && !res.writableEnded) {
+      const { sseError } = await import('../services/llm/sseEvents.js');
+      res.write(sseError(error.isOperational ? error.message : '服务暂时不可用'));
     }
   } finally {
+    if (!signal.aborted && !res.writableEnded) res.end();
     cleanup();
   }
 };
