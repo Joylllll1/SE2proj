@@ -3,18 +3,11 @@ import AIMessage from '../models/AIMessage.js';
 import AppError from '../utils/AppError.js';
 import { buildSystemPrompt } from './aiPromptBuilder.js';
 import { resolveEffectivePersona } from './aiPersonaService.js';
+import { runToolLoop } from './llm/toolLoop.js';
 
 const MAX_CONTEXT_MESSAGES = 20; // 保留最近 20 条消息作为上下文
 const MAX_SESSION_TITLE_LENGTH = 20;
 const DEFAULT_LLM_ERROR_MESSAGE = '服务暂时不可用，请稍后再试';
-
-function getLLMConfig() {
-  return {
-    apiUrl: process.env.LLM_API_URL || 'https://api.deepseek.com/v1/chat/completions',
-    apiKey: process.env.LLM_API_KEY,
-    model: process.env.LLM_MODEL || 'deepseek-chat',
-  };
-}
 
 // 生成会话标题（基于首条消息）
 function generateSessionTitle(content) {
@@ -41,38 +34,6 @@ function serializeSession(session, effectivePersona) {
     aiPersona: rawPersona,
     effectivePersona,
   };
-}
-
-// 调用 LLM API
-async function callLLM(messages, signal) {
-  const { apiUrl, apiKey, model } = getLLMConfig();
-
-  if (!apiKey) {
-    throw new AppError('AI 服务未配置', 500, 'AI_NOT_CONFIGURED');
-  }
-
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    signal,
-    body: JSON.stringify({
-      model,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    await response.json().catch(() => ({}));
-    throw new AppError(DEFAULT_LLM_ERROR_MESSAGE, 502, 'LLM_API_ERROR');
-  }
-
-  const data = await response.json();
-  return data.choices[0]?.message?.content || '';
 }
 
 // 发送消息并获取 AI 回复
@@ -124,23 +85,25 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
     ...historyMessages.map(m => ({ role: m.role, content: m.content })),
   ];
 
-  // 调用 LLM
+  // 调用 LLM with tool loop
   let aiContent;
   try {
-    aiContent = await callLLM(llmMessages, options.signal);
+    const result = await runToolLoop({
+      messages: llmMessages,
+      signal: options.signal,
+      writeEvent: options.emitEvent || (() => {}),
+    });
+    aiContent = result.content;
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
     }
-
     if (error.isOperational) {
       throw new AppError(error.message, error.statusCode, error.errorCode, {
         session: serializeSession(session, effectivePersona),
         savedMessage: {
-          _id: userMessage._id,
-          role: userMessage.role,
-          content: userMessage.content,
-          createdAt: userMessage.createdAt,
+          _id: userMessage._id, role: userMessage.role,
+          content: userMessage.content, createdAt: userMessage.createdAt,
         },
       });
     }
@@ -210,10 +173,15 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
     ...historyMessages.map(m => ({ role: m.role, content: m.content })),
   ];
 
-  // 调用 LLM
+  // 调用 LLM with tool loop
   let aiContent;
   try {
-    aiContent = await callLLM(llmMessages, options.signal);
+    const result = await runToolLoop({
+      messages: llmMessages,
+      signal: options.signal,
+      writeEvent: options.emitEvent || (() => {}),
+    });
+    aiContent = result.content;
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
