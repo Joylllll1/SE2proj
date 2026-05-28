@@ -67,39 +67,43 @@ export async function callLLM({ messages, tools, toolChoice, stream, signal }) {
 }
 
 /**
- * Parse NDJSON SSE chunks from an OpenAI-compatible streaming API response.
+ * Parse complete SSE event frames from a buffered string.
  *
- * Each chunk is a Buffer or string of concatenated SSE lines.
- * Lines starting with `data: ` contain a JSON payload.
- * The stream ends with a `data: [DONE]` sentinel.
+ * The returned `remainder` must be preserved and prepended to the next chunk
+ * because network reads can split an SSE frame across multiple chunks.
  *
- * @param {Buffer|string} chunk - Raw bytes or text from the stream
- * @returns {Array<Object>} Parsed JSON objects from this chunk
+ * @param {string} buffer
+ * @returns {{ events: Array<Object>, remainder: string }}
  */
-export function parseStreamChunk(chunk) {
-  const text = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
-  const lines = text.split('\n');
-  const results = [];
+export function parseStreamBuffer(buffer) {
+  const normalized = buffer.replace(/\r\n/g, '\n');
+  const frames = normalized.split('\n\n');
+  const remainder = frames.pop() || '';
+  const events = [];
 
-  for (const line of lines) {
-    if (!line.startsWith('data: ')) {
+  for (const frame of frames) {
+    const dataLines = frame
+      .split('\n')
+      .filter((line) => line.startsWith('data: '))
+      .map((line) => line.slice(6));
+
+    if (!dataLines.length) {
       continue;
     }
 
-    const payload = line.slice(6).trim();
-
-    if (payload === '[DONE]') {
+    const payload = dataLines.join('\n').trim();
+    if (!payload || payload === '[DONE]') {
       continue;
     }
 
     try {
-      results.push(JSON.parse(payload));
+      events.push(JSON.parse(payload));
     } catch {
-      // Skip malformed JSON lines
+      // Ignore malformed complete frames from the upstream provider.
     }
   }
 
-  return results;
+  return { events, remainder };
 }
 
 /**

@@ -1,5 +1,22 @@
-const SEARCH_API_URL = process.env.SEARCH_API_URL;
-const SEARCH_API_KEY = process.env.SEARCH_API_KEY;
+const SEARCH_TIMEOUT_MS = parseInt(process.env.AI_TOOL_TIMEOUT_MS || '8000', 10);
+
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('SEARCH_TIMEOUT')), timeoutMs);
+    }),
+  ]);
+}
+
+function normalizeSearchResults(results = []) {
+  return results.slice(0, 5).map((item) => ({
+    title: item.title || '',
+    snippet: item.description || item.snippet || item.body || '',
+    url: item.url || item.href || '',
+    source: item.hostname || '',
+  }));
+}
 
 export const schema = {
   type: 'function',
@@ -15,25 +32,37 @@ export const schema = {
 };
 
 export async function handler({ query }, signal) {
-  if (!SEARCH_API_URL || !SEARCH_API_KEY) return { results: [], note: '搜索服务未配置' };
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  if (!query?.trim()) {
+    return { results: [], note: '搜索关键词为空' };
+  }
 
   try {
-    const combined = signal ? AbortSignal.any?.([signal, controller.signal]) : controller.signal;
-    const res = await fetch(SEARCH_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SEARCH_API_KEY}` },
-      signal: combined || controller.signal,
-      body: JSON.stringify({ query, max_results: 5 }),
+    if (signal?.aborted) {
+      return { results: [], note: '暂时没有拿到可靠的最新结果' };
+    }
+
+    const DDG = await import('duck-duck-scrape');
+    const searchPromise = DDG.search(query, {
+      safeSearch: DDG.SafeSearchType.MODERATE,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return { results: (data.results || []).slice(0, 5) };
+
+    const rawResults = await withTimeout(searchPromise, SEARCH_TIMEOUT_MS);
+
+    if (signal?.aborted) {
+      return { results: [], note: '暂时没有拿到可靠的最新结果' };
+    }
+
+    const normalizedResults = normalizeSearchResults(rawResults?.results || rawResults || []);
+
+    if (!normalizedResults.length) {
+      return { results: [], note: '没有找到可靠的最新结果' };
+    }
+
+    return { results: normalizedResults };
   } catch (err) {
-    return { results: [], error: err.name === 'AbortError' ? '搜索超时' : err.message };
-  } finally {
-    clearTimeout(timeout);
+    if (err?.message === 'SEARCH_TIMEOUT') {
+      return { results: [], note: '搜索超时，未拿到可靠结果' };
+    }
+    return { results: [], note: '暂时没有拿到可靠的最新结果' };
   }
 }

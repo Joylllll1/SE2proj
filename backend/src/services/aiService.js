@@ -4,6 +4,7 @@ import AppError from '../utils/AppError.js';
 import { buildSystemPrompt } from './aiPromptBuilder.js';
 import { resolveEffectivePersona } from './aiPersonaService.js';
 import { runToolLoop } from './llm/toolLoop.js';
+import { sseDone, sseStart } from './llm/sseEvents.js';
 
 const MAX_CONTEXT_MESSAGES = 20; // 保留最近 20 条消息作为上下文
 const MAX_SESSION_TITLE_LENGTH = 20;
@@ -60,6 +61,10 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
       session.title = generateSessionTitle(content);
       await session.save();
     }
+  }
+
+  if (options.emitEvent) {
+    options.emitEvent(sseStart(session._id.toString()));
   }
 
   // 保存用户消息
@@ -121,6 +126,10 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
   session.updatedAt = new Date();
   await session.save();
 
+  if (options.emitEvent) {
+    options.emitEvent(sseDone());
+  }
+
   return {
     session: serializeSession(session, effectivePersona),
     userMessage: {
@@ -143,6 +152,10 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
   const session = await AISession.findOne({ _id: sessionId, user: userId });
   if (!session) {
     throw new AppError('会话不存在', 404, 'SESSION_NOT_FOUND');
+  }
+
+  if (options.emitEvent) {
+    options.emitEvent(sseStart(session._id.toString()));
   }
 
   // 获取最后一条 AI 消息
@@ -195,6 +208,10 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
   await lastMessage.save();
   session.updatedAt = new Date();
   await session.save();
+
+  if (options.emitEvent) {
+    options.emitEvent(sseDone());
+  }
 
   return {
     session: serializeSession(session, effectivePersona),

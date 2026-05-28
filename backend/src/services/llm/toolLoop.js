@@ -1,9 +1,57 @@
-import { callLLM, extractToolCalls, extractContent, parseStreamChunk } from './client.js';
+import { callLLM, extractToolCalls, extractContent, parseStreamBuffer } from './client.js';
 import { toolSchemas, executeTool } from '../tools/index.js';
-import { sseToolCall, sseToolResult, sseToken, sseDone } from './sseEvents.js';
+import { sseToolCall, sseToolResult, sseToken } from './sseEvents.js';
 
 const MAX_TOOL_CALLS = parseInt(process.env.AI_TOOL_MAX_CALLS || '3');
 const MAX_LOOP_ROUNDS = 6;
+const DECISION_PROMPT = [
+  '你当前处于工具决策阶段。',
+  '如果需要工具，请直接发起 tool call，不要先输出任何自然语言。',
+  '如果不需要任何工具，请只输出精确文本 __NO_TOOL__，不要输出其他内容。',
+].join('');
+
+async function streamFinalAnswer({ messages, signal, writeEvent }) {
+  const finalResult = await callLLM({
+    messages,
+    stream: true,
+    signal,
+  });
+  const reader = finalResult.stream.getReader();
+  const decoder = new TextDecoder();
+  let fullContent = '';
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      buffer += decoder.decode();
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const parsed = parseStreamBuffer(buffer);
+    buffer = parsed.remainder;
+    for (const ev of parsed.events) {
+      const delta = ev.choices?.[0]?.delta?.content;
+      if (delta) {
+        fullContent += delta;
+        writeEvent(sseToken(delta));
+      }
+    }
+  }
+
+  if (buffer) {
+    const parsed = parseStreamBuffer(`${buffer}\n\n`);
+    for (const ev of parsed.events) {
+      const delta = ev.choices?.[0]?.delta?.content;
+      if (delta) {
+        fullContent += delta;
+        writeEvent(sseToken(delta));
+      }
+    }
+  }
+
+  return fullContent;
+}
 
 export async function runToolLoop({ messages, signal, writeEvent }) {
   let toolCallCount = 0;
@@ -11,31 +59,29 @@ export async function runToolLoop({ messages, signal, writeEvent }) {
   const workingMessages = [...messages];
 
   while (rounds < MAX_LOOP_ROUNDS) {
-    const result = await callLLM({ messages: workingMessages, tools: toolSchemas, toolChoice: 'auto', stream: false, signal });
+    const decisionMessages = [
+      ...workingMessages,
+      { role: 'system', content: DECISION_PROMPT },
+    ];
+    const result = await callLLM({ messages: decisionMessages, tools: toolSchemas, toolChoice: 'auto', stream: false, signal });
     const choice = result.data.choices[0];
     const toolCalls = extractToolCalls(choice);
     const content = extractContent(choice);
 
     if (!toolCalls.length) {
-      // Phase 2: stream final answer
-      const streamResult = await callLLM({
-        messages: [...workingMessages, { role: 'assistant', content }],
-        tools: toolSchemas, toolChoice: 'none', stream: true, signal,
-      });
-      const reader = streamResult.stream.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = content || '';
+      const normalizedContent = (content || '').trim();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        for (const ev of parseStreamChunk(decoder.decode(value, { stream: true }))) {
-          const delta = ev.choices?.[0]?.delta?.content;
-          if (delta) { fullContent += delta; writeEvent(sseToken(delta)); }
-        }
+      if (normalizedContent && normalizedContent !== '__NO_TOOL__') {
+        writeEvent(sseToken(content));
+        return { content: content || '', toolCallCount, plannerContent: content || '' };
       }
-      writeEvent(sseDone());
-      return { content: fullContent, toolCallCount };
+
+      const fullContent = await streamFinalAnswer({
+        messages: workingMessages,
+        signal,
+        writeEvent,
+      });
+      return { content: fullContent, toolCallCount, plannerContent: content || '' };
     }
 
     // Handle tool calls
@@ -61,18 +107,10 @@ export async function runToolLoop({ messages, signal, writeEvent }) {
 
   // Exceeded limit — force final non-tool answer
   workingMessages.push({ role: 'system', content: '工具调用次数已达上限，请基于已有信息直接回答。不要再调工具。' });
-  const finalResult = await callLLM({ messages: workingMessages, tools: toolSchemas, toolChoice: 'none', stream: true, signal });
-  const reader = finalResult.stream.getReader();
-  const decoder = new TextDecoder();
-  let fullContent = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    for (const ev of parseStreamChunk(decoder.decode(value, { stream: true }))) {
-      const delta = ev.choices?.[0]?.delta?.content;
-      if (delta) { fullContent += delta; writeEvent(sseToken(delta)); }
-    }
-  }
-  writeEvent(sseDone());
+  const fullContent = await streamFinalAnswer({
+    messages: workingMessages,
+    signal,
+    writeEvent,
+  });
   return { content: fullContent, toolCallCount };
 }

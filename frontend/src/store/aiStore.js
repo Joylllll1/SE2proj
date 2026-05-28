@@ -190,6 +190,17 @@ const useAIStore = create((set, get) => ({
     try {
       await aiService.sendMessageStream(currentSession?._id, content, {
         signal: controller.signal,
+        onStart: (sessionId) => {
+          set((state) => ({
+            currentSession: state.currentSession?._id === sessionId
+              ? state.currentSession
+              : {
+                  ...(state.currentSession || {}),
+                  _id: sessionId,
+                  title: state.currentSession?.title || '新会话',
+                },
+          }));
+        },
         onToolCall: (tool, args) => {
           set({ toolStatus: `正在调用 ${tool}...` });
         },
@@ -203,11 +214,20 @@ const useAIStore = create((set, get) => ({
           await get().syncCurrentSessionAfterStream();
           set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null });
         },
-        onError: (message) => {
+        onError: async (message) => {
+          const activeSessionId = get().currentSession?._id;
+          if (activeSessionId) {
+            await get().syncCurrentSessionAfterStream(activeSessionId);
+          }
           set((state) => ({
-            messages: state.messages.filter(m => m._id !== tempUserMessage._id),
-            error: message, isLoading: false, streamingContent: '',
-            toolStatus: null, activeRequestController: null,
+            messages: activeSessionId
+              ? state.messages
+              : state.messages.filter(m => m._id !== tempUserMessage._id),
+            error: message,
+            isLoading: false,
+            streamingContent: '',
+            toolStatus: null,
+            activeRequestController: null,
           }));
         },
       });
@@ -216,8 +236,14 @@ const useAIStore = create((set, get) => ({
         await get().syncCurrentSessionAfterAbort();
         return;
       }
+      const activeSessionId = get().currentSession?._id;
+      if (activeSessionId) {
+        await get().syncCurrentSessionAfterStream(activeSessionId);
+      }
       set((state) => ({
-        messages: state.messages.filter(m => m._id !== tempUserMessage._id),
+        messages: activeSessionId
+          ? state.messages
+          : state.messages.filter(m => m._id !== tempUserMessage._id),
         isLoading: false, streamingContent: '', toolStatus: null,
         activeRequestController: null, error: err.message,
       }));
@@ -247,6 +273,16 @@ const useAIStore = create((set, get) => ({
 
       await aiService.regenerateMessageStream(currentSession._id, {
         signal: controller.signal,
+        onStart: (sessionId) => {
+          set((state) => ({
+            currentSession: state.currentSession?._id === sessionId
+              ? state.currentSession
+              : {
+                  ...(state.currentSession || {}),
+                  _id: sessionId,
+                },
+          }));
+        },
         onToolCall: (tool) => set({ toolStatus: `正在调用 ${tool}...` }),
         onToolResult: () => set({ toolStatus: null }),
         onToken: (token) => set((state) => ({ streamingContent: state.streamingContent + token })),
@@ -254,7 +290,8 @@ const useAIStore = create((set, get) => ({
           await get().syncCurrentSessionAfterStream();
           set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null });
         },
-        onError: (message) => {
+        onError: async (message) => {
+          await get().syncCurrentSessionAfterStream();
           set({ error: message, isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null });
         },
       });
@@ -263,6 +300,7 @@ const useAIStore = create((set, get) => ({
         await get().syncCurrentSessionAfterAbort();
         return;
       }
+      await get().syncCurrentSessionAfterStream();
       set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, error: err.message });
     }
   },
@@ -283,14 +321,17 @@ const useAIStore = create((set, get) => ({
     controller.abort();
   },
 
-  syncCurrentSessionAfterAbort: async () => {
+  syncCurrentSessionAfterAbort: async (sessionIdOverride = null) => {
     const { currentSession } = get();
+    const sessionId = sessionIdOverride || currentSession?._id;
 
-    if (!currentSession?._id) {
+    if (!sessionId) {
       set((state) => ({
         messages: state.messages.filter((message) => !String(message._id).startsWith('temp-')),
         isLoading: false,
         isStopping: false,
+        streamingContent: '',
+        toolStatus: null,
         activeRequestController: null,
         error: null,
       }));
@@ -299,7 +340,7 @@ const useAIStore = create((set, get) => ({
 
     try {
       const [sessionData, sessions] = await Promise.all([
-        aiService.getSession(currentSession._id),
+        aiService.getSession(sessionId),
         aiService.getSessions(),
       ]);
 
@@ -311,6 +352,8 @@ const useAIStore = create((set, get) => ({
         effectivePersona: withPersonaDefaults(sessionData.session.effectivePersona),
         isLoading: false,
         isStopping: false,
+        streamingContent: '',
+        toolStatus: null,
         activeRequestController: null,
         error: null,
       });
@@ -319,21 +362,24 @@ const useAIStore = create((set, get) => ({
         messages: state.messages.filter((message) => !String(message._id).startsWith('temp-')),
         isLoading: false,
         isStopping: false,
+        streamingContent: '',
+        toolStatus: null,
         activeRequestController: null,
         error: null,
       }));
     }
   },
 
-  syncCurrentSessionAfterStream: async () => {
+  syncCurrentSessionAfterStream: async (sessionIdOverride = null) => {
     const { currentSession } = get();
-    if (!currentSession?._id) {
+    const sessionId = sessionIdOverride || currentSession?._id;
+    if (!sessionId) {
       set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null });
       return;
     }
     try {
       const [sessionData, sessions] = await Promise.all([
-        aiService.getSession(currentSession._id),
+        aiService.getSession(sessionId),
         aiService.getSessions(),
       ]);
       set({

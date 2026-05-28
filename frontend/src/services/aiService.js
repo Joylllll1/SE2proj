@@ -1,4 +1,5 @@
 import { request } from './apiClient.js';
+import useAuthStore from '../store/authStore';
 
 export const sendMessage = async (sessionId, message, options = {}) => {
   const data = await request('/api/ai/chat', {
@@ -67,81 +68,136 @@ export const updateSessionPersona = async (sessionId, persona) => {
   return data.data;
 };
 
-export async function sendMessageStream(sessionId, message, { signal, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
+function buildAuthHeaders() {
+  const token = localStorage.getItem('accessToken');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function handleUnauthorizedResponse(response) {
+  const data = await response.json().catch(() => null);
+  const token = localStorage.getItem('accessToken');
+
+  if (response.status === 401 && token) {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    useAuthStore.setState({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      loading: false,
+      error: null,
+    });
+    window.location.assign('/');
+  }
+
+  return data;
+}
+
+function parseSSEBuffer(buffer) {
+  const normalized = buffer.replace(/\r\n/g, '\n');
+  const frames = normalized.split('\n\n');
+  const remainder = frames.pop() || '';
+  const events = [];
+
+  for (const frame of frames) {
+    const dataLines = frame
+      .split('\n')
+      .filter((line) => line.startsWith('data: '))
+      .map((line) => line.slice(6));
+
+    if (!dataLines.length) continue;
+
+    try {
+      events.push(JSON.parse(dataLines.join('\n')));
+    } catch {
+      // Skip malformed event frames.
+    }
+  }
+
+  return { events, remainder };
+}
+
+async function consumeSSE(response, { onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    onError?.('响应流不可用');
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      buffer += decoder.decode();
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const parsed = parseSSEBuffer(buffer);
+    buffer = parsed.remainder;
+
+    for (const data of parsed.events) {
+      switch (data.type) {
+        case 'start': onStart?.(data.sessionId); break;
+        case 'token': onToken?.(data.content); break;
+        case 'tool_call': onToolCall?.(data.tool, data.args); break;
+        case 'tool_result': onToolResult?.(data.tool); break;
+        case 'done': onDone?.(); break;
+        case 'error': onError?.(data.message); break;
+      }
+    }
+  }
+
+  if (buffer) {
+    const parsed = parseSSEBuffer(`${buffer}\n\n`);
+    for (const data of parsed.events) {
+      switch (data.type) {
+        case 'start': onStart?.(data.sessionId); break;
+        case 'token': onToken?.(data.content); break;
+        case 'tool_call': onToolCall?.(data.tool, data.args); break;
+        case 'tool_result': onToolResult?.(data.tool); break;
+        case 'done': onDone?.(); break;
+        case 'error': onError?.(data.message); break;
+      }
+    }
+  }
+}
+
+export async function sendMessageStream(sessionId, message, { signal, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
   const response = await fetch('/api/ai/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildAuthHeaders(),
     body: JSON.stringify({ sessionId, message }),
     signal,
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ message: '请求失败' }));
-    onError?.(err.message || '请求失败');
+    const err = await handleUnauthorizedResponse(response);
+    onError?.(err?.error || err?.message || '请求失败');
     return;
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      try {
-        const data = JSON.parse(line.slice(6));
-        switch (data.type) {
-          case 'token': onToken?.(data.content); break;
-          case 'tool_call': onToolCall?.(data.tool, data.args); break;
-          case 'tool_result': onToolResult?.(data.tool); break;
-          case 'done': onDone?.(); break;
-          case 'error': onError?.(data.message); break;
-        }
-      } catch { /* skip malformed */ }
-    }
-  }
+  await consumeSSE(response, { onStart, onToken, onToolCall, onToolResult, onDone, onError });
 }
 
-export async function regenerateMessageStream(sessionId, { signal, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
-  const response = await fetch(`/api/ai/sessions/${sessionId}/regenerate`, { method: 'POST', signal });
+export async function regenerateMessageStream(sessionId, { signal, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
+  const response = await fetch(`/api/ai/sessions/${sessionId}/regenerate`, {
+    method: 'POST',
+    headers: buildAuthHeaders(),
+    signal,
+  });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ message: '请求失败' }));
-    onError?.(err.message || '请求失败');
+    const err = await handleUnauthorizedResponse(response);
+    onError?.(err?.error || err?.message || '请求失败');
     return;
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      try {
-        const data = JSON.parse(line.slice(6));
-        switch (data.type) {
-          case 'token': onToken?.(data.content); break;
-          case 'tool_call': onToolCall?.(data.tool, data.args); break;
-          case 'tool_result': onToolResult?.(data.tool); break;
-          case 'done': onDone?.(); break;
-          case 'error': onError?.(data.message); break;
-        }
-      } catch { /* skip */ }
-    }
-  }
+  await consumeSSE(response, { onStart, onToken, onToolCall, onToolResult, onDone, onError });
 }
