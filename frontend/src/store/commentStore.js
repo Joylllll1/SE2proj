@@ -39,6 +39,7 @@ function applyReplyLikeState(commentsMap, commentId, replyId, patch) {
 
 const useCommentStore = create((set, get) => ({
   commentsMap: {},
+  loadedPostIds: {},
   pendingCommentUnlikes: [],
   submittingCommentUnlikes: [],
 
@@ -47,6 +48,7 @@ const useCommentStore = create((set, get) => ({
       const comments = await commentService.getComments(postId);
       set((state) => ({
         commentsMap: { ...state.commentsMap, [postId]: comments },
+        loadedPostIds: { ...state.loadedPostIds, [postId]: true },
       }));
     } catch {
       // Silently fail — UI handles empty state
@@ -67,6 +69,7 @@ const useCommentStore = create((set, get) => ({
               )
             : [...existing, incomingComment],
         },
+        loadedPostIds: { ...state.loadedPostIds, [postId]: true },
       };
     });
   },
@@ -105,6 +108,7 @@ const useCommentStore = create((set, get) => ({
           };
         }),
       },
+      loadedPostIds: { ...state.loadedPostIds, [postId]: true },
     }));
   },
 

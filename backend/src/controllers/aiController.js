@@ -27,7 +27,7 @@ function createRequestAbortSignal(req, res) {
 }
 
 export const sendMessage = async (req, res) => {
-  const { sessionId, message } = req.body;
+  const { sessionId, message, context } = req.body;
   const { signal, cleanup } = createRequestAbortSignal(req, res);
 
   res.writeHead(200, {
@@ -42,7 +42,7 @@ export const sendMessage = async (req, res) => {
   };
 
   try {
-    await aiService.sendMessage(req.user.id, sessionId, message, { signal, emitEvent });
+    await aiService.sendMessage(req.user.id, sessionId, message, { signal, emitEvent, context });
   } catch (error) {
     if (!signal.aborted && !res.writableEnded) {
       const { sseError } = await import('../services/llm/sseEvents.js');

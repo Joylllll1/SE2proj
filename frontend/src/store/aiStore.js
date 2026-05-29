@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import * as aiService from '../services/aiService';
+import useCommentStore from './commentStore';
+import usePostStore from './postStore';
+import useUiStore from './uiStore';
 
 const DEFAULT_AI_PERSONA = {
   role: '',
@@ -82,6 +85,70 @@ function compactDefaultPersonaDraft(persona = {}) {
     }
     return result;
   }, {});
+}
+
+function truncateText(value, maxLength = 240) {
+  if (!value) return '';
+  const text = String(value).trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+}
+
+function buildCommentsPreviewForContext(comments = []) {
+  const preview = [];
+
+  for (const comment of comments) {
+    if (comment?.content) {
+      preview.push(truncateText(comment.content));
+    }
+
+    if (Array.isArray(comment?.replies)) {
+      for (const reply of comment.replies) {
+        if (reply?.content) {
+          preview.push(truncateText(reply.content));
+        }
+        if (preview.length >= 6) {
+          return preview.slice(0, 6);
+        }
+      }
+    }
+
+    if (preview.length >= 6) {
+      return preview.slice(0, 6);
+    }
+  }
+
+  return preview.slice(0, 6);
+}
+
+function buildCurrentChatContext() {
+  const { activePage } = useUiStore.getState();
+  if (activePage !== 'detail') {
+    return null;
+  }
+
+  const { selectedPost, getPostLikeView } = usePostStore.getState();
+  if (!selectedPost?.id) {
+    return null;
+  }
+
+  const postView = typeof getPostLikeView === 'function'
+    ? getPostLikeView(selectedPost)
+    : selectedPost;
+  const { commentsMap, loadedPostIds } = useCommentStore.getState();
+  const comments = commentsMap[selectedPost.id] || [];
+  const commentsLoaded = Boolean(loadedPostIds[selectedPost.id]);
+  const commentCount = Number(postView?.comments || 0);
+
+  return {
+    pageType: 'post_detail',
+    currentPost: {
+      title: truncateText(postView?.title || '', 120),
+      content: truncateText(postView?.content || '', 2000),
+      commentsPreview: buildCommentsPreviewForContext(comments),
+      commentsLoaded,
+      commentCount,
+    },
+  };
 }
 
 const useAIStore = create((set, get) => ({
@@ -175,6 +242,7 @@ const useAIStore = create((set, get) => ({
   sendMessage: async (content) => {
     const { currentSession, messages } = get();
     const controller = new AbortController();
+    const context = buildCurrentChatContext();
 
     const tempUserMessage = {
       _id: 'temp-' + Date.now(), role: 'user', content,
@@ -190,6 +258,7 @@ const useAIStore = create((set, get) => ({
     try {
       await aiService.sendMessageStream(currentSession?._id, content, {
         signal: controller.signal,
+        context,
         onStart: (sessionId) => {
           set((state) => ({
             currentSession: state.currentSession?._id === sessionId

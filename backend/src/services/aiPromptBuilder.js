@@ -12,7 +12,7 @@ const VERBOSITY_INSTRUCTIONS = {
   detailed: '可以更详细，但避免重复、空话和过度说教。',
 };
 
-export function buildSystemPrompt(persona = DEFAULT_AI_PERSONA) {
+export function buildSystemPrompt(persona = DEFAULT_AI_PERSONA, currentDate = '') {
   const preferenceLines = [];
 
   if (persona.role) {
@@ -51,6 +51,10 @@ export function buildSystemPrompt(persona = DEFAULT_AI_PERSONA) {
     '如果用户表达出明显的自伤、伤人或极端绝望倾向，请更稳、更直接地回应，并鼓励其联系现实中的可信任对象或专业支持资源。',
   ];
 
+  if (currentDate) {
+    sections.push(`今天是 ${currentDate}。处理“今天 / 最近 / 最新”这类问题时，必须以这个日期为当前日期参考。`);
+  }
+
   if (preferenceLines.length > 0) {
     sections.push('', '当前用户偏好：', ...preferenceLines);
   }
@@ -80,6 +84,7 @@ export function buildSystemPrompt(persona = DEFAULT_AI_PERSONA) {
     '- 用户问"最近大家都在讨论什么" → 调用 get_hot_topics',
     '如果无需工具即可回答，不要调用工具。',
     '工具结果不足时，明确说明不确定性，不要编造事实。',
+    '如果系统提供了当前页面上下文，用户提到“这个帖子”“这条帖子”“本帖”“评论区”时，默认指当前页面里的帖子。',
     '如果联网搜索没有拿到可靠结果，不要向用户暴露工具、接口、超时、安装失败等技术细节。',
     '遇到搜索失败或结果为空时，用自然语言表达为“我暂时没查到可靠的最新信息”或给出保守回答，而不是描述底层报错。',
   );

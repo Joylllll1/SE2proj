@@ -169,11 +169,11 @@ async function consumeSSE(response, { onStart, onToken, onToolCall, onToolResult
   }
 }
 
-export async function sendMessageStream(sessionId, message, { signal, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
+export async function sendMessageStream(sessionId, message, { signal, context, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
   const response = await fetch('/api/ai/chat', {
     method: 'POST',
     headers: buildAuthHeaders(),
-    body: JSON.stringify({ sessionId, message }),
+    body: JSON.stringify({ sessionId, message, context }),
     signal,
   });
 
@@ -190,6 +190,7 @@ export async function regenerateMessageStream(sessionId, { signal, onStart, onTo
   const response = await fetch(`/api/ai/sessions/${sessionId}/regenerate`, {
     method: 'POST',
     headers: buildAuthHeaders(),
+    body: JSON.stringify({}),
     signal,
   });
 

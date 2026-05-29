@@ -53,8 +53,8 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
   return fullContent;
 }
 
-export async function runToolLoop({ messages, signal, writeEvent }) {
-  let toolCallCount = 0;
+export async function runToolLoop({ messages, signal, writeEvent, initialToolCallCount = 0 }) {
+  let toolCallCount = initialToolCallCount;
   let rounds = 0;
   const workingMessages = [...messages];
 
