@@ -74,7 +74,7 @@ export function getImageGridLayout(count) {
   if (count <= 1) {
     return {
       gridClass: 'grid-cols-1',
-      itemClass: 'aspect-[4/3]',
+      itemClass: '',
     };
   }
 

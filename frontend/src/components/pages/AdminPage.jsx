@@ -163,8 +163,8 @@ function PostDetailModal({ post, onClose }) {
           {images.length > 0 && (
             <div className={`mb-4 grid gap-2 ${imageLayout.gridClass}`}>
               {images.map((src, index) => (
-                <div key={`${src}-${index}`} className={`overflow-hidden rounded-xl border border-line bg-surface-soft ${imageLayout.itemClass}`}>
-                  <img className="h-full w-full object-cover" alt={`${post.title} 图片 ${index + 1}`} src={src} />
+                <div key={`${src}-${index}`} className={`overflow-hidden rounded-xl border border-line bg-surface-soft ${imageLayout.itemClass} ${images.length === 1 ? 'justify-self-start w-fit max-w-full' : ''}`}>
+                  <img className={images.length === 1 ? 'block h-auto max-h-[400px] max-w-full object-contain' : 'h-full w-full object-cover'} alt={`${post.title} 图片 ${index + 1}`} src={src} />
                 </div>
               ))}
             </div>

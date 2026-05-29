@@ -327,8 +327,12 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
           <div className="editor-image-preview border-t border-line-soft bg-[#fafbfc] p-3 max-sm:p-2">
             <div className={`grid gap-2 max-sm:grid-cols-1 ${getImageGridLayout(images.length).gridClass}`}>
               {images.map((src, index) => (
-                <div key={`${src}-${index}`} className={`relative overflow-hidden rounded-md bg-surface-soft ${getImageGridLayout(images.length).itemClass}`}>
-                  <img src={src} alt={`preview-${index + 1}`} className="h-full w-full object-cover" />
+                <div key={`${src}-${index}`} className={`relative overflow-hidden rounded-md bg-surface-soft ${getImageGridLayout(images.length).itemClass} ${images.length === 1 ? 'justify-self-start w-fit max-w-full' : ''}`}>
+                  <img
+                    src={src}
+                    alt={`preview-${index + 1}`}
+                    className={images.length === 1 ? 'block h-auto max-h-[300px] max-w-full object-contain' : 'h-full w-full object-cover'}
+                  />
                   <button
                     onClick={() => setImages((prev) => prev.filter((_, i) => i !== index))}
                     type="button"
@@ -341,7 +345,7 @@ function ComposePage({ onPublish, draftId: initialDraftId }) {
               {images.length < MAX_POST_IMAGES && (
                 <button
                   type="button"
-                  className={`grid place-items-center rounded-md border border-dashed border-line-soft bg-white text-text-2 transition-colors duration-150 hover:border-blue hover:text-blue ${getImageGridLayout(images.length + 1).itemClass}`}
+                  className={`grid min-h-[100px] place-items-center rounded-md border border-dashed border-line-soft bg-white text-text-2 transition-colors duration-150 hover:border-blue hover:text-blue ${getImageGridLayout(images.length + 1).itemClass}`}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <span className="flex flex-col items-center gap-1 text-sm font-semibold">
