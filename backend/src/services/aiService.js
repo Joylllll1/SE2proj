@@ -4,6 +4,7 @@ import AppError from '../utils/AppError.js';
 import { buildSystemPrompt } from './aiPromptBuilder.js';
 import { resolveEffectivePersona } from './aiPersonaService.js';
 import { runToolLoop } from './llm/toolLoop.js';
+import { shouldRoundtripReasoning } from './llm/client.js';
 import { sseDone, sseStart, sseToken, sseToolCall, sseToolResult } from './llm/sseEvents.js';
 import { executeTool } from './tools/index.js';
 
@@ -19,6 +20,7 @@ const PERSONAL_STATE_PATTERN = /(我最近|我现在|最近很|现在很|最近�
 const SELECT_POST_DETAIL_REPLY = '请先进入某个帖子详情页，再让我帮你总结这个帖子、分析评论区，或者解释这条帖子在说什么。';
 const LOAD_COMMENTS_FIRST_REPLY = '请先等待帖子评论加载完成，再让我分析评论区在吵什么或总结主要观点。';
 const NO_COMMENTS_TO_ANALYZE_REPLY = '这条帖子目前还没有可分析的评论内容。';
+const SHOULD_ROUNDTRIP_REASONING = shouldRoundtripReasoning();
 
 // 生成会话标题（基于首条消息）
 function generateSessionTitle(content) {
@@ -213,6 +215,24 @@ function resolveMessageContext(message) {
   return normalizeChatContext(message?.contextSnapshot);
 }
 
+function toLLMMessage(message) {
+  const llmMessage = {
+    role: message.role,
+    content: message.content,
+  };
+
+  if (
+    SHOULD_ROUNDTRIP_REASONING
+    && message.role === 'assistant'
+    && typeof message.reasoningContent === 'string'
+    && message.reasoningContent.trim()
+  ) {
+    llmMessage.reasoning_content = message.reasoningContent;
+  }
+
+  return llmMessage;
+}
+
 async function saveAndStreamStaticAssistantReply({ session, effectivePersona, content, emitEvent }) {
   if (emitEvent) {
     emitEvent(sseToken(content));
@@ -222,6 +242,7 @@ async function saveAndStreamStaticAssistantReply({ session, effectivePersona, co
     session: session._id,
     role: 'assistant',
     content,
+    reasoningContent: '',
   });
 
   session.updatedAt = new Date();
@@ -341,11 +362,12 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
     { role: 'system', content: buildSystemPrompt(effectivePersona, currentDate) },
     ...(currentPostContextMessage ? [{ role: 'system', content: currentPostContextMessage }] : []),
     ...(realtimeSearchContextMessage ? [{ role: 'system', content: realtimeSearchContextMessage }] : []),
-    ...historyMessages.map(m => ({ role: m.role, content: m.content })),
+    ...historyMessages.map(toLLMMessage),
   ];
 
   // 调用 LLM with tool loop
   let aiContent;
+  let aiReasoningContent = '';
   try {
     const result = await runToolLoop({
       messages: llmMessages,
@@ -354,6 +376,7 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
       initialToolCallCount: prefetchedToolCallCount,
     });
     aiContent = result.content;
+    aiReasoningContent = result.reasoningContent || '';
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
@@ -375,6 +398,7 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
     session: session._id,
     role: 'assistant',
     content: aiContent,
+    reasoningContent: aiReasoningContent,
   });
 
   // 更新会话更新时间
@@ -445,6 +469,7 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
   if (contextualReply) {
     emitStaticAssistantReply(contextualReply, options.emitEvent);
     lastMessage.content = contextualReply;
+    lastMessage.reasoningContent = '';
     lastMessage.createdAt = new Date();
     await lastMessage.save();
     session.updatedAt = new Date();
@@ -480,11 +505,12 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
     { role: 'system', content: buildSystemPrompt(effectivePersona, currentDate) },
     ...(currentPostContextMessage ? [{ role: 'system', content: currentPostContextMessage }] : []),
     ...(realtimeSearchContextMessage ? [{ role: 'system', content: realtimeSearchContextMessage }] : []),
-    ...historyMessages.map(m => ({ role: m.role, content: m.content })),
+    ...historyMessages.map(toLLMMessage),
   ];
 
   // 调用 LLM with tool loop
   let aiContent;
+  let aiReasoningContent = '';
   try {
     const result = await runToolLoop({
       messages: llmMessages,
@@ -493,6 +519,7 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
       initialToolCallCount: prefetchedToolCallCount,
     });
     aiContent = result.content;
+    aiReasoningContent = result.reasoningContent || '';
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
@@ -502,6 +529,7 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
 
   // 更新 AI 消息
   lastMessage.content = aiContent;
+  lastMessage.reasoningContent = aiReasoningContent;
   lastMessage.createdAt = new Date();
   await lastMessage.save();
   session.updatedAt = new Date();

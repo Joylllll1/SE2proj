@@ -1,4 +1,4 @@
-import { callLLM, extractToolCalls, extractContent, parseStreamBuffer } from './client.js';
+import { callLLM, extractToolCalls, extractContent, extractReasoningContent, parseStreamBuffer } from './client.js';
 import { toolSchemas, executeTool } from '../tools/index.js';
 import { sseToolCall, sseToolResult, sseToken } from './sseEvents.js';
 
@@ -19,6 +19,7 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
   const reader = finalResult.stream.getReader();
   const decoder = new TextDecoder();
   let fullContent = '';
+  let reasoningContent = '';
   let buffer = '';
 
   while (true) {
@@ -31,6 +32,10 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
     const parsed = parseStreamBuffer(buffer);
     buffer = parsed.remainder;
     for (const ev of parsed.events) {
+      const reasoningDelta = ev.choices?.[0]?.delta?.reasoning_content;
+      if (reasoningDelta) {
+        reasoningContent += reasoningDelta;
+      }
       const delta = ev.choices?.[0]?.delta?.content;
       if (delta) {
         fullContent += delta;
@@ -42,6 +47,10 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
   if (buffer) {
     const parsed = parseStreamBuffer(`${buffer}\n\n`);
     for (const ev of parsed.events) {
+      const reasoningDelta = ev.choices?.[0]?.delta?.reasoning_content;
+      if (reasoningDelta) {
+        reasoningContent += reasoningDelta;
+      }
       const delta = ev.choices?.[0]?.delta?.content;
       if (delta) {
         fullContent += delta;
@@ -50,7 +59,7 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
     }
   }
 
-  return fullContent;
+  return { content: fullContent, reasoningContent };
 }
 
 export async function runToolLoop({ messages, signal, writeEvent, initialToolCallCount = 0 }) {
@@ -67,25 +76,41 @@ export async function runToolLoop({ messages, signal, writeEvent, initialToolCal
     const choice = result.data.choices[0];
     const toolCalls = extractToolCalls(choice);
     const content = extractContent(choice);
+    const reasoningContent = extractReasoningContent(choice);
 
     if (!toolCalls.length) {
       const normalizedContent = (content || '').trim();
 
       if (normalizedContent && normalizedContent !== '__NO_TOOL__') {
         writeEvent(sseToken(content));
-        return { content: content || '', toolCallCount, plannerContent: content || '' };
+        return {
+          content: content || '',
+          reasoningContent: reasoningContent || '',
+          toolCallCount,
+          plannerContent: content || '',
+        };
       }
 
-      const fullContent = await streamFinalAnswer({
+      const finalAnswer = await streamFinalAnswer({
         messages: workingMessages,
         signal,
         writeEvent,
       });
-      return { content: fullContent, toolCallCount, plannerContent: content || '' };
+      return {
+        content: finalAnswer.content,
+        reasoningContent: finalAnswer.reasoningContent || '',
+        toolCallCount,
+        plannerContent: content || '',
+      };
     }
 
     // Handle tool calls
-    workingMessages.push({ role: 'assistant', content: content || null, tool_calls: toolCalls });
+    workingMessages.push({
+      role: 'assistant',
+      content: content || null,
+      reasoning_content: reasoningContent || undefined,
+      tool_calls: toolCalls,
+    });
 
     for (const tc of toolCalls) {
       toolCallCount += 1;
@@ -107,10 +132,14 @@ export async function runToolLoop({ messages, signal, writeEvent, initialToolCal
 
   // Exceeded limit — force final non-tool answer
   workingMessages.push({ role: 'system', content: '工具调用次数已达上限，请基于已有信息直接回答。不要再调工具。' });
-  const fullContent = await streamFinalAnswer({
+  const finalAnswer = await streamFinalAnswer({
     messages: workingMessages,
     signal,
     writeEvent,
   });
-  return { content: fullContent, toolCallCount };
+  return {
+    content: finalAnswer.content,
+    reasoningContent: finalAnswer.reasoningContent || '',
+    toolCallCount,
+  };
 }

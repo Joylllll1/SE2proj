@@ -1,11 +1,27 @@
 import AppError from '../../utils/AppError.js';
 
-function getLLMConfig() {
+export function getLLMConfig() {
   return {
     apiUrl: process.env.LLM_API_URL || 'https://api.deepseek.com/v1/chat/completions',
     apiKey: process.env.LLM_API_KEY,
     model: process.env.LLM_MODEL || 'deepseek-chat',
   };
+}
+
+export function shouldRoundtripReasoning(config = getLLMConfig()) {
+  const apiUrl = String(config.apiUrl || '');
+  const model = String(config.model || '').trim();
+  const isOfficialDeepSeek = /api\.deepseek\.com/.test(apiUrl);
+
+  if (!isOfficialDeepSeek) {
+    return false;
+  }
+
+  if (model === 'deepseek-reasoner') {
+    return false;
+  }
+
+  return model.startsWith('deepseek-v4-') || model === 'deepseek-chat';
 }
 
 /**
@@ -124,4 +140,14 @@ export function extractToolCalls(choice) {
  */
 export function extractContent(choice) {
   return choice.message?.content || '';
+}
+
+/**
+ * Extract reasoning_content from a choice object.
+ *
+ * @param {Object} choice - A choice object from the API response
+ * @returns {string} The reasoning content string, or empty string
+ */
+export function extractReasoningContent(choice) {
+  return choice.message?.reasoning_content || '';
 }
