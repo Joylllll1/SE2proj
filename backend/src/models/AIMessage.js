@@ -17,6 +17,14 @@ const aiMessageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    reasoningContent: {
+      type: String,
+      default: '',
+    },
+    contextSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   {
     timestamps: true,

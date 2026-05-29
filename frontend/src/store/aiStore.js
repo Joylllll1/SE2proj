@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import * as aiService from '../services/aiService';
+import useCommentStore from './commentStore';
+import usePostStore from './postStore';
+import useUiStore from './uiStore';
 
 const DEFAULT_AI_PERSONA = {
   role: '',
@@ -84,6 +87,78 @@ function compactDefaultPersonaDraft(persona = {}) {
   }, {});
 }
 
+function truncateText(value, maxLength = 240) {
+  if (!value) return '';
+  const text = String(value).trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+}
+
+function buildCommentsPreviewForContext(comments = []) {
+  const preview = [];
+
+  for (const comment of comments) {
+    if (comment?.content) {
+      preview.push(truncateText(comment.content));
+    }
+
+    if (Array.isArray(comment?.replies)) {
+      for (const reply of comment.replies) {
+        if (reply?.content) {
+          preview.push(truncateText(reply.content));
+        }
+        if (preview.length >= 6) {
+          return preview.slice(0, 6);
+        }
+      }
+    }
+
+    if (preview.length >= 6) {
+      return preview.slice(0, 6);
+    }
+  }
+
+  return preview.slice(0, 6);
+}
+
+function buildCurrentChatContext() {
+  const { activePage } = useUiStore.getState();
+  if (activePage !== 'detail') {
+    return null;
+  }
+
+  const { selectedPost, getPostLikeView } = usePostStore.getState();
+  if (!selectedPost?.id) {
+    return null;
+  }
+
+  const postView = typeof getPostLikeView === 'function'
+    ? getPostLikeView(selectedPost)
+    : selectedPost;
+  const { commentsMap, loadedPostIds } = useCommentStore.getState();
+  const comments = commentsMap[selectedPost.id] || [];
+  const commentsLoaded = Boolean(loadedPostIds[selectedPost.id]);
+  const commentCount = Number(postView?.comments || 0);
+
+  return {
+    pageType: 'post_detail',
+    currentPost: {
+      title: truncateText(postView?.title || '', 120),
+      content: truncateText(postView?.content || '', 2000),
+      commentsPreview: buildCommentsPreviewForContext(comments),
+      commentsLoaded,
+      commentCount,
+    },
+  };
+}
+
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const useAIStore = create((set, get) => ({
   // State
   sessions: [],
@@ -103,6 +178,9 @@ const useAIStore = create((set, get) => ({
   effectivePersona: { ...DEFAULT_AI_PERSONA },
   personaDraft: { ...EMPTY_AI_PERSONA },
   activeRequestController: null,
+  activeRequestId: null,
+  toolStatus: null,
+  streamingContent: '',
   error: null,
 
   // Actions
@@ -173,63 +251,83 @@ const useAIStore = create((set, get) => ({
   sendMessage: async (content) => {
     const { currentSession, messages } = get();
     const controller = new AbortController();
+    const requestId = createRequestId();
+    const context = buildCurrentChatContext();
 
     const tempUserMessage = {
-      _id: 'temp-' + Date.now(),
-      role: 'user',
-      content,
+      _id: 'temp-' + Date.now(), role: 'user', content,
       createdAt: new Date().toISOString(),
     };
+
     set({
       messages: [...messages, tempUserMessage],
-      isLoading: true,
-      isStopping: false,
-      activeRequestController: controller,
+      isLoading: true, isStopping: false, streamingContent: '',
+      toolStatus: null, activeRequestController: controller, activeRequestId: requestId,
     });
 
     try {
-      const result = await aiService.sendMessage(currentSession?._id, content, {
+      await aiService.sendMessageStream(currentSession?._id, content, {
         signal: controller.signal,
+        context,
+        requestId,
+        onStart: (sessionId) => {
+          set((state) => ({
+            currentSession: state.currentSession?._id === sessionId
+              ? state.currentSession
+              : {
+                  ...(state.currentSession || {}),
+                  _id: sessionId,
+                  title: state.currentSession?.title || '新会话',
+                },
+          }));
+        },
+        onToolCall: (tool) => {
+          set({ toolStatus: `正在调用 ${tool}...` });
+        },
+        onToolResult: () => {
+          set({ toolStatus: null });
+        },
+        onToken: (token) => {
+          set((state) => ({ streamingContent: state.streamingContent + token }));
+        },
+        onDone: async () => {
+          await get().syncCurrentSessionAfterStream();
+          set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null, activeRequestId: null });
+        },
+        onError: async (message) => {
+          const activeSessionId = get().currentSession?._id;
+          if (activeSessionId) {
+            await get().syncCurrentSessionAfterStream(activeSessionId);
+          }
+          set((state) => ({
+            messages: activeSessionId
+              ? state.messages
+              : state.messages.filter(m => m._id !== tempUserMessage._id),
+            error: message,
+            isLoading: false,
+            streamingContent: '',
+            toolStatus: null,
+            activeRequestController: null,
+            activeRequestId: null,
+          }));
+        },
       });
-      const { data } = result;
-
-      set((state) => ({
-        messages: [
-          ...state.messages.filter(m => m._id !== tempUserMessage._id),
-          data.userMessage,
-          data.assistantMessage,
-        ],
-        currentSession: data.session || state.currentSession,
-        sessionPersona: data.session?.aiPersona || state.sessionPersona,
-        effectivePersona: withPersonaDefaults(data.session?.effectivePersona || state.effectivePersona),
-        isLoading: false,
-        isStopping: false,
-        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
-      }));
-
-      await get().fetchSessions();
     } catch (err) {
       if (err.name === 'AbortError') {
         await get().syncCurrentSessionAfterAbort();
         return;
       }
-
-      const savedMessage = err.data?.savedMessage;
-      const savedSession = err.data?.session;
-
+      const activeSessionId = get().currentSession?._id;
+      if (activeSessionId) {
+        await get().syncCurrentSessionAfterStream(activeSessionId);
+      }
       set((state) => ({
-        messages: savedMessage
-          ? [...state.messages.filter(m => m._id !== tempUserMessage._id), savedMessage]
+        messages: activeSessionId
+          ? state.messages
           : state.messages.filter(m => m._id !== tempUserMessage._id),
-        currentSession: savedSession || state.currentSession,
-        sessionPersona: savedSession?.aiPersona || state.sessionPersona,
-        effectivePersona: withPersonaDefaults(savedSession?.effectivePersona || state.effectivePersona),
-        isLoading: false,
-        isStopping: false,
-        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
-        error: err.message,
+        isLoading: false, streamingContent: '', toolStatus: null,
+        activeRequestController: null, activeRequestId: null, error: err.message,
       }));
-      throw err;
     }
   },
 
@@ -237,48 +335,56 @@ const useAIStore = create((set, get) => ({
     const { currentSession, messages } = get();
     if (!currentSession) return;
     const controller = new AbortController();
+    const requestId = createRequestId();
 
     set({
-      isLoading: true,
-      isStopping: false,
-      activeRequestController: controller,
+      isLoading: true, isStopping: false, streamingContent: '',
+      toolStatus: null, activeRequestController: controller, activeRequestId: requestId,
     });
 
     try {
-      const result = await aiService.regenerateMessage(currentSession._id, {
-        signal: controller.signal,
-      });
-
-      const newMessages = [...messages];
-      for (let i = newMessages.length - 1; i >= 0; i--) {
-        if (newMessages[i].role === 'assistant') {
-          newMessages[i] = result.message;
+      // Remove last assistant content — will be streamed anew
+      const msgsWithoutLastAssistant = [...messages];
+      for (let i = msgsWithoutLastAssistant.length - 1; i >= 0; i--) {
+        if (msgsWithoutLastAssistant[i].role === 'assistant') {
+          msgsWithoutLastAssistant[i] = { ...msgsWithoutLastAssistant[i], content: '' };
           break;
         }
       }
+      set({ messages: msgsWithoutLastAssistant });
 
-      set((state) => ({
-        messages: newMessages,
-        currentSession: result.session || currentSession,
-        sessionPersona: result.session?.aiPersona || state.sessionPersona,
-        effectivePersona: withPersonaDefaults(result.session?.effectivePersona || state.effectivePersona),
-        isLoading: false,
-        isStopping: false,
-        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
-      }));
+      await aiService.regenerateMessageStream(currentSession._id, {
+        signal: controller.signal,
+        requestId,
+        onStart: (sessionId) => {
+          set((state) => ({
+            currentSession: state.currentSession?._id === sessionId
+              ? state.currentSession
+              : {
+                  ...(state.currentSession || {}),
+                  _id: sessionId,
+                },
+          }));
+        },
+        onToolCall: (tool) => set({ toolStatus: `正在调用 ${tool}...` }),
+        onToolResult: () => set({ toolStatus: null }),
+        onToken: (token) => set((state) => ({ streamingContent: state.streamingContent + token })),
+        onDone: async () => {
+          await get().syncCurrentSessionAfterStream();
+          set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null, activeRequestId: null });
+        },
+        onError: async (message) => {
+          await get().syncCurrentSessionAfterStream();
+          set({ error: message, isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null });
+        },
+      });
     } catch (err) {
       if (err.name === 'AbortError') {
         await get().syncCurrentSessionAfterAbort();
         return;
       }
-
-      set((state) => ({
-        isLoading: false,
-        isStopping: false,
-        activeRequestController: state.activeRequestController === controller ? null : state.activeRequestController,
-        error: err.message,
-      }));
-      throw err;
+      await get().syncCurrentSessionAfterStream();
+      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null, error: err.message });
     }
   },
 
@@ -292,21 +398,27 @@ const useAIStore = create((set, get) => ({
 
   cancelActiveRequest: () => {
     const controller = get().activeRequestController;
+    const requestId = get().activeRequestId;
     if (!controller) return;
 
     set({ isStopping: true });
+    aiService.cancelRequest(requestId).catch(() => {});
     controller.abort();
   },
 
-  syncCurrentSessionAfterAbort: async () => {
+  syncCurrentSessionAfterAbort: async (sessionIdOverride = null) => {
     const { currentSession } = get();
+    const sessionId = sessionIdOverride || currentSession?._id;
 
-    if (!currentSession?._id) {
+    if (!sessionId) {
       set((state) => ({
         messages: state.messages.filter((message) => !String(message._id).startsWith('temp-')),
         isLoading: false,
         isStopping: false,
+        streamingContent: '',
+        toolStatus: null,
         activeRequestController: null,
+        activeRequestId: null,
         error: null,
       }));
       return;
@@ -314,7 +426,7 @@ const useAIStore = create((set, get) => ({
 
     try {
       const [sessionData, sessions] = await Promise.all([
-        aiService.getSession(currentSession._id),
+        aiService.getSession(sessionId),
         aiService.getSessions(),
       ]);
 
@@ -326,7 +438,10 @@ const useAIStore = create((set, get) => ({
         effectivePersona: withPersonaDefaults(sessionData.session.effectivePersona),
         isLoading: false,
         isStopping: false,
+        streamingContent: '',
+        toolStatus: null,
         activeRequestController: null,
+        activeRequestId: null,
         error: null,
       });
     } catch {
@@ -334,9 +449,37 @@ const useAIStore = create((set, get) => ({
         messages: state.messages.filter((message) => !String(message._id).startsWith('temp-')),
         isLoading: false,
         isStopping: false,
+        streamingContent: '',
+        toolStatus: null,
         activeRequestController: null,
+        activeRequestId: null,
         error: null,
       }));
+    }
+  },
+
+  syncCurrentSessionAfterStream: async (sessionIdOverride = null) => {
+    const { currentSession } = get();
+    const sessionId = sessionIdOverride || currentSession?._id;
+    if (!sessionId) {
+      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null });
+      return;
+    }
+    try {
+      const [sessionData, sessions] = await Promise.all([
+        aiService.getSession(sessionId),
+        aiService.getSessions(),
+      ]);
+      set({
+        sessions, currentSession: sessionData.session,
+        messages: sessionData.messages,
+        sessionPersona: sessionData.session.aiPersona || {},
+        effectivePersona: withPersonaDefaults(sessionData.session.effectivePersona),
+        isLoading: false, streamingContent: '', toolStatus: null,
+        activeRequestController: null, activeRequestId: null, error: null,
+      });
+    } catch {
+      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null });
     }
   },
 

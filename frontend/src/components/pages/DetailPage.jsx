@@ -7,7 +7,27 @@ import ConfirmLeaveDialog from '../common/ConfirmLeaveDialog';
 import useCommentStore from '../../store/commentStore';
 import { fileToOptimizedDataUrl } from '../../utils/image';
 
-function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onComment, onReply, onDelete, onNavigate, onReport }) {
+function getCommentTimeValue(item) {
+  const timeValue = Date.parse(item?.createdAt || '');
+  return Number.isNaN(timeValue) ? 0 : timeValue;
+}
+
+function DetailPage({
+  post,
+  liked,
+  bookmarked,
+  isOwner,
+  currentUserId,
+  onLike,
+  onBookmark,
+  onComment,
+  onReply,
+  onDeleteComment,
+  onDeleteReply,
+  onDelete,
+  onNavigate,
+  onReport,
+}) {
   const [commentSort, setCommentSort] = useState('time');
   const getFlatComments = useCommentStore((s) => s.getFlatComments);
   const primaryTag = Array.isArray(post.tags) && post.tags.length > 0 ? post.tags[0] : '未分类';
@@ -23,8 +43,12 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
   const flatComments = getFlatComments(post.id);
 
   const sortedFlatComments = [...flatComments].sort((a, b) => {
-    if (commentSort === 'likes') return (b.likes || 0) - (a.likes || 0);
-    return 0;
+    if (commentSort === 'likes') {
+      const likeDiff = (b.likes || 0) - (a.likes || 0);
+      if (likeDiff !== 0) return likeDiff;
+    }
+
+    return getCommentTimeValue(b) - getCommentTimeValue(a);
   });
 
   const handleCommentSubmit = () => {
@@ -56,9 +80,18 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
 
   return (
     <div className="detail-layout max-w-[1180px] mx-auto">
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded-full bg-white text-text-2 text-sm font-semibold shadow-xs transition-all duration-150 hover:-translate-y-px hover:shadow-sm hover:text-blue hover:border-blue"
+          onClick={() => onNavigate('home')}
+          type="button"
+        >
+          <Icon name="arrow_back" size="18" />
+          返回首页
+        </button>
+      </div>
       <section className="detail-card p-[18px] rounded-lg border border-line-soft bg-surface shadow-sm">
         <div className="breadcrumb mb-[14px] text-text-3 text-[13px] font-semibold">
-          <button className="breadcrumb-link px-0 py-0 border-0 bg-transparent text-text-3 text-inherit font-semibold cursor-pointer transition-colors duration-150 hover:text-blue" onClick={() => onNavigate('home')} type="button">动态首页</button>
           <span>/ {primaryTag} / 帖子详情</span>
         </div>
         <div className="detail-heading flex items-end justify-between gap-[18px] mb-4 max-sm:flex-col max-sm:items-stretch">
@@ -172,7 +205,9 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
                   key={item.id || item._id}
                   reply={item}
                   postId={post.id}
+                  currentUserId={currentUserId}
                   onReply={onReply}
+                  onDelete={onDeleteReply}
                   onReport={onReport}
                 />
               );
@@ -182,7 +217,9 @@ function DetailPage({ post, liked, bookmarked, isOwner, onLike, onBookmark, onCo
                 key={item.id || item._id}
                 comment={item}
                 postId={post.id}
+                currentUserId={currentUserId}
                 onReply={onReply}
+                onDelete={onDeleteComment}
                 onReport={onReport}
               />
             );

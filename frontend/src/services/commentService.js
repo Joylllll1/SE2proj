@@ -29,3 +29,7 @@ export async function addReply(commentId, content, image = '', official = false,
 export async function toggleReplyLike(commentId, replyId) {
   return request(`/api/comments/${commentId}/reply/${replyId}/like`, { method: 'POST' });
 }
+
+export async function deleteReply(commentId, replyId) {
+  return request(`/api/comments/${commentId}/reply/${replyId}`, { method: 'DELETE' });
+}

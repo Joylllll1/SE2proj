@@ -4,6 +4,7 @@ import AppError from '../utils/AppError.js';
 import { notifyComment } from './notificationService.js';
 import { syncPostCommentCount } from './commentCountService.js';
 import { normalizeInlineImage } from '../utils/image.js';
+import { broadcast } from './sseManager.js';
 
 export const createComment = async (userId, postId, content, image = '', official = false) => {
   const post = await Post.findById(postId);
@@ -35,11 +36,22 @@ export const createComment = async (userId, postId, content, image = '', officia
     ).catch(() => {});
   }
 
-  return {
+  const commentDto = {
     ...comment.toObject(),
     id: comment._id.toString(),
     time: formatRelativeTime(comment.createdAt),
   };
+
+  try {
+    broadcast('comment-created', {
+      postId: postId.toString(),
+      comment: commentDto,
+    });
+  } catch (error) {
+    console.error('SSE broadcast failed after comment creation:', error);
+  }
+
+  return commentDto;
 };
 
 export const addReply = async (userId, commentId, content, image = '', official = false, replyToId = null) => {
@@ -73,7 +85,7 @@ export const addReply = async (userId, commentId, content, image = '', official 
   await syncPostCommentCount(comment.postId);
 
   const savedReply = comment.replies[comment.replies.length - 1];
-  return {
+  const replyDto = {
     id: savedReply._id.toString(),
     ownerUserId: savedReply.ownerUserId.toString(),
     content: savedReply.content,
@@ -86,6 +98,18 @@ export const addReply = async (userId, commentId, content, image = '', official 
     time: formatRelativeTime(savedReply.createdAt),
     isLiked: false,
   };
+
+  try {
+    broadcast('reply-created', {
+      postId: comment.postId.toString(),
+      commentId: comment._id.toString(),
+      reply: replyDto,
+    });
+  } catch (error) {
+    console.error('SSE broadcast failed after reply creation:', error);
+  }
+
+  return replyDto;
 };
 
 export const getComments = async (postId, userId) => {
@@ -118,10 +142,25 @@ export const deleteComment = async (userId, commentId) => {
     throw new AppError('无权删除此评论', 403, 'FORBIDDEN');
   }
 
+  const deletedReplyCount = (comment.replies || []).filter((reply) => !reply.isDeleted).length;
   comment.isDeleted = true;
   await comment.save();
 
   await syncPostCommentCount(comment.postId);
+
+  const result = {
+    postId: comment.postId.toString(),
+    commentId: comment._id.toString(),
+    deletedReplyCount,
+  };
+
+  try {
+    broadcast('comment-deleted', result);
+  } catch (error) {
+    console.error('SSE broadcast failed after comment deletion:', error);
+  }
+
+  return result;
 };
 
 export const deleteReply = async (userId, commentId, replyId) => {
@@ -138,6 +177,20 @@ export const deleteReply = async (userId, commentId, replyId) => {
   await comment.save();
 
   await syncPostCommentCount(comment.postId);
+
+  const result = {
+    postId: comment.postId.toString(),
+    commentId: comment._id.toString(),
+    replyId: reply._id.toString(),
+  };
+
+  try {
+    broadcast('reply-deleted', result);
+  } catch (error) {
+    console.error('SSE broadcast failed after reply deletion:', error);
+  }
+
+  return result;
 };
 
 export const toggleLike = async (userId, commentId) => {

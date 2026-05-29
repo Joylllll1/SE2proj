@@ -39,6 +39,7 @@ function applyReplyLikeState(commentsMap, commentId, replyId, patch) {
 
 const useCommentStore = create((set, get) => ({
   commentsMap: {},
+  loadedPostIds: {},
   pendingCommentUnlikes: [],
   submittingCommentUnlikes: [],
 
@@ -47,10 +48,84 @@ const useCommentStore = create((set, get) => ({
       const comments = await commentService.getComments(postId);
       set((state) => ({
         commentsMap: { ...state.commentsMap, [postId]: comments },
+        loadedPostIds: { ...state.loadedPostIds, [postId]: true },
       }));
     } catch {
       // Silently fail — UI handles empty state
     }
+  },
+
+  upsertComment: (postId, incomingComment) => {
+    set((state) => {
+      const existing = state.commentsMap[postId] || [];
+      const incomingId = incomingComment.id || incomingComment._id;
+      const alreadyExists = existing.some((comment) => (comment.id || comment._id) === incomingId);
+      return {
+        commentsMap: {
+          ...state.commentsMap,
+          [postId]: alreadyExists
+            ? existing.map((comment) =>
+                (comment.id || comment._id) === incomingId ? { ...comment, ...incomingComment } : comment,
+              )
+            : [...existing, incomingComment],
+        },
+        loadedPostIds: { ...state.loadedPostIds, [postId]: true },
+      };
+    });
+  },
+
+  removeComment: (postId, commentId) => {
+    set((state) => ({
+      commentsMap: {
+        ...state.commentsMap,
+        [postId]: (state.commentsMap[postId] || []).filter(
+          (comment) => (comment.id || comment._id) !== commentId,
+        ),
+      },
+    }));
+  },
+
+  upsertReply: (postId, commentId, incomingReply) => {
+    set((state) => ({
+      commentsMap: {
+        ...state.commentsMap,
+        [postId]: (state.commentsMap[postId] || []).map((comment) => {
+          if ((comment.id || comment._id) !== commentId) {
+            return comment;
+          }
+
+          const replies = comment.replies || [];
+          const incomingId = incomingReply.id || incomingReply._id;
+          const alreadyExists = replies.some((reply) => (reply.id || reply._id) === incomingId);
+
+          return {
+            ...comment,
+            replies: alreadyExists
+              ? replies.map((reply) =>
+                  (reply.id || reply._id) === incomingId ? { ...reply, ...incomingReply } : reply,
+                )
+              : [...replies, incomingReply],
+          };
+        }),
+      },
+      loadedPostIds: { ...state.loadedPostIds, [postId]: true },
+    }));
+  },
+
+  removeReply: (postId, commentId, replyId) => {
+    set((state) => ({
+      commentsMap: {
+        ...state.commentsMap,
+        [postId]: (state.commentsMap[postId] || []).map((comment) =>
+          (comment.id || comment._id) === commentId
+            ? {
+                ...comment,
+                replies: (comment.replies || []).filter((reply) => (reply.id || reply._id) !== replyId),
+              }
+            : comment,
+        ),
+      },
+    }));
   },
 
   // 获取扁平化的评论列表（评论和回复平级）
@@ -208,12 +283,7 @@ const useCommentStore = create((set, get) => ({
 
   addComment: async (postId, content, image = '', official = false) => {
     const comment = await commentService.createComment(postId, content, image, official);
-    set((state) => {
-      const existing = state.commentsMap[postId] || [];
-      return {
-        commentsMap: { ...state.commentsMap, [postId]: [...existing, comment] },
-      };
-    });
+    get().upsertComment(postId, comment);
     return comment;
   },
 
@@ -294,18 +364,22 @@ const useCommentStore = create((set, get) => ({
 
   addReply: async (commentId, content, image = '', official = false, replyToId = null) => {
     const reply = await commentService.addReply(commentId, content, image, official, replyToId);
-    set((state) => {
-      const updated = { ...state.commentsMap };
-      for (const postId of Object.keys(updated)) {
-        updated[postId] = updated[postId].map((c) =>
-          c.id === commentId || c._id === commentId
-            ? { ...c, replies: [...(c.replies || []), reply] }
-            : c,
-        );
-      }
-      return { commentsMap: updated };
-    });
+    for (const postId of Object.keys(get().commentsMap)) {
+      get().upsertReply(postId, commentId, reply);
+    }
     return reply;
+  },
+
+  deleteComment: async (commentId) => {
+    const result = await commentService.deleteComment(commentId);
+    get().removeComment(result.postId, result.commentId);
+    return result;
+  },
+
+  deleteReply: async (commentId, replyId) => {
+    const result = await commentService.deleteReply(commentId, replyId);
+    get().removeReply(result.postId, result.commentId, result.replyId);
+    return result;
   },
 
   getCommentsByPostId: (postId) => {

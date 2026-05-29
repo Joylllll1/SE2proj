@@ -3,6 +3,7 @@ import ClickableImage from './ClickableImage';
 import Icon from './Icon';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
+import ConfirmLeaveDialog from './ConfirmLeaveDialog';
 import { getDisplayName } from '../../utils';
 import useCommentStore from '../../store/commentStore';
 import { fileToOptimizedDataUrl } from '../../utils/image';
@@ -10,15 +11,21 @@ import { fileToOptimizedDataUrl } from '../../utils/image';
 // ─── Stable store selectors ───
 const selectToggleReplyLike = (s) => s.toggleReplyLike;
 
-function ReplyCard({ reply, postId, onReply, onReport }) {
+function normalizeOwnerId(ownerUserId) {
+  return typeof ownerUserId === 'object' ? ownerUserId?.toString() : ownerUserId;
+}
+
+function ReplyCard({ reply, postId, currentUserId, onReply, onDelete, onReport }) {
   const toggleReplyLike = useCommentStore(selectToggleReplyLike);
   const [showReportModal, setShowReportModal] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const replyInputRef = useRef(null);
 
   const replyName = reply.official ? '官方小助手' : getDisplayName(reply.ownerUserId, postId);
   const parentAuthorName = reply.parentOfficial ? '官方小助手' : getDisplayName(reply.parentAuthorId, postId);
+  const isOwner = normalizeOwnerId(reply.ownerUserId) === currentUserId;
 
   const handleLike = () => {
     const commentId = reply.parentId;
@@ -115,6 +122,15 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
             >
               <Icon name={reply.isLiked ? 'favorite' : 'favorite_border'} /> {reply.likes || 0}
             </button>
+            {isOwner && onDelete && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="inline-flex items-center gap-1 transition-colors duration-150 hover:text-red"
+              >
+                <Icon name="delete" style={{ fontSize: '14px' }} /> 删除
+              </button>
+            )}
           </div>
 
           {/* 回复输入框 - 显示在回复卡片正下方 */}
@@ -137,6 +153,20 @@ function ReplyCard({ reply, postId, onReply, onReport }) {
           onSubmit={handleReport}
         />
       )}
+
+      <ConfirmLeaveDialog
+        open={showDeleteConfirm}
+        title="删除回复"
+        description="确定要删除这条回复吗？此操作不可撤销。"
+        confirmText="确认删除"
+        cancelText="取消"
+        mode="discard"
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          onDelete(reply.parentId, reply.id || reply._id);
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </>
   );
 }

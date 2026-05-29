@@ -26,13 +26,13 @@ export const list = async (req, res) => {
 };
 
 export const remove = async (req, res) => {
-  await commentService.deleteComment(req.user._id.toString(), req.params.commentId);
-  res.json({ message: '已删除' });
+  const result = await commentService.deleteComment(req.user._id.toString(), req.params.commentId);
+  res.json({ message: '已删除', ...result });
 };
 
 export const removeReply = async (req, res) => {
-  await commentService.deleteReply(req.user._id.toString(), req.params.commentId, req.params.replyId);
-  res.json({ message: '已删除' });
+  const result = await commentService.deleteReply(req.user._id.toString(), req.params.commentId, req.params.replyId);
+  res.json({ message: '已删除', ...result });
 };
 
 export const like = async (req, res) => {

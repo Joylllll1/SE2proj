@@ -417,6 +417,7 @@ function PersonaSettingsView({
 
 function AIPanel({ open, onClose }) {
   const [input, setInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
   const showToast = useUiStore((state) => state.showToast);
@@ -431,6 +432,8 @@ function AIPanel({ open, onClose }) {
     isPersonaLoading,
     isPersonaSaving,
     isStopping,
+    streamingContent,
+    toolStatus,
     personaDraft,
     effectivePersona,
     personaDirty,
@@ -520,11 +523,37 @@ function AIPanel({ open, onClose }) {
   }, [isLoading, regenerateMessage]);
 
   const handleKeyDown = (e) => {
+    if (e.key === 'Escape' && isLoading) {
+      e.preventDefault();
+      cancelActiveRequest();
+      return;
+    }
+
+    if (isComposing || e.nativeEvent?.isComposing || e.keyCode === 229) {
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleWindowKeyDown = (event) => {
+      if (event.key === 'Escape' && isLoading) {
+        event.preventDefault();
+        cancelActiveRequest();
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleWindowKeyDown);
+    };
+  }, [open, isLoading, cancelActiveRequest]);
 
   const handleOpenPersonaSettings = async () => {
     try {
@@ -675,6 +704,15 @@ function AIPanel({ open, onClose }) {
                   onRegenerate={handleRegenerate}
                 />
               ))}
+              {/* In-progress streaming content */}
+              {isLoading && streamingContent && (
+                <div className="flex justify-start mb-4">
+                  <div className="px-4 py-3 rounded-2xl bg-surface-soft rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap break-words max-w-[85%]">
+                    {streamingContent}
+                    <span className="inline-block w-1.5 h-4 bg-blue ml-0.5 animate-pulse" />
+                  </div>
+                </div>
+              )}
               {isLoading && (
                 <div className="flex justify-start mb-4">
                   <div className="px-4 py-3 rounded-2xl bg-surface-soft rounded-tl-sm">
@@ -683,6 +721,14 @@ function AIPanel({ open, onClose }) {
                       <span className="w-2 h-2 bg-blue rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
                       <span className="w-2 h-2 bg-blue rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                     </div>
+                  </div>
+                </div>
+              )}
+              {toolStatus && (
+                <div className="flex justify-start mb-4">
+                  <div className="px-4 py-2 rounded-2xl bg-surface-soft rounded-tl-sm text-sm text-text-2 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                    {toolStatus}
                   </div>
                 </div>
               )}
@@ -705,6 +751,8 @@ function AIPanel({ open, onClose }) {
                 placeholder="和树洞 AI 聊聊..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={() => setIsComposing(false)}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
               />
