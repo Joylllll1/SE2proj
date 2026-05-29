@@ -258,10 +258,28 @@ function emitStaticAssistantReply(content, emitEvent) {
   }
 }
 
+async function cleanupAbortedUserTurn({ session, userMessage, createdNewSession }) {
+  await AIMessage.deleteOne({
+    _id: userMessage._id,
+    session: session._id,
+    role: 'user',
+  });
+
+  if (!createdNewSession) {
+    return;
+  }
+
+  const remainingMessages = await AIMessage.countDocuments({ session: session._id });
+  if (remainingMessages === 0) {
+    await AISession.deleteOne({ _id: session._id });
+  }
+}
+
 // 发送消息并获取 AI 回复
 export const sendMessage = async (userId, sessionId, content, options = {}) => {
   // 获取或创建会话
   let session;
+  let createdNewSession = false;
   if (sessionId) {
     session = await AISession.findOne({ _id: sessionId, user: userId });
     if (!session) {
@@ -273,6 +291,7 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
       user: userId,
       title: generateSessionTitle(content),
     });
+    createdNewSession = true;
   }
 
   // 更新会话标题（如果是第一条消息且标题是默认值）
@@ -356,6 +375,7 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
     aiReasoningContent = result.reasoningContent || '';
   } catch (error) {
     if (error.name === 'AbortError') {
+      await cleanupAbortedUserTurn({ session, userMessage, createdNewSession });
       throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
     }
     if (error.isOperational) {
