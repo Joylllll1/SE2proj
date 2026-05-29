@@ -166,7 +166,6 @@ async function maybePrefetchWebSearch({ messages, content, signal, emitEvent }) 
   }
 
   const args = { query: content };
-  const toolCallId = `prefetch_web_search_${Date.now()}`;
 
   if (emitEvent) {
     emitEvent(sseToolCall('web_search', args));
@@ -186,23 +185,13 @@ async function maybePrefetchWebSearch({ messages, content, signal, emitEvent }) 
     messages: [
       ...messages,
       {
-        role: 'assistant',
-        content: null,
-        tool_calls: [
-          {
-            id: toolCallId,
-            type: 'function',
-            function: {
-              name: 'web_search',
-              arguments: JSON.stringify(args),
-            },
-          },
-        ],
-      },
-      {
-        role: 'tool',
-        tool_call_id: toolCallId,
-        content: JSON.stringify(toolResult),
+        role: 'system',
+        content: [
+          '系统已为当前强时效问题预先执行一次联网搜索。',
+          `搜索关键词：${content}`,
+          '以下是 web_search 的结构化结果，请优先基于这些结果回答；若仍不足，再决定是否继续调用工具。',
+          JSON.stringify(toolResult),
+        ].join('\n'),
       },
     ],
   };
