@@ -80,6 +80,7 @@ export async function handler({ query }, signal) {
   }
 
   if (!BAIDU_WEB_SEARCH_API_KEY) {
+    console.log('[web_search] missing baidu api key');
     return { results: [], note: '搜索服务未配置' };
   }
 
@@ -112,6 +113,12 @@ export async function handler({ query }, signal) {
 
     const data = await response.json();
     const results = normalizeSearchResults(data);
+    console.log('[web_search] baidu response summary:', JSON.stringify({
+      query,
+      resultCount: results.length,
+      firstTitle: results[0]?.title || '',
+      firstSource: results[0]?.source || '',
+    }));
 
     if (!results.length) {
       return {

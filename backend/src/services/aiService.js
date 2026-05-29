@@ -166,6 +166,7 @@ async function maybePrefetchWebSearch({ messages, content, signal, emitEvent }) 
   }
 
   const args = { query: content };
+  console.log('[ai] prefetch web_search triggered:', args.query);
 
   if (emitEvent) {
     emitEvent(sseToolCall('web_search', args));
@@ -174,6 +175,12 @@ async function maybePrefetchWebSearch({ messages, content, signal, emitEvent }) 
   const toolResult = await executeTool('web_search', args, signal).catch((error) => ({
     results: [],
     note: error?.message || '暂时没有拿到可靠的最新结果',
+  }));
+  console.log('[ai] prefetch web_search result:', JSON.stringify({
+    query: args.query,
+    resultCount: Array.isArray(toolResult?.results) ? toolResult.results.length : 0,
+    note: toolResult?.note || '',
+    firstTitle: toolResult?.results?.[0]?.title || '',
   }));
 
   if (emitEvent) {
