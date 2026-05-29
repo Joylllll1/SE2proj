@@ -12,7 +12,14 @@ const DECISION_PROMPT = [
   '如果 web_search 的摘要不足以支撑高风险事实判断，应继续调用 fetch_url 打开一到两个最相关来源页面再回答。',
 ].join('');
 
+function throwIfAborted(signal) {
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
+}
+
 async function streamFinalAnswer({ messages, signal, writeEvent }) {
+  throwIfAborted(signal);
   const finalResult = await callLLM({
     messages,
     stream: true,
@@ -25,6 +32,7 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
   let buffer = '';
 
   for (;;) {
+    throwIfAborted(signal);
     const { done, value } = await reader.read();
     if (done) {
       buffer += decoder.decode();
@@ -34,6 +42,7 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
     const parsed = parseStreamBuffer(buffer);
     buffer = parsed.remainder;
     for (const ev of parsed.events) {
+      throwIfAborted(signal);
       const reasoningDelta = ev.choices?.[0]?.delta?.reasoning_content;
       if (reasoningDelta) {
         reasoningContent += reasoningDelta;
@@ -49,6 +58,7 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
   if (buffer) {
     const parsed = parseStreamBuffer(`${buffer}\n\n`);
     for (const ev of parsed.events) {
+      throwIfAborted(signal);
       const reasoningDelta = ev.choices?.[0]?.delta?.reasoning_content;
       if (reasoningDelta) {
         reasoningContent += reasoningDelta;
@@ -70,6 +80,7 @@ export async function runToolLoop({ messages, signal, writeEvent, initialToolCal
   const workingMessages = [...messages];
 
   while (rounds < MAX_LOOP_ROUNDS) {
+    throwIfAborted(signal);
     const decisionMessages = [
       ...workingMessages,
       { role: 'system', content: DECISION_PROMPT },
@@ -91,6 +102,7 @@ export async function runToolLoop({ messages, signal, writeEvent, initialToolCal
       const normalizedContent = (content || '').trim();
 
       if (normalizedContent && normalizedContent !== '__NO_TOOL__') {
+        throwIfAborted(signal);
         writeEvent(sseToken(content));
         return {
           content: content || '',
@@ -122,6 +134,7 @@ export async function runToolLoop({ messages, signal, writeEvent, initialToolCal
     });
 
     for (const tc of toolCalls) {
+      throwIfAborted(signal);
       toolCallCount += 1;
       if (toolCallCount > MAX_TOOL_CALLS) {
         workingMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ error: '工具调用次数已达上限' }) });
@@ -130,9 +143,11 @@ export async function runToolLoop({ messages, signal, writeEvent, initialToolCal
 
       let args = {};
       try { args = JSON.parse(tc.function.arguments); } catch { /* use empty */ }
+      throwIfAborted(signal);
       writeEvent(sseToolCall(tc.function.name, args));
 
       const toolResult = await executeTool(tc.function.name, args, signal).catch(e => ({ error: e.message }));
+      throwIfAborted(signal);
       writeEvent(sseToolResult(tc.function.name));
       workingMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) });
     }

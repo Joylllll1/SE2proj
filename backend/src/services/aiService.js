@@ -258,7 +258,18 @@ function emitStaticAssistantReply(content, emitEvent) {
   }
 }
 
+function throwAbortErrorIfNeeded(signal) {
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
+}
+
 async function cleanupAbortedUserTurn({ session, userMessage, createdNewSession }) {
+  console.log('[ai] cleaning aborted user turn:', JSON.stringify({
+    sessionId: session._id.toString(),
+    userMessageId: userMessage._id.toString(),
+    createdNewSession,
+  }));
   await AIMessage.deleteOne({
     _id: userMessage._id,
     session: session._id,
@@ -271,6 +282,7 @@ async function cleanupAbortedUserTurn({ session, userMessage, createdNewSession 
 
   const remainingMessages = await AIMessage.countDocuments({ session: session._id });
   if (remainingMessages === 0) {
+    console.log('[ai] deleting empty session after abort:', session._id.toString());
     await AISession.deleteOne({ _id: session._id });
   }
 }
@@ -314,6 +326,11 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
     content,
     contextSnapshot: normalizeChatContext(options.context),
   });
+  console.log('[ai] user message saved:', JSON.stringify({
+    sessionId: session._id.toString(),
+    userMessageId: userMessage._id.toString(),
+    createdNewSession,
+  }));
 
   const effectivePersona = await resolveEffectivePersona(userId, session);
   const contextualReply = resolveContextualReply(content, options.context);
@@ -371,10 +388,15 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
       writeEvent: options.emitEvent || (() => {}),
       initialToolCallCount: prefetchedInput.initialToolCallCount,
     });
+    throwAbortErrorIfNeeded(options.signal);
     aiContent = result.content;
     aiReasoningContent = result.reasoningContent || '';
   } catch (error) {
     if (error.name === 'AbortError') {
+      console.log('[ai] llm generation aborted before assistant save:', JSON.stringify({
+        sessionId: session._id.toString(),
+        userMessageId: userMessage._id.toString(),
+      }));
       await cleanupAbortedUserTurn({ session, userMessage, createdNewSession });
       throw new AppError('AI 生成已中断', 499, 'LLM_ABORTED');
     }
@@ -391,12 +413,18 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
   }
 
   // 保存 AI 回复
+  throwAbortErrorIfNeeded(options.signal);
   const aiMessage = await AIMessage.create({
     session: session._id,
     role: 'assistant',
     content: aiContent,
     reasoningContent: aiReasoningContent,
   });
+  console.log('[ai] assistant message saved:', JSON.stringify({
+    sessionId: session._id.toString(),
+    assistantMessageId: aiMessage._id.toString(),
+    contentLength: aiContent.length,
+  }));
 
   // 更新会话更新时间
   session.updatedAt = new Date();
@@ -505,6 +533,7 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
       writeEvent: options.emitEvent || (() => {}),
       initialToolCallCount: prefetchedInput.initialToolCallCount,
     });
+    throwAbortErrorIfNeeded(options.signal);
     aiContent = result.content;
     aiReasoningContent = result.reasoningContent || '';
   } catch (error) {
@@ -515,6 +544,7 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
   }
 
   // 更新 AI 消息
+  throwAbortErrorIfNeeded(options.signal);
   lastMessage.content = aiContent;
   lastMessage.reasoningContent = aiReasoningContent;
   lastMessage.createdAt = new Date();

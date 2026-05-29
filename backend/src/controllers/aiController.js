@@ -5,11 +5,13 @@ function createRequestAbortSignal(req, res) {
   const controller = new AbortController();
   const abort = () => {
     if (!controller.signal.aborted) {
+      console.log('[ai] request abort signal triggered');
       controller.abort();
     }
   };
   const handleResponseClose = () => {
     if (!res.writableEnded) {
+      console.log('[ai] response closed before stream finished');
       abort();
     }
   };
