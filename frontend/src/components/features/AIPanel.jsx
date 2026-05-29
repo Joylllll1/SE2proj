@@ -417,6 +417,7 @@ function PersonaSettingsView({
 
 function AIPanel({ open, onClose }) {
   const [input, setInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
   const showToast = useUiStore((state) => state.showToast);
@@ -522,11 +523,37 @@ function AIPanel({ open, onClose }) {
   }, [isLoading, regenerateMessage]);
 
   const handleKeyDown = (e) => {
+    if (e.key === 'Escape' && isLoading) {
+      e.preventDefault();
+      cancelActiveRequest();
+      return;
+    }
+
+    if (isComposing || e.nativeEvent?.isComposing || e.keyCode === 229) {
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleWindowKeyDown = (event) => {
+      if (event.key === 'Escape' && isLoading) {
+        event.preventDefault();
+        cancelActiveRequest();
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleWindowKeyDown);
+    };
+  }, [open, isLoading, cancelActiveRequest]);
 
   const handleOpenPersonaSettings = async () => {
     try {
@@ -724,6 +751,8 @@ function AIPanel({ open, onClose }) {
                 placeholder="和树洞 AI 聊聊..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={() => setIsComposing(false)}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
               />

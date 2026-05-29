@@ -131,7 +131,7 @@ async function consumeSSE(response, { onStart, onToken, onToolCall, onToolResult
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read();
     if (done) {
       buffer += decoder.decode();

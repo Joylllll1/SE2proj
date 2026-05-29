@@ -270,7 +270,7 @@ const useAIStore = create((set, get) => ({
                 },
           }));
         },
-        onToolCall: (tool, args) => {
+        onToolCall: (tool) => {
           set({ toolStatus: `正在调用 ${tool}...` });
         },
         onToolResult: () => {
