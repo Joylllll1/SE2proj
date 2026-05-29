@@ -16,7 +16,6 @@ const STRONG_REALTIME_QUERY_PATTERN = /(今天|今日|最新|最近|刚刚|实�
 const SELECT_POST_DETAIL_REPLY = '请先进入某个帖子详情页，再让我帮你总结这个帖子、分析评论区，或者解释这条帖子在说什么。';
 const LOAD_COMMENTS_FIRST_REPLY = '请先等待帖子评论加载完成，再让我分析评论区在吵什么或总结主要观点。';
 const NO_COMMENTS_TO_ANALYZE_REPLY = '这条帖子目前还没有可分析的评论内容。';
-const SHOULD_ROUNDTRIP_REASONING = shouldRoundtripReasoning();
 
 // 生成会话标题（基于首条消息）
 function generateSessionTitle(content) {
@@ -211,7 +210,7 @@ function toLLMMessage(message) {
   };
 
   if (
-    SHOULD_ROUNDTRIP_REASONING
+    shouldRoundtripReasoning()
     && message.role === 'assistant'
     && typeof message.reasoningContent === 'string'
     && message.reasoningContent.trim()

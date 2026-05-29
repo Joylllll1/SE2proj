@@ -1,7 +1,11 @@
-const SEARCH_TIMEOUT_MS = parseInt(process.env.AI_TOOL_TIMEOUT_MS || '8000', 10);
-const MAX_RESULTS = parseInt(process.env.AI_WEB_SEARCH_MAX_RESULTS || '8', 10);
-const BAIDU_WEB_SEARCH_URL = process.env.AI_WEB_SEARCH_BAIDU_URL || 'https://qianfan.baidubce.com/v2/ai_search/web_search';
-const BAIDU_WEB_SEARCH_API_KEY = process.env.AI_WEB_SEARCH_BAIDU_API_KEY || '';
+function getWebSearchConfig() {
+  return {
+    timeoutMs: parseInt(process.env.AI_TOOL_TIMEOUT_MS || '8000', 10),
+    maxResults: parseInt(process.env.AI_WEB_SEARCH_MAX_RESULTS || '8', 10),
+    baiduUrl: process.env.AI_WEB_SEARCH_BAIDU_URL || 'https://qianfan.baidubce.com/v2/ai_search/web_search',
+    baiduApiKey: process.env.AI_WEB_SEARCH_BAIDU_API_KEY || '',
+  };
+}
 
 function createTimeoutSignal(signal, timeoutMs) {
   const controller = new AbortController();
@@ -39,13 +43,13 @@ function normalizeReference(item = {}) {
   };
 }
 
-function normalizeSearchResults(data = {}) {
+function normalizeSearchResults(data = {}, maxResults = 8) {
   const references = Array.isArray(data.references) ? data.references : [];
   const normalized = references
     .map(normalizeReference)
     .filter((item) => item.title && item.url);
 
-  return normalized.slice(0, MAX_RESULTS);
+  return normalized.slice(0, maxResults);
 }
 
 function buildRequestBody(query) {
@@ -75,11 +79,13 @@ export const schema = {
 };
 
 export async function handler({ query }, signal) {
+  const { timeoutMs, maxResults, baiduUrl, baiduApiKey } = getWebSearchConfig();
+
   if (!query?.trim()) {
     return { results: [], note: '搜索关键词为空' };
   }
 
-  if (!BAIDU_WEB_SEARCH_API_KEY) {
+  if (!baiduApiKey) {
     console.log('[web_search] missing baidu api key');
     return { results: [], note: '搜索服务未配置' };
   }
@@ -89,15 +95,15 @@ export async function handler({ query }, signal) {
       return { results: [], note: '暂时没有拿到可靠的最新结果' };
     }
 
-    const timeoutContext = createTimeoutSignal(signal, SEARCH_TIMEOUT_MS);
+    const timeoutContext = createTimeoutSignal(signal, timeoutMs);
     let response;
     try {
-      response = await fetch(BAIDU_WEB_SEARCH_URL, {
+      response = await fetch(baiduUrl, {
         method: 'POST',
         signal: timeoutContext.signal,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${BAIDU_WEB_SEARCH_API_KEY}`,
+          'Authorization': `Bearer ${baiduApiKey}`,
         },
         body: JSON.stringify(buildRequestBody(query.trim())),
       });
@@ -112,7 +118,7 @@ export async function handler({ query }, signal) {
     }
 
     const data = await response.json();
-    const results = normalizeSearchResults(data);
+    const results = normalizeSearchResults(data, maxResults);
     console.log('[web_search] baidu response summary:', JSON.stringify({
       query,
       resultCount: results.length,
