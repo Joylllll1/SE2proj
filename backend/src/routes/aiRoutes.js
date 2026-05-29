@@ -6,6 +6,7 @@ const router = Router();
 
 // AI chat routes
 router.post('/chat', auth, aiController.sendMessage);
+router.post('/cancel', auth, aiController.cancelRequest);
 router.get('/profile', auth, aiController.getProfile);
 router.put('/profile', auth, aiController.updateProfile);
 router.get('/sessions', auth, aiController.getSessions);

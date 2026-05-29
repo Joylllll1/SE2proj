@@ -10,6 +10,18 @@ export const sendMessage = async (sessionId, message, options = {}) => {
   return data;
 };
 
+export const cancelRequest = async (requestId) => {
+  if (!requestId) {
+    return { success: false, cancelled: false };
+  }
+
+  const data = await request('/api/ai/cancel', {
+    method: 'POST',
+    body: JSON.stringify({ requestId }),
+  });
+  return data;
+};
+
 export const getSessions = async () => {
   const data = await request('/api/ai/sessions');
   return data.data.sessions;
@@ -169,11 +181,11 @@ async function consumeSSE(response, { onStart, onToken, onToolCall, onToolResult
   }
 }
 
-export async function sendMessageStream(sessionId, message, { signal, context, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
+export async function sendMessageStream(sessionId, message, { signal, context, requestId, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
   const response = await fetch('/api/ai/chat', {
     method: 'POST',
     headers: buildAuthHeaders(),
-    body: JSON.stringify({ sessionId, message, context }),
+    body: JSON.stringify({ sessionId, message, context, requestId }),
     signal,
   });
 
@@ -186,11 +198,11 @@ export async function sendMessageStream(sessionId, message, { signal, context, o
   await consumeSSE(response, { onStart, onToken, onToolCall, onToolResult, onDone, onError });
 }
 
-export async function regenerateMessageStream(sessionId, { signal, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
+export async function regenerateMessageStream(sessionId, { signal, requestId, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
   const response = await fetch(`/api/ai/sessions/${sessionId}/regenerate`, {
     method: 'POST',
     headers: buildAuthHeaders(),
-    body: JSON.stringify({}),
+    body: JSON.stringify({ requestId }),
     signal,
   });
 

@@ -151,6 +151,14 @@ function buildCurrentChatContext() {
   };
 }
 
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const useAIStore = create((set, get) => ({
   // State
   sessions: [],
@@ -170,6 +178,7 @@ const useAIStore = create((set, get) => ({
   effectivePersona: { ...DEFAULT_AI_PERSONA },
   personaDraft: { ...EMPTY_AI_PERSONA },
   activeRequestController: null,
+  activeRequestId: null,
   toolStatus: null,
   streamingContent: '',
   error: null,
@@ -242,6 +251,7 @@ const useAIStore = create((set, get) => ({
   sendMessage: async (content) => {
     const { currentSession, messages } = get();
     const controller = new AbortController();
+    const requestId = createRequestId();
     const context = buildCurrentChatContext();
 
     const tempUserMessage = {
@@ -252,13 +262,14 @@ const useAIStore = create((set, get) => ({
     set({
       messages: [...messages, tempUserMessage],
       isLoading: true, isStopping: false, streamingContent: '',
-      toolStatus: null, activeRequestController: controller,
+      toolStatus: null, activeRequestController: controller, activeRequestId: requestId,
     });
 
     try {
       await aiService.sendMessageStream(currentSession?._id, content, {
         signal: controller.signal,
         context,
+        requestId,
         onStart: (sessionId) => {
           set((state) => ({
             currentSession: state.currentSession?._id === sessionId
@@ -281,7 +292,7 @@ const useAIStore = create((set, get) => ({
         },
         onDone: async () => {
           await get().syncCurrentSessionAfterStream();
-          set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null });
+          set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null, activeRequestId: null });
         },
         onError: async (message) => {
           const activeSessionId = get().currentSession?._id;
@@ -297,6 +308,7 @@ const useAIStore = create((set, get) => ({
             streamingContent: '',
             toolStatus: null,
             activeRequestController: null,
+            activeRequestId: null,
           }));
         },
       });
@@ -314,7 +326,7 @@ const useAIStore = create((set, get) => ({
           ? state.messages
           : state.messages.filter(m => m._id !== tempUserMessage._id),
         isLoading: false, streamingContent: '', toolStatus: null,
-        activeRequestController: null, error: err.message,
+        activeRequestController: null, activeRequestId: null, error: err.message,
       }));
     }
   },
@@ -323,10 +335,11 @@ const useAIStore = create((set, get) => ({
     const { currentSession, messages } = get();
     if (!currentSession) return;
     const controller = new AbortController();
+    const requestId = createRequestId();
 
     set({
       isLoading: true, isStopping: false, streamingContent: '',
-      toolStatus: null, activeRequestController: controller,
+      toolStatus: null, activeRequestController: controller, activeRequestId: requestId,
     });
 
     try {
@@ -342,6 +355,7 @@ const useAIStore = create((set, get) => ({
 
       await aiService.regenerateMessageStream(currentSession._id, {
         signal: controller.signal,
+        requestId,
         onStart: (sessionId) => {
           set((state) => ({
             currentSession: state.currentSession?._id === sessionId
@@ -357,11 +371,11 @@ const useAIStore = create((set, get) => ({
         onToken: (token) => set((state) => ({ streamingContent: state.streamingContent + token })),
         onDone: async () => {
           await get().syncCurrentSessionAfterStream();
-          set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null });
+          set({ streamingContent: '', toolStatus: null, isLoading: false, activeRequestController: null, activeRequestId: null });
         },
         onError: async (message) => {
           await get().syncCurrentSessionAfterStream();
-          set({ error: message, isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null });
+          set({ error: message, isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null });
         },
       });
     } catch (err) {
@@ -370,7 +384,7 @@ const useAIStore = create((set, get) => ({
         return;
       }
       await get().syncCurrentSessionAfterStream();
-      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, error: err.message });
+      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null, error: err.message });
     }
   },
 
@@ -384,9 +398,11 @@ const useAIStore = create((set, get) => ({
 
   cancelActiveRequest: () => {
     const controller = get().activeRequestController;
+    const requestId = get().activeRequestId;
     if (!controller) return;
 
     set({ isStopping: true });
+    aiService.cancelRequest(requestId).catch(() => {});
     controller.abort();
   },
 
@@ -402,6 +418,7 @@ const useAIStore = create((set, get) => ({
         streamingContent: '',
         toolStatus: null,
         activeRequestController: null,
+        activeRequestId: null,
         error: null,
       }));
       return;
@@ -424,6 +441,7 @@ const useAIStore = create((set, get) => ({
         streamingContent: '',
         toolStatus: null,
         activeRequestController: null,
+        activeRequestId: null,
         error: null,
       });
     } catch {
@@ -434,6 +452,7 @@ const useAIStore = create((set, get) => ({
         streamingContent: '',
         toolStatus: null,
         activeRequestController: null,
+        activeRequestId: null,
         error: null,
       }));
     }
@@ -443,7 +462,7 @@ const useAIStore = create((set, get) => ({
     const { currentSession } = get();
     const sessionId = sessionIdOverride || currentSession?._id;
     if (!sessionId) {
-      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null });
+      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null });
       return;
     }
     try {
@@ -457,10 +476,10 @@ const useAIStore = create((set, get) => ({
         sessionPersona: sessionData.session.aiPersona || {},
         effectivePersona: withPersonaDefaults(sessionData.session.effectivePersona),
         isLoading: false, streamingContent: '', toolStatus: null,
-        activeRequestController: null, error: null,
+        activeRequestController: null, activeRequestId: null, error: null,
       });
     } catch {
-      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null });
+      set({ isLoading: false, streamingContent: '', toolStatus: null, activeRequestController: null, activeRequestId: null });
     }
   },
 
