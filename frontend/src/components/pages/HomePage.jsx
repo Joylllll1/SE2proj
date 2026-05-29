@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { matchPostQuery } from '../../utils/search';
 import Icon from '../common/Icon';
 import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
@@ -10,7 +11,6 @@ import useAuthStore from '../../store/authStore';
 import usePostActions from '../../hooks/usePostActions';
 import useLikeBookmark from '../../hooks/useLikeBookmark';
 import * as reportService from '../../services/reportService';
-import { matchPostQuery } from '../../utils/search';
 
 // ─── Stable store selectors ───
 const selectLoading = (s) => s.loading;
@@ -26,8 +26,11 @@ function getPostTimeValue(post) {
   return Number.isNaN(timeValue) ? 0 : timeValue;
 }
 
+const selectFeedScrollToken = (s) => s.feedScrollToken;
+
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
+  const feedHeadRef = useRef(null);
 
   // ── Stores ──
   const loading = usePostStore(selectLoading);
@@ -38,6 +41,7 @@ export default function HomePage() {
   const navigate = useUiStore(selectNavigate);
   const showToast = useUiStore(selectShowToast);
   const user = useAuthStore((s) => s.user);
+  const feedScrollToken = useUiStore(selectFeedScrollToken);
 
   // ── Hooks ──
   const { openPost } = usePostActions();
@@ -48,6 +52,29 @@ export default function HomePage() {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  // Scroll to feed section when search confirms from TopBar (mobile only)
+  useEffect(() => {
+    if (feedScrollToken > 0 && feedHeadRef.current && window.innerWidth < 640) {
+      const el = feedHeadRef.current;
+      const scrollToFeed = () => {
+        const topbar = document.querySelector('.topbar');
+        const topbarH = topbar ? topbar.getBoundingClientRect().height : 48;
+        el.style.scrollMarginTop = `${topbarH + 4}px`;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+      // On mobile the keyboard closes after search confirm, which resizes
+      // the viewport. Wait for that animation to finish before scrolling.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToFeed();
+          // Re-scroll after keyboard-close viewport change settles
+          setTimeout(scrollToFeed, 250);
+        });
+      });
+      useUiStore.setState({ feedScrollToken: 0 });
+    }
+  }, [feedScrollToken]);
 
   const visiblePosts = posts.filter((post) => matchPostQuery(post, query));
 
@@ -95,7 +122,7 @@ export default function HomePage() {
             <p className="eyebrow mb-1.5 text-blue text-xs font-bold tracking-widest uppercase">Anonymous Feed</p>
             <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">全站动态</h1>
           </div>
-          <div className="tabs flex flex-wrap gap-2 max-sm:w-full" aria-label="动态排序">
+          <div ref={feedHeadRef} className="tabs flex flex-wrap gap-2 max-sm:w-full" aria-label="动态排序">
             {[
               ['latest', '最新发布'],
               ['likes', '高赞共鸣'],

@@ -4,6 +4,7 @@ import { loadJSON, saveJSON } from '../utils';
 // ─── URL 映射表 ───
 const PAGE_URLS = {
   home: '/',
+  my: '/my',
   bookmarks: '/bookmarks',
   likes: '/likes',
   myposts: '/myposts',
@@ -84,6 +85,8 @@ const useUiStore = create((set, get) => ({
   query: '',
   // Carousel navigation
   eventToOpen: null,
+  // Scroll-to-feed signal (incremented to trigger HomePage scroll)
+  feedScrollToken: 0,
 
   // Toast
   showToast: (msg) => {
@@ -211,7 +214,6 @@ const useUiStore = create((set, get) => ({
     }
     if (url) {
       window.history.pushState({ page, params }, '', url);
-      window.scrollTo(0, 0);
     }
     set({
       activePage: page,
@@ -219,6 +221,7 @@ const useUiStore = create((set, get) => ({
       pendingNavigation: null,
       ...params,
     });
+    window.scrollTo(0, 0);
     return true;
   },
   handlePopState: () => {
@@ -257,6 +260,7 @@ const useUiStore = create((set, get) => ({
     set({ eventToOpen: eventId, activePage: 'announcements' });
     setTimeout(() => set({ eventToOpen: null }), 100);
   },
+  requestFeedScroll: () => set({ feedScrollToken: Date.now() }),
 }));
 
 export default useUiStore;

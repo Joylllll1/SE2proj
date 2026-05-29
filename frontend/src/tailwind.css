@@ -226,10 +226,6 @@ h1, h2, h3, p {
   @apply inline-flex items-center justify-center gap-[7px] rounded-full px-4 py-[10px] border border-white/28 text-white bg-white/12 font-bold transition-all duration-150;
 }
 
-/* FAB - Warm accent */
-.fab-compose {
-  @apply hidden max-lg:grid fixed right-6 bottom-6 z-40 w-[52px] h-[52px] place-items-center border-0 rounded-2xl text-white bg-blue shadow-md transition-all duration-200 hover:scale-106 hover:shadow-lg;
-}
 
 /* Tones */
 .tone-success .app-icon,
@@ -379,7 +375,8 @@ h1, h2, h3, p {
 
 /* Notif dropdown - Glassmorphism */
 .notif-dropdown {
-  @apply absolute top-[calc(100%+8px)] right-0 w-[340px] max-h-[400px] overflow-y-auto border border-line rounded-xl bg-surface backdrop-blur-md shadow-glass z-[100] animate-notif-in;
+  @apply absolute top-[calc(100%+8px)] right-0 w-[min(340px,calc(100vw-2rem))] max-h-[400px] overflow-y-auto border border-line rounded-xl bg-surface backdrop-blur-md shadow-glass z-[100] animate-notif-in;
+  @apply max-sm:fixed max-sm:left-2 max-sm:right-2 max-sm:top-[52px] max-sm:w-auto max-sm:max-h-[60vh];
 }
 
 .notif-item.unread {
@@ -747,6 +744,27 @@ h1, h2, h3, p {
 
 .collection-hero {
   @apply flex items-center justify-between gap-5 max-sm:grid max-sm:grid-cols-1;
+}
+
+/* My page - mobile tabbed sub-navigation */
+.my-page {
+  @apply max-w-[1180px] mx-auto;
+}
+
+.my-sub-nav {
+  @apply flex items-center justify-center gap-2 mb-5;
+}
+
+.my-sub-nav-btn {
+  @apply px-4 py-[10px] border border-line rounded-full bg-white text-text-2 text-sm font-semibold transition-all duration-200;
+}
+
+.my-sub-nav-btn.active {
+  @apply bg-blue-soft text-blue border-blue;
+}
+
+.my-page-content {
+  @apply min-h-[50vh];
 }
 
 /* Masonry grid */
@@ -1607,7 +1625,7 @@ h1, h2, h3, p {
 
 /* Sidebar - Glassmorphism with warm tint */
 .sidebar {
-  @apply sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-white/60 backdrop-blur-md z-30 max-md:hidden;
+  @apply sticky top-0 flex w-[240px] h-screen flex-col flex-shrink-0 border-r border-line bg-white/60 backdrop-blur-md z-30 max-lg:hidden;
 }
 
 .sidebar-top {
@@ -1639,6 +1657,7 @@ h1, h2, h3, p {
 /* Search box */
 .search-box {
   @apply flex items-center gap-2 w-[min(480px,100%)] h-[38px] px-[14px] border border-line rounded-full bg-white text-text-3 shadow-xs;
+  transition: width 0.3s ease, flex-grow 0.3s ease;
 }
 
 .search-box input {
@@ -1649,9 +1668,49 @@ h1, h2, h3, p {
   @apply text-[#9aa6b7];
 }
 
-/* Topbar actions */
+/* Mobile: expanded search mode */
+.topbar-search-expanded {
+  @apply max-sm:gap-2.5;
+}
+
+.topbar-search-expanded .search-box {
+  @apply max-sm:flex-1 max-sm:w-auto;
+}
+
+/* Clear button inside expanded search box */
+.search-clear-btn {
+  @apply flex-shrink-0 w-[18px] h-[18px] flex items-center justify-center rounded-full text-text-3 hover:text-text hover:bg-line-soft/50 transition-colors duration-150 cursor-pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Action button next to expanded search box (取消/确认) */
+.search-action-btn {
+  @apply flex-shrink-0 px-1 py-1 text-[15px] font-medium border-0 bg-transparent cursor-pointer transition-colors duration-150;
+  color: var(--color-blue);
+}
+
+.search-action-btn:active {
+  opacity: 0.7;
+}
+
+/* Hide topbar actions children on mobile when search expanded */
+.topbar-search-expanded .topbar-actions > * {
+  @apply max-sm:hidden;
+}
+
+/* Topbar actions fade transition */
 .topbar-actions {
   @apply flex items-center gap-2.5;
+}
+
+.topbar-actions > * {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Mobile expanded: header compact padding */
+.topbar.topbar-search-expanded {
+  @apply max-sm:px-3;
 }
 
 /* Icon button */
@@ -1693,15 +1752,31 @@ h1, h2, h3, p {
 
 /* Mobile nav - Glassmorphism */
 .mobile-nav {
-  @apply fixed right-3 bottom-3 left-3 z-50 grid grid-cols-5 gap-1 p-2 border border-line rounded-[24px] bg-white/80 backdrop-blur-md shadow-glass max-lg:hidden;
+  @apply lg:hidden fixed right-3 left-3 z-50 flex items-center justify-around gap-1.5 p-2 border border-line rounded-[24px] bg-white/80 backdrop-blur-md shadow-glass;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
-.mobile-nav button {
-  @apply grid place-items-center gap-1 min-w-0 py-2 px-1 border-0 rounded-2xl bg-transparent text-text-3 text-[10px] font-bold;
+.mobile-nav-item {
+  @apply grid place-items-center gap-1 min-w-0 py-2 px-1 border-0 rounded-2xl bg-transparent text-text-3 text-[10px] font-bold transition-colors duration-150;
+  flex: 1;
 }
 
-.mobile-nav button.active {
+.mobile-nav-item.active {
   @apply text-blue bg-blue-soft;
+}
+
+.mobile-compose-btn {
+  @apply grid place-items-center w-[44px] h-[44px] flex-none border-0 rounded-[14px] text-white shadow-md transition-all duration-200;
+  background: linear-gradient(135deg, #e53935, #c62828);
+}
+
+.mobile-compose-btn:active {
+  transform: scale(0.94);
+}
+
+.mobile-compose-btn .app-icon {
+  @apply w-[22px] h-[22px] stroke-white;
+  stroke-width: 2.4;
 }
 
 /* Section head large */
@@ -1741,8 +1816,6 @@ h1, h2, h3, p {
 .folder-menu-dropdown .menu-item .app-icon {
   @apply w-3.5 h-3.5 flex-shrink-0;
 }
-
-/* Toast - Warm dark */
 .toast {
   @apply fixed bottom-[100px] left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2 rounded-full bg-[#4a3840] px-5 py-3 text-sm font-semibold text-white shadow-md animate-toast-in;
 }
@@ -1762,15 +1835,6 @@ h1, h2, h3, p {
 
 .folder-capsule.active .app-icon {
   @apply text-white;
-}
-
-/* Folder menu dropdown */
-.folder-menu-dropdown .menu-item {
-  @apply flex items-center gap-2;
-}
-
-.folder-menu-dropdown .menu-item .app-icon {
-  @apply w-3.5 h-3.5 flex-shrink-0;
 }
 
 /* ─── Film grain overlay (LandingPage) ─── */
@@ -2186,20 +2250,6 @@ h1, h2, h3, p {
   border-right-color: var(--color-red);
 }
 
-.auth-input-error.auth-email-group,
-.auth-input-error.auth-email-group:focus-within {
-  border-color: var(--color-red);
-  box-shadow: 0 0 0 3px rgba(212, 120, 124, 0.15);
-}
-
-.auth-email-input {
-  @apply flex-1 min-w-0 h-11 px-3.5 border-0 border-r border-line bg-transparent text-text text-sm outline-none;
-}
-
-.auth-email-input::placeholder {
-  @apply text-text-3;
-}
-
 .auth-email-select {
   @apply flex-none w-[180px] h-11 pl-2 pr-8 border-0 bg-transparent text-text text-sm outline-none appearance-none cursor-pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b5f5b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
@@ -2317,5 +2367,8 @@ h1, h2, h3, p {
   }
   .auth-title {
     @apply text-xl;
+  }
+  .auth-email-select {
+    @apply w-[140px];
   }
 }

@@ -10,7 +10,7 @@ import { hasSearchQuery, matchPostQuery } from '../../utils/search';
 const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectQuery = (s) => s.query;
 
-function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
+function BookmarksPage({ compact, posts, bookmarks, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
   const [activeFolder, setActiveFolder] = useState('all');
   const [showFolderMenu, setShowFolderMenu] = useState(null);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
@@ -111,22 +111,24 @@ function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onRep
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
-      <section className="collection-hero flex items-center justify-between gap-5 max-sm:grid max-sm:grid-cols-1">
-        <div>
-          <p className="eyebrow mb-[18px] text-blue text-xs font-bold tracking-widest uppercase">Saved Moments</p>
-          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">我的收藏</h1>
-          <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">整理并分类你在树洞中发现的精彩瞬间。</p>
-        </div>
-        <button
-          className="inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2"
-          onClick={() => setShowNewFolderModal(true)}
-          type="button"
-        >
-          <Icon name="add_circle" /> 新建文件夹
-        </button>
-      </section>
+      {!compact && (
+        <section className="collection-hero">
+          <div>
+            <p className="eyebrow mb-[18px] text-blue text-xs font-bold tracking-widest uppercase">Saved Moments</p>
+            <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">我的收藏</h1>
+            <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">整理并分类你在树洞中发现的精彩瞬间。</p>
+          </div>
+          <button
+            className="inline-flex items-center justify-center gap-[7px] border-0 rounded-full px-[18px] py-[10px] text-white bg-blue font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-blue-2"
+            onClick={() => setShowNewFolderModal(true)}
+            type="button"
+          >
+            <Icon name="add_circle" /> 新建文件夹
+          </button>
+        </section>
+      )}
 
-      <div className="category-row flex flex-wrap gap-3 my-[22px] items-center">
+      <div className="category-row flex flex-wrap gap-3 max-sm:gap-1 my-[22px] items-center">
         {collectionFolders.map((folder) => {
           const folderPosts = getBookmarksForFolder(folder.id);
           const count = folderPosts.length;
@@ -214,7 +216,7 @@ function BookmarksPage({ posts, bookmarks, onOpenPost, onLike, onBookmark, onRep
           description={searching ? '换个关键词试试。' : '浏览树洞时点击书签图标即可收藏。'}
         />
       ) : (
-          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
+          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1] max-sm:[column-gap:12px]">
             {filteredFolderPosts.map((post) => {
               const postView = getPostLikeView(post);
               return (

@@ -19,7 +19,7 @@ const selectIsCommentPendingUnlike = (s) => s.isPendingUnlike;
 const selectPendingCommentUnlikes = (s) => s.pendingCommentUnlikes;
 const selectQuery = (s) => s.query;
 
-function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport }) {
+function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onReport }) {
   const [activeTab, setActiveTab] = useState('posts');
   const [likesData, setLikesData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -224,13 +224,15 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
-      <section className="collection-hero flex items-center justify-between gap-5 max-sm:grid max-sm:grid-cols-1">
-        <div>
-          <p className="eyebrow mb-[18px] text-blue text-xs font-bold tracking-widest uppercase">My Likes</p>
-          <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">我的喜爱</h1>
-          <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">回顾你在树洞中点赞过的精彩内容。</p>
-        </div>
-      </section>
+      {!compact && (
+        <section className="collection-hero">
+          <div>
+            <p className="eyebrow mb-[18px] text-blue text-xs font-bold tracking-widest uppercase">My Likes</p>
+            <h1 className="m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight">我的喜爱</h1>
+            <p className="mt-[9px] mb-0 text-text-2 leading-relaxed">回顾你在树洞中点赞过的精彩内容。</p>
+          </div>
+        </section>
+      )}
 
       <div className="category-row flex flex-wrap gap-3 my-[22px]">
         <button
@@ -269,7 +271,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
         filteredPosts.length === 0 ? (
           <EmptyState title={searching ? '没有找到匹配的点赞帖子' : '还没有赞过的帖子'} />
         ) : (
-          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1]">
+          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1] max-sm:[column-gap:12px]">
             {filteredPosts.map((post) => {
               return (
                 <div key={post.id} className="inline-block w-full mb-[18px]">
@@ -294,7 +296,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
           <EmptyState title={searching ? '没有找到匹配的点赞评论' : '还没有赞过的评论'} />
         ) : (
           <section className="space-y-4">
-            {filteredComments.map((comment) => {
+            {filteredComments.map((comment, i) => {
               const postId = comment.postId;
               const post = postId ? allPosts.find((p) => p.id === postId) : null;
               const isLiked = comment.item?.isLiked ?? false;
@@ -302,7 +304,7 @@ function LikesPage({ posts: allPosts, likedPosts: allLikedPosts, onOpenPost, onR
 
               return (
                 <div
-                  key={comment.item?.id || Math.random()}
+                  key={comment.item?.id || `${comment.postId}-${comment.type}-${i}`}
                   className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all"
                 >
                   <div className="flex justify-between items-start mb-2">

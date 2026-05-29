@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
 import EmptyState from '../common/EmptyState';
 import AdminSidebar from '../layout/AdminSidebar';
+import AdminMobileNav from '../layout/AdminMobileNav';
+import AdminTopBar from '../layout/AdminTopBar';
 import { EventDetailModal, RejectionModal } from '../common/EventModals';
 import useAdminStore from '../../store/adminStore';
 import useEventStore from '../../store/eventStore';
@@ -404,7 +406,10 @@ function AdminDashboard() {
     <div className="flex min-h-screen">
       <AdminSidebar activeTab={activeTab} onTabChange={handleTabChange} />
 
-      <main className="flex-1 p-6 pb-12">
+      <div className="min-w-0 flex-1 flex flex-col">
+        <AdminTopBar />
+
+        <main className="flex-1 p-6 pb-12 max-md:pb-24">
         {/* Reports Tab */}
         {activeTab === 'reports' && (
           <div>
@@ -417,7 +422,7 @@ function AdminDashboard() {
               <div className="space-y-4">
                 {reports.map((report) => (
                   <div key={report._id} className="bg-surface rounded-md p-5 shadow-sm border border-line-soft">
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start justify-between mb-3 max-sm:flex-col max-sm:gap-2">
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                           report.targetType === 'post' ? 'bg-orange-soft text-orange' :
@@ -521,7 +526,7 @@ function AdminDashboard() {
               <div className="space-y-4">
                 {bans.map((ban) => (
                   <div key={ban._id} className="bg-surface rounded-md p-5 shadow-sm border border-line-soft">
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start justify-between mb-3 max-sm:flex-col max-sm:gap-2">
                       <div>
                         <p className="font-semibold text-text">{ban.userId?.email || '未知用户'}</p>
                         <p className="text-sm text-text-2 mt-1">原因：{ban.reason}</p>
@@ -580,21 +585,21 @@ function AdminDashboard() {
             ) : auditLogs.length === 0 ? (
               <EmptyState title="暂无审计日志" description="操作记录为空" />
             ) : (
-              <div className="bg-surface rounded-md shadow-sm border border-line-soft overflow-hidden">
+              <div className="bg-surface rounded-md shadow-sm border border-line-soft overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-surface-soft">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold text-text-2">操作</th>
-                      <th className="px-4 py-3 text-left font-semibold text-text-2">对象</th>
-                      <th className="px-4 py-3 text-left font-semibold text-text-2">原因</th>
-                      <th className="px-4 py-3 text-left font-semibold text-text-2">时间</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2 max-sm:px-2 max-sm:py-2">操作</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2 max-sm:px-2 max-sm:py-2">对象</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2 max-sm:px-2 max-sm:py-2">原因</th>
+                      <th className="px-4 py-3 text-left font-semibold text-text-2 max-sm:px-2 max-sm:py-2">时间</th>
                     </tr>
                   </thead>
                   <tbody>
                     {auditLogs.map((log) => (
                       <tr key={log._id} className="border-t border-line-soft">
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
+                        <td className="px-4 py-3 max-sm:px-2 max-sm:py-2">
+                          <span className={`inline-block px-2 py-1 text-xs rounded-full whitespace-nowrap ${
                             log.action === 'trace' ? 'bg-purple-soft text-purple' :
                             log.action === 'ban' ? 'bg-red-soft text-red' :
                             log.action === 'unban' ? 'bg-green-soft text-green' :
@@ -613,13 +618,13 @@ function AdminDashboard() {
                              log.action === 'delete_event' ? '下架活动' : '删帖'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-text-2">
+                        <td className="px-4 py-3 text-text-2 max-sm:px-2 max-sm:py-2">
                           {log.targetEventId?.title || log.targetUserId?.email || log.targetPostId?.title?.slice(0, 20) || '-'}
                         </td>
-                        <td className="px-4 py-3 text-text-3 max-w-[200px] truncate">
+                        <td className="px-4 py-3 text-text-3 max-w-[200px] truncate max-sm:px-2 max-sm:py-2">
                           {log.reason || '-'}
                         </td>
-                        <td className="px-4 py-3 text-text-3">
+                        <td className="px-4 py-3 text-text-3 max-sm:px-2 max-sm:py-2">
                           {new Date(log.createdAt).toLocaleString('zh-CN')}
                         </td>
                       </tr>
@@ -637,7 +642,7 @@ function AdminDashboard() {
             <h1 className="text-2xl font-bold mb-6">公告审核</h1>
 
             {/* Event sub-tabs */}
-            <div className="flex gap-2 mb-4 border-b border-line-soft">
+            <div className="flex gap-2 max-sm:gap-1 mb-4 border-b border-line-soft">
               <button
                 className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors duration-150 ${
                   eventTab === 'pending'
@@ -791,7 +796,7 @@ function AdminDashboard() {
                 <div className="space-y-4">
                   {rejectedEvents.map((event) => (
                     <div key={event._id} className="bg-surface rounded-md p-5 shadow-sm border border-line-soft">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-3 max-sm:flex-col max-sm:gap-2">
                         <div>
                           <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-red-soft text-red mb-2">{event.type}</span>
                           <h3 className="font-bold text-text">{event.title}</h3>
@@ -822,6 +827,9 @@ function AdminDashboard() {
           </div>
         )}
       </main>
+
+      <AdminMobileNav activeTab={activeTab} onTabChange={handleTabChange} />
+      </div>
 
       {/* Trace Result Panel */}
       {traceResult && (

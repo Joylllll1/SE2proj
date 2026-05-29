@@ -26,7 +26,7 @@ function ReportModal({ targetId, targetType, onClose, onSubmit }) {
 
   const modalContent = (
     <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/40 backdrop-blur-sm animate-modal-fade-in" onClick={onClose}>
-      <div className="modal-content w-[min(480px,90vw)] rounded-2xl bg-white/90 backdrop-blur-md shadow-glass animate-modal-scale-in p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content w-[min(480px,90vw)] rounded-2xl bg-white/90 backdrop-blur-md shadow-glass animate-modal-scale-in p-6 max-sm:p-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-2xl tracking-tight">举报{targetType === 'post' ? '帖子' : '评论'}</h2>
           <button
@@ -76,7 +76,7 @@ function ReportModal({ targetId, targetType, onClose, onSubmit }) {
           </div>
         )}
 
-        <div className="modal-actions flex justify-end gap-2.5 mt-6">
+        <div className="modal-actions flex justify-end gap-2.5 mt-6 max-sm:flex-col max-sm:gap-2">
           <button
             className="secondary-button inline-flex items-center justify-center gap-[7px] border border-line rounded-full px-5 py-[10px] bg-white text-text-2 text-sm font-semibold transition-all duration-150 hover:bg-surface-soft"
             onClick={onClose}

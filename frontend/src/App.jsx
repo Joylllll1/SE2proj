@@ -3,6 +3,7 @@ import Toast from './components/common/Toast';
 import ConfirmLeaveDialog from './components/common/ConfirmLeaveDialog';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
+import MobileNav from './components/layout/MobileNav';
 import AIPanel from './components/features/AIPanel';
 import HomePage from './components/pages/HomePage';
 import SettingsPage from './components/pages/SettingsPage';
@@ -12,6 +13,7 @@ import LoginPage from './components/pages/LoginPage';
 import RegisterPage from './components/pages/RegisterPage';
 import ForgetPasswordPage from './components/pages/ForgetPasswordPage';
 import BookmarksPage from './components/pages/BookmarksPage';
+import MyPage from './components/pages/MyPage';
 import DetailPage from './components/pages/DetailPage';
 import ComposePage from './components/pages/ComposePage';
 import DraftsPage from './components/pages/DraftsPage';
@@ -477,7 +479,7 @@ function App() {
           onNavigate={navigate}
           onAIOpen={handleToggleAi}
         />
-        <main className="p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
+        <main className="min-w-0 overflow-x-hidden p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
           {activePage === 'home' && <HomePage />}
           {activePage === 'detail' && (
             selectedPost ? (
@@ -504,6 +506,22 @@ function App() {
           )}
           {activePage === 'compose' && <ComposePage onPublish={handlePublish} draftId={composeDraftId} />}
           {activePage === 'drafts' && <DraftsPage onNavigate={navigate} />}
+          {activePage === 'my' && (
+            <MyPage
+              posts={posts}
+              bookmarks={bookmarks}
+              likedPosts={likedPosts}
+              onOpenPost={openPost}
+              onLike={toggleLike}
+              onBookmark={toggleBookmark}
+              onReport={handleReport}
+              collectionFolders={collectionFolders}
+              bookmarkFolders={bookmarkFolders}
+              onUpdateFolders={updateFolders}
+              onUpdateBookmarkFolders={updateBookmarkFolders}
+              onNavigate={navigate}
+            />
+          )}
           {activePage === 'bookmarks' && (
             <BookmarksPage
               posts={posts}
@@ -540,6 +558,7 @@ function App() {
           {activePage === 'settings' && <SettingsPage />}
           {activePage === 'settings-password' && <PasswordChangePage />}
         </main>
+        <MobileNav activePage={activePage} onNavigate={navigate} />
       </div>
       <AIPanel open={aiOpen} onClose={closeAi} />
       {toast && <Toast message={toast} onDone={clearToast} />}

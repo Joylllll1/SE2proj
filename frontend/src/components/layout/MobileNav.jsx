@@ -1,15 +1,52 @@
 import React from 'react';
 import Icon from '../common/Icon';
-import { navItems } from './Sidebar';
+
+const MOBILE_ITEMS = [
+  { id: 'home', label: '首页', icon: 'dynamic_feed' },
+  { id: 'announcements', label: '公告', icon: 'campaign' },
+  null, // compose placeholder
+  { id: 'my', label: '我的', icon: 'person', matchPages: ['my', 'bookmarks', 'likes', 'myposts'] },
+  { id: 'settings', label: '设置', icon: 'settings' },
+];
 
 function MobileNav({ activePage, onNavigate }) {
-  const items = navItems.filter((item) => ['home', 'bookmarks', 'announcements', 'settings'].includes(item.id));
+  const navItems = MOBILE_ITEMS.filter(Boolean);
+
+  const isActive = (item) => {
+    if (item.matchPages) return item.matchPages.includes(activePage);
+    return activePage === item.id;
+  };
+
   return (
-    <nav className="mobile-nav fixed right-3 bottom-3 left-3 z-50 grid grid-cols-4 gap-1 p-2 border border-line rounded-[20px] bg-white/92 backdrop-blur-xs shadow-md max-lg:hidden">
-      {items.map((item) => (
-        <button className={`grid place-items-center gap-1 min-w-0 py-2 px-1 border-0 rounded-2xl bg-transparent text-text-3 text-[10px] font-bold transition-colors duration-150 ${activePage === item.id ? 'active text-blue bg-blue-soft' : ''}`} key={item.id} onClick={() => onNavigate(item.id)} type="button">
-          <Icon name={item.icon} filled={activePage === item.id} />
-          <span>{item.label.replace('动态首页', '首页').replace('个人设置', '设置')}</span>
+    <nav className="mobile-nav">
+      {navItems.slice(0, 2).map((item) => (
+        <button
+          className={`mobile-nav-item ${isActive(item) ? 'active' : ''}`}
+          key={item.id}
+          onClick={() => onNavigate(item.id)}
+          type="button"
+        >
+          <Icon name={item.icon} filled={isActive(item)} />
+          <span>{item.label}</span>
+        </button>
+      ))}
+      <button
+        className="mobile-compose-btn"
+        onClick={() => onNavigate('compose')}
+        type="button"
+        aria-label="发布新动态"
+      >
+        <Icon name="add" />
+      </button>
+      {navItems.slice(2).map((item) => (
+        <button
+          className={`mobile-nav-item ${isActive(item) ? 'active' : ''}`}
+          key={item.id}
+          onClick={() => onNavigate(item.id)}
+          type="button"
+        >
+          <Icon name={item.icon} filled={isActive(item)} />
+          <span>{item.label}</span>
         </button>
       ))}
     </nav>
