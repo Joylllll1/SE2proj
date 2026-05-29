@@ -12,6 +12,11 @@ export function shouldRoundtripReasoning(config = getLLMConfig()) {
   const apiUrl = String(config.apiUrl || '');
   const model = String(config.model || '').trim();
   const isOfficialDeepSeek = /api\.deepseek\.com/.test(apiUrl);
+  const isDashScopeCompatible = /dashscope\.aliyuncs\.com\/compatible-mode/.test(apiUrl);
+
+  if (isDashScopeCompatible) {
+    return true;
+  }
 
   if (!isOfficialDeepSeek) {
     return false;
@@ -37,6 +42,10 @@ export function shouldRoundtripReasoning(config = getLLMConfig()) {
  */
 export async function callLLM({ messages, tools, toolChoice, stream, signal, temperature = 0.7 }) {
   const { apiUrl, apiKey, model } = getLLMConfig();
+  const hasReasoningHistory = Array.isArray(messages) && messages.some(
+    (message) => message?.role === 'assistant' && typeof message?.reasoning_content === 'string' && message.reasoning_content.trim()
+  );
+  const isDashScopeCompatible = /dashscope\.aliyuncs\.com\/compatible-mode/.test(apiUrl);
 
   if (!apiKey) {
     throw new AppError('AI 服务未配置', 500, 'AI_NOT_CONFIGURED');
@@ -56,6 +65,10 @@ export async function callLLM({ messages, tools, toolChoice, stream, signal, tem
 
   if (stream) {
     body.stream = true;
+  }
+
+  if (isDashScopeCompatible && hasReasoningHistory) {
+    body.preserve_thinking = true;
   }
 
   const response = await fetch(apiUrl, {
