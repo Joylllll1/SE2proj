@@ -5,12 +5,14 @@ import { buildSystemPrompt } from './aiPromptBuilder.js';
 import { resolveEffectivePersona } from './aiPersonaService.js';
 import { runToolLoop } from './llm/toolLoop.js';
 import { shouldRoundtripReasoning } from './llm/client.js';
-import { sseDone, sseStart, sseToken } from './llm/sseEvents.js';
+import { sseDone, sseStart, sseToken, sseToolCall, sseToolResult } from './llm/sseEvents.js';
+import { executeTool } from './tools/index.js';
 
 const MAX_CONTEXT_MESSAGES = 20; // 保留最近 20 条消息作为上下文
 const MAX_SESSION_TITLE_LENGTH = 20;
 const CURRENT_POST_REFERENCE_PATTERN = /(这个帖子|这条帖子|本帖|这篇帖子|评论区|楼主)/;
 const COMMENT_ANALYSIS_PATTERN = /(评论区|评论里|评论|回复|吵什么|哪几派|争论|观点|看法)/;
+const STRONG_REALTIME_QUERY_PATTERN = /(今天|今日|最新|最近|刚刚|实时|新闻|热点|热搜|天气|比分|赛果|股价|汇率|政策|发布会|通报|声明|纪念日|节日)/;
 const SELECT_POST_DETAIL_REPLY = '请先进入某个帖子详情页，再让我帮你总结这个帖子、分析评论区，或者解释这条帖子在说什么。';
 const LOAD_COMMENTS_FIRST_REPLY = '请先等待帖子评论加载完成，再让我分析评论区在吵什么或总结主要观点。';
 const NO_COMMENTS_TO_ANALYZE_REPLY = '这条帖子目前还没有可分析的评论内容。';
@@ -154,6 +156,58 @@ function resolveMessageContext(message) {
   return normalizeChatContext(message?.contextSnapshot);
 }
 
+function shouldPrefetchWebSearch(content) {
+  return STRONG_REALTIME_QUERY_PATTERN.test(content || '');
+}
+
+async function maybePrefetchWebSearch({ messages, content, signal, emitEvent }) {
+  if (!shouldPrefetchWebSearch(content)) {
+    return { messages, initialToolCallCount: 0 };
+  }
+
+  const args = { query: content };
+  const toolCallId = `prefetch_web_search_${Date.now()}`;
+
+  if (emitEvent) {
+    emitEvent(sseToolCall('web_search', args));
+  }
+
+  const toolResult = await executeTool('web_search', args, signal).catch((error) => ({
+    results: [],
+    note: error?.message || '暂时没有拿到可靠的最新结果',
+  }));
+
+  if (emitEvent) {
+    emitEvent(sseToolResult('web_search'));
+  }
+
+  return {
+    initialToolCallCount: 1,
+    messages: [
+      ...messages,
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [
+          {
+            id: toolCallId,
+            type: 'function',
+            function: {
+              name: 'web_search',
+              arguments: JSON.stringify(args),
+            },
+          },
+        ],
+      },
+      {
+        role: 'tool',
+        tool_call_id: toolCallId,
+        content: JSON.stringify(toolResult),
+      },
+    ],
+  };
+}
+
 function toLLMMessage(message) {
   const llmMessage = {
     role: message.role,
@@ -286,15 +340,22 @@ export const sendMessage = async (userId, sessionId, content, options = {}) => {
     ...(currentPostContextMessage ? [{ role: 'system', content: currentPostContextMessage }] : []),
     ...historyMessages.map(toLLMMessage),
   ];
+  const prefetchedInput = await maybePrefetchWebSearch({
+    messages: llmMessages,
+    content,
+    signal: options.signal,
+    emitEvent: options.emitEvent,
+  });
 
   // 调用 LLM with tool loop
   let aiContent;
   let aiReasoningContent = '';
   try {
     const result = await runToolLoop({
-      messages: llmMessages,
+      messages: prefetchedInput.messages,
       signal: options.signal,
       writeEvent: options.emitEvent || (() => {}),
+      initialToolCallCount: prefetchedInput.initialToolCallCount,
     });
     aiContent = result.content;
     aiReasoningContent = result.reasoningContent || '';
@@ -412,15 +473,22 @@ export const regenerateMessage = async (userId, sessionId, options = {}) => {
     ...(currentPostContextMessage ? [{ role: 'system', content: currentPostContextMessage }] : []),
     ...historyMessages.map(toLLMMessage),
   ];
+  const prefetchedInput = await maybePrefetchWebSearch({
+    messages: llmMessages,
+    content: latestUserMessage?.content || '',
+    signal: options.signal,
+    emitEvent: options.emitEvent,
+  });
 
   // 调用 LLM with tool loop
   let aiContent;
   let aiReasoningContent = '';
   try {
     const result = await runToolLoop({
-      messages: llmMessages,
+      messages: prefetchedInput.messages,
       signal: options.signal,
       writeEvent: options.emitEvent || (() => {}),
+      initialToolCallCount: prefetchedInput.initialToolCallCount,
     });
     aiContent = result.content;
     aiReasoningContent = result.reasoningContent || '';

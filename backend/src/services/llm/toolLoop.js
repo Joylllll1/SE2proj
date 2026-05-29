@@ -24,7 +24,7 @@ async function streamFinalAnswer({ messages, signal, writeEvent }) {
   let reasoningContent = '';
   let buffer = '';
 
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read();
     if (done) {
       buffer += decoder.decode();
