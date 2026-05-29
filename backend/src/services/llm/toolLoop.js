@@ -8,6 +8,7 @@ const DECISION_PROMPT = [
   '你当前处于工具决策阶段。',
   '如果需要工具，请直接发起 tool call，不要先输出任何自然语言。',
   '如果不需要任何工具，请只输出精确文本 __NO_TOOL__，不要输出其他内容。',
+  '只要用户问题依赖最新事实、时间敏感信息，或现代人物/机构/产品/政策/比赛/榜单等当前状态不够确定，就先调工具，不要凭记忆回答。',
 ].join('');
 
 async function streamFinalAnswer({ messages, signal, writeEvent }) {
