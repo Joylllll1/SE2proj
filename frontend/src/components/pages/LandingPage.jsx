@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Icon from '../common/Icon';
+import Modal from '../common/Modal';
 
 function useScrollReveal() {
   const ref = React.useRef(null);
@@ -39,6 +40,7 @@ function Reveal({ children, className = '', as: Tag = 'div', delay = 0 }) {
 
 export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
   const [scrolled, setScrolled] = React.useState(false);
+  const [activeModal, setActiveModal] = useState(null);
 
   React.useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.6);
@@ -104,9 +106,10 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
   ];
 
   return (
-    <div className="min-h-screen">
-      {/* Film grain — scoped to landing */}
-      <div className="lp-grain" />
+    <>
+      <div className="min-h-screen">
+        {/* Film grain — scoped to landing */}
+        <div className="lp-grain" />
 
       {/* ─── Nav ─── */}
       <nav className={`lp-nav ${scrolled ? 'lp-nav-scrolled' : ''}`}>
@@ -209,6 +212,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
                 <p className="lp-feature-desc">
                   同一帖子内身份一致，便于连续讨论；不同帖子之间完全隔离，无法跨帖关联。
                 </p>
+                <div className="lp-feature-divider" />
                 <p className="lp-feature-note">
                   对外匿名，对内可治理
                 </p>
@@ -224,6 +228,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
                 <p className="lp-feature-desc">
                   想求共鸣可以互动，只想记录可以不被打扰。两种需求都能满足，互动的节奏由你决定。
                 </p>
+                <div className="lp-feature-divider" />
                 <p className="lp-feature-note">
                   来自访谈发现：用户群体天然分为&ldquo;求互动型&rdquo;和&ldquo;记录型&rdquo;
                 </p>
@@ -239,6 +244,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
                 <p className="lp-feature-desc">
                   举报、审核、敏感词拦截、身份追溯层层保护。调研中 90%+ 的用户认为治理能力是刚需。
                 </p>
+                <div className="lp-feature-divider" />
                 <p className="lp-feature-note">
                   匿名不是失控的理由
                 </p>
@@ -337,14 +343,92 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           </div>
           <p className="text-white/50 text-xs mb-6">在这里说说心里话</p>
           <div className="flex items-center justify-center gap-4 text-white/40 text-xs">
-            <span>&copy; 2025 NJU树洞</span>
+            <span>&copy; 2026 NJU树洞</span>
             <span className="opacity-30">|</span>
-            <button type="button" className="hover:text-white/60 transition-colors">关于我们</button>
+            <button type="button" className="hover:text-white/60 transition-colors" onClick={() => setActiveModal('about')}>关于我们</button>
             <span className="opacity-30">|</span>
-            <button type="button" className="hover:text-white/60 transition-colors">隐私政策</button>
+            <button type="button" className="hover:text-white/60 transition-colors" onClick={() => setActiveModal('privacy')}>隐私政策</button>
           </div>
         </Reveal>
       </footer>
-    </div>
+          </div>
+
+      {/* ─── Modals ─── */}
+      <Modal isOpen={activeModal === 'about'} onClose={() => setActiveModal(null)}>
+        <div className="p-6 max-sm:p-4">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold tracking-tight">关于 NJU 树洞</h2>
+            <button
+              type="button"
+              className="w-8 h-8 grid place-items-center rounded-full hover:bg-surface-soft transition-colors text-text-2"
+              onClick={() => setActiveModal(null)}
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+          <div className="space-y-4 text-text-2 text-sm leading-relaxed">
+            <p>
+              NJU树洞是面向南京大学师生的半匿名表达与互助交流平台。我们致力于为南大学子提供一个温暖、安全、低压力的表达空间。
+            </p>
+            <p>
+              在这里，你可以分享心情、寻求帮助、交流想法，也可以只是安静地记录自己的一天。
+              每位用户在同一帖子内身份一致，但不同帖子之间完全隔离，无法被跨帖关联。
+            </p>
+            <p>
+              平台由南京大学在校学生团队开发与运营，核心设计理念围绕「帖子级匿名」「低压力表达」「有边界的自由」展开，
+              旨在平衡匿名表达的自由与社区治理的责任。
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={activeModal === 'privacy'} onClose={() => setActiveModal(null)}>
+        <div className="p-6 max-sm:p-4">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold tracking-tight">隐私政策</h2>
+            <button
+              type="button"
+              className="w-8 h-8 grid place-items-center rounded-full hover:bg-surface-soft transition-colors text-text-2"
+              onClick={() => setActiveModal(null)}
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+          <div className="space-y-5 text-text-2 text-sm leading-relaxed">
+            <section>
+              <h3 className="font-semibold text-text mb-1">1. 信息的收集与使用</h3>
+              <p>我们仅收集提供服务所必需的信息，包括注册时提供的校园邮箱或学号，
+              以及你主动发布的帖子、评论等内容。这些信息仅用于平台正常运营与内容治理。</p>
+            </section>
+            <section>
+              <h3 className="font-semibold text-text mb-1">2. 匿名机制</h3>
+              <p>你的真实身份不会与帖子内容公开关联。系统通过不可逆的哈希算法为每个帖子生成临时匿名身份，
+              同一帖子内身份一致便于连续讨论，不同帖子之间完全隔离。平台管理员在必要时可追溯发帖人身份以履行治理义务。</p>
+            </section>
+            <section>
+              <h3 className="font-semibold text-text mb-1">3. 数据存储与安全</h3>
+              <p>你的数据存储在国内合规服务器上，传输采用加密协议。我们采取合理的安全措施保护你的个人信息，
+              但无法保证绝对安全。如发生数据泄露，我们将依法及时告知。</p>
+            </section>
+            <section>
+              <h3 className="font-semibold text-text mb-1">4. 信息共享</h3>
+              <p>我们不会将你的个人信息出售给第三方。在法律法规要求、保护平台权益或维护校园安全等必要情况下，
+              我们可能依法披露必要信息。</p>
+            </section>
+            <section>
+              <h3 className="font-semibold text-text mb-1">5. 你的权利</h3>
+              <p>你可以随时查看、修改或删除你的个人信息与发布内容。注销账号后，与你关联的个人信息将被删除或匿名化处理。</p>
+            </section>
+            <section>
+              <h3 className="font-semibold text-text mb-1">6. 政策更新</h3>
+              <p>本隐私政策可能不时更新。重大变更将通过平台通知告知你。继续使用本平台即表示你同意更新后的政策。</p>
+            </section>
+            <p className="text-text-3 text-xs pt-2 border-t border-line-soft">
+              最近更新：2026 年 5 月
+            </p>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

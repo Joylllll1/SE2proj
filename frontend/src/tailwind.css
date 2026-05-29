@@ -481,11 +481,11 @@ h1, h2, h3, p {
 
 /* Modal - Glassmorphism */
 .modal-overlay {
-  @apply fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm animate-modal-fade-in;
+  @apply fixed inset-0 z-[200] grid place-items-center bg-black/30 animate-modal-fade-in;
 }
 
 .modal-content {
-  @apply w-[min(560px,90vw)] max-h-[85vh] overflow-y-auto rounded-2xl bg-white/90 backdrop-blur-md shadow-glass animate-modal-scale-in;
+  @apply w-[min(560px,90vw)] max-h-[85vh] overflow-y-auto border border-line rounded-xl bg-white/60 backdrop-blur-xl shadow-glass animate-modal-scale-in;
 }
 
 /* Settings rows */
@@ -2061,8 +2061,15 @@ h1, h2, h3, p {
   @apply text-text-2 text-sm leading-relaxed mb-3;
 }
 
+.lp-feature-divider {
+  @apply mt-auto border-t border-line-soft;
+}
+
 .lp-feature-note {
-  @apply text-text-3 text-[12px] italic border-t border-line-soft pt-3 mt-auto;
+  @apply text-text-3 text-[12px] italic;
+  height: 48px;
+  display: flex;
+  align-items: center;
 }
 
 /* ── Quotes ── */
