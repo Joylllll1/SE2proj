@@ -2,13 +2,14 @@ import { callLLM, extractToolCalls, extractContent, extractReasoningContent, par
 import { toolSchemas, executeTool } from '../tools/index.js';
 import { sseToolCall, sseToolResult, sseToken } from './sseEvents.js';
 
-const MAX_TOOL_CALLS = parseInt(process.env.AI_TOOL_MAX_CALLS || '3');
+const MAX_TOOL_CALLS = parseInt(process.env.AI_TOOL_MAX_CALLS || '5');
 const MAX_LOOP_ROUNDS = 6;
 const DECISION_PROMPT = [
   '你当前处于工具决策阶段。',
   '如果需要工具，请直接发起 tool call，不要先输出任何自然语言。',
   '如果不需要任何工具，请只输出精确文本 __NO_TOOL__，不要输出其他内容。',
   '只要用户问题依赖最新事实、时间敏感信息，或现代人物/机构/产品/政策/比赛/榜单等当前状态不够确定，就先调工具，不要凭记忆回答。',
+  '如果 web_search 的摘要不足以支撑高风险事实判断，应继续调用 fetch_url 打开一到两个最相关来源页面再回答。',
 ].join('');
 
 async function streamFinalAnswer({ messages, signal, writeEvent }) {
@@ -73,7 +74,14 @@ export async function runToolLoop({ messages, signal, writeEvent, initialToolCal
       ...workingMessages,
       { role: 'system', content: DECISION_PROMPT },
     ];
-    const result = await callLLM({ messages: decisionMessages, tools: toolSchemas, toolChoice: 'auto', stream: false, signal });
+    const result = await callLLM({
+      messages: decisionMessages,
+      tools: toolSchemas,
+      toolChoice: 'auto',
+      stream: false,
+      signal,
+      temperature: 0,
+    });
     const choice = result.data.choices[0];
     const toolCalls = extractToolCalls(choice);
     const content = extractContent(choice);

@@ -1,4 +1,5 @@
 const SEARCH_TIMEOUT_MS = parseInt(process.env.AI_TOOL_TIMEOUT_MS || '8000', 10);
+const MAX_RESULTS = parseInt(process.env.AI_WEB_SEARCH_MAX_RESULTS || '8', 10);
 
 function withTimeout(promise, timeoutMs) {
   return Promise.race([
@@ -10,7 +11,7 @@ function withTimeout(promise, timeoutMs) {
 }
 
 function normalizeSearchResults(results = []) {
-  return results.slice(0, 5).map((item) => ({
+  return results.slice(0, MAX_RESULTS).map((item) => ({
     title: item.title || '',
     snippet: item.description || item.snippet || item.body || '',
     url: item.url || item.href || '',
@@ -44,6 +45,7 @@ export async function handler({ query }, signal) {
     const DDG = await import('duck-duck-scrape');
     const searchPromise = DDG.search(query, {
       safeSearch: DDG.SafeSearchType.MODERATE,
+      locale: 'zh-cn',
     });
 
     const rawResults = await withTimeout(searchPromise, SEARCH_TIMEOUT_MS);
@@ -58,7 +60,7 @@ export async function handler({ query }, signal) {
       return { results: [], note: '没有找到可靠的最新结果' };
     }
 
-    return { results: normalizedResults };
+    return { results: normalizedResults, query };
   } catch (err) {
     if (err?.message === 'SEARCH_TIMEOUT') {
       return { results: [], note: '搜索超时，未拿到可靠结果' };

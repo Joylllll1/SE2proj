@@ -35,7 +35,7 @@ export function shouldRoundtripReasoning(config = getLLMConfig()) {
  * @param {AbortSignal} [options.signal] - AbortSignal for cancellation
  * @returns {Promise<{ data?: Object, stream?: ReadableStream }>}
  */
-export async function callLLM({ messages, tools, toolChoice, stream, signal }) {
+export async function callLLM({ messages, tools, toolChoice, stream, signal, temperature = 0.7 }) {
   const { apiUrl, apiKey, model } = getLLMConfig();
 
   if (!apiKey) {
@@ -45,7 +45,7 @@ export async function callLLM({ messages, tools, toolChoice, stream, signal }) {
   const body = {
     model,
     messages,
-    temperature: 0.7,
+    temperature,
     max_tokens: 2000,
   };
 
