@@ -1370,11 +1370,6 @@ h1, h2, h3, p {
   @apply grid grid-cols-3 gap-3.5 mt-[18px] max-lg:grid-cols-1;
 }
 
-/* Right rail */
-.right-rail {
-  @apply sticky top-[80px] grid self-start gap-4 max-lg:static max-lg:grid-cols-3 max-sm:grid-cols-1;
-}
-
 /* Topic card, Luck card */
 .topic-card,
 .luck-card {

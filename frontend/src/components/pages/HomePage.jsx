@@ -174,8 +174,10 @@ export default function HomePage() {
           )}
         </div>
       </section>
-      <aside className="right-rail sticky top-[80px] grid self-start gap-4 max-lg:static max-lg:grid-cols-3 max-sm:grid-cols-1">
-        <DailyFortune userId={userId} showToast={showToast} />
+      <aside className="self-start">
+        <div className="sticky top-[80px] grid gap-4 max-lg:static max-lg:grid-cols-3 max-sm:grid-cols-1">
+          <DailyFortune userId={userId} showToast={showToast} />
+        </div>
       </aside>
     </div>
   );

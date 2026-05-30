@@ -3,7 +3,7 @@ import AppError from '../utils/AppError.js';
 import { notifyLike } from './notificationService.js';
 import { broadcast } from './sseManager.js';
 import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountService.js';
-import { normalizeInlineImage } from '../utils/image.js';
+import { normalizeInlineImages } from '../utils/image.js';
 
 function toPostDto(post, userId) {
   const images = Array.isArray(post.images) && post.images.length > 0
@@ -34,9 +34,7 @@ export const createPost = async (userId, data) => {
       ? [data.image]
       : [];
 
-  const images = sourceImages
-    .map((image) => normalizeInlineImage(image, '帖子图片'))
-    .filter(Boolean);
+  const images = normalizeInlineImages(sourceImages, { label: '帖子图片' });
   const title = typeof data.title === 'string' ? data.title.trim() : '';
   const content = typeof data.content === 'string' ? data.content.trim() : '';
   const tags = Array.isArray(data.tags)

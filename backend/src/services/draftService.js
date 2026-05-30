@@ -1,7 +1,7 @@
 import Draft from '../models/Draft.js';
 import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
-import { normalizeInlineImage } from '../utils/image.js';
+import { normalizeInlineImages } from '../utils/image.js';
 
 const MAX_DRAFTS = 10;
 
@@ -24,9 +24,10 @@ const normalizeDraftData = (data = {}) => ({
   tags: Array.isArray(data.tags)
     ? data.tags.map((tag) => tag?.trim()).filter(Boolean)
     : [],
-  images: (Array.isArray(data.images) ? data.images : data.image ? [data.image] : [])
-    .map((image) => normalizeInlineImage(image, '草稿图片'))
-    .filter(Boolean),
+  images: normalizeInlineImages(
+    Array.isArray(data.images) ? data.images : data.image ? [data.image] : [],
+    { label: '草稿图片' },
+  ),
 });
 
 const assertDraftContent = (data) => {
@@ -87,13 +88,14 @@ export const deleteDrafts = async (draftIds, userId) => {
 export const publishDraft = async (draftId, userId) => {
   const draft = await Draft.findOne({ _id: draftId, ownerUserId: userId });
   if (!draft) throw new AppError('草稿不存在', 404, 'DRAFT_NOT_FOUND');
-  const images = (Array.isArray(draft.images) && draft.images.length > 0
-    ? draft.images
-    : draft.image
-      ? [draft.image]
-      : [])
-    .map((image) => normalizeInlineImage(image, '草稿图片'))
-    .filter(Boolean);
+  const images = normalizeInlineImages(
+    Array.isArray(draft.images) && draft.images.length > 0
+      ? draft.images
+      : draft.image
+        ? [draft.image]
+        : [],
+    { label: '草稿图片' },
+  );
   const content = draft.content?.trim() || '';
   if (!content && images.length === 0) {
     throw new AppError('草稿内容不能为空', 400, 'DRAFT_CONTENT_REQUIRED');
