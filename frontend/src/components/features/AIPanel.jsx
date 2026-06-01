@@ -17,6 +17,15 @@ const VERBOSITY_OPTIONS = [
   { value: 'detailed', label: '详细', description: '解释更多，适合认真分析' },
 ];
 
+const SUGGESTED_PROMPTS = [
+  '帮我总结这篇帖子在说什么',
+  '这篇帖子下面大家主要在讨论什么',
+  '帮我分析一下楼主现在的情绪',
+  '最近大家都在讨论什么',
+  '帮我查一下最近的热点消息',
+  '帮我梳理这篇帖子的几种不同观点',
+];
+
 function formatRelativeTime(date) {
   if (!date) return '刚刚';
 
@@ -202,7 +211,7 @@ function PersonaSettingsView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6" style={{ overscrollBehavior: 'contain' }}>
         <div className="max-w-[760px] mx-auto space-y-6">
           <div className="rounded-3xl border border-line bg-surface-soft px-5 py-4">
             <p className="text-sm font-semibold text-text">让树洞 AI 更像你想要的聊天对象</p>
@@ -512,6 +521,16 @@ function AIPanel({ open, onClose }) {
     }
   }, [input, isLoading, sendMessage]);
 
+  const handleSuggestedPromptClick = useCallback(async (prompt) => {
+    if (isLoading) return;
+
+    try {
+      await sendMessage(prompt);
+    } catch {
+      // Error handled in store.
+    }
+  }, [isLoading, sendMessage]);
+
   const handleRegenerate = useCallback(async () => {
     if (isLoading) return;
 
@@ -663,7 +682,7 @@ function AIPanel({ open, onClose }) {
                     <Icon name="close" size={18} />
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-2">
+                <div className="flex-1 overflow-y-auto space-y-2" style={{ overscrollBehavior: 'contain' }}>
                   {sessions.map((session) => (
                     <SessionItem
                       key={session._id}
@@ -686,16 +705,24 @@ function AIPanel({ open, onClose }) {
             )}
 
             {messages.length === 0 && (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue to-[#6c5ce7] flex items-center justify-center">
-                  <Icon name="smart_toy" className="text-white" size={28} />
+              <div className="ai-welcome py-8">
+                <h2 className="ai-welcome-title">你好，我是树洞 AI</h2>
+                <div className="ai-suggestion-cloud" role="list" aria-label="建议提问">
+                  {SUGGESTED_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      className="ai-suggestion-chip"
+                      onClick={() => handleSuggestedPromptClick(prompt)}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
                 </div>
-                <h2 className="text-lg font-semibold text-text mb-2">你好呀！</h2>
-                <p className="text-sm text-text-2">我是你的树洞 AI 伙伴，随时可以和我聊聊。</p>
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto mb-3 px-1">
+            <div className="flex-1 overflow-y-auto mb-3 px-1" style={{ overscrollBehavior: 'contain' }}>
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg._id}

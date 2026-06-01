@@ -480,6 +480,7 @@ h1, h2, h3, p {
 
 .modal-content {
   @apply w-[min(560px,90vw)] max-h-[85vh] overflow-y-auto border border-line rounded-xl bg-white/60 backdrop-blur-xl shadow-glass animate-modal-scale-in;
+  overscroll-behavior: contain;
 }
 
 /* Settings rows */
@@ -1435,9 +1436,36 @@ h1, h2, h3, p {
   @apply mb-[15px] text-text-2 text-[13px] leading-relaxed;
 }
 
+.ai-welcome {
+  @apply mx-auto flex min-h-[46vh] w-full max-w-[720px] flex-col items-center justify-center text-center;
+}
+
+.ai-welcome-title {
+  @apply m-0 text-[clamp(38px,5.4vw,62px)] font-bold tracking-tight text-text;
+}
+
+.ai-suggestion-cloud {
+  @apply mt-12 flex w-full flex-wrap justify-center gap-4 max-sm:mt-9 max-sm:gap-3;
+}
+
+.ai-suggestion-chip {
+  @apply border-0 rounded-[20px] bg-[#f3f3f4] px-7 py-[15px] text-left text-[15px] leading-7 text-text shadow-none transition-colors duration-150;
+  max-width: min(100%, 420px);
+}
+
+.ai-suggestion-chip:hover {
+  @apply bg-[#ebebed];
+}
+
+.ai-suggestion-chip:focus-visible {
+  @apply outline-none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
 /* Chat messages */
 .chat-messages {
   @apply flex-1 overflow-y-auto mb-3;
+  overscroll-behavior: contain;
 }
 
 /* AI chat input */
@@ -1478,6 +1506,7 @@ h1, h2, h3, p {
 /* AI slide content */
 .ai-slide-content {
   @apply absolute top-0 right-0 bottom-0 w-full max-w-[840px] sm:w-[min(92vw,840px)] flex flex-col p-6 border-l border-line bg-white shadow-md translate-x-full transition-transform duration-[280ms] ease-[cubic-bezier(0.16,1,0.3,1)] overflow-y-auto;
+  overscroll-behavior: contain;
 }
 
 /* Notif header */
@@ -1507,6 +1536,7 @@ h1, h2, h3, p {
 
 .notif-modal-list {
   @apply bg-surface;
+  overscroll-behavior: contain;
 }
 
 /* Notif empty */
