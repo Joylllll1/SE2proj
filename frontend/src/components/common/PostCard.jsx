@@ -55,11 +55,12 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
           {images.length > 0 && (
             <div className={`post-images mt-3.5 grid gap-1.5 max-sm:grid-cols-1 ${imageLayout.gridClass}`}>
               {images.map((src, index) => (
-                <div key={`${src}-${index}`} className={`overflow-hidden rounded-md bg-surface-soft ${imageLayout.itemClass}`}>
+                <div key={`${src}-${index}`} className={`overflow-hidden rounded-md bg-surface-soft ${imageLayout.itemClass} ${images.length === 1 ? 'justify-self-start w-fit max-w-full' : ''}`}>
                   <ClickableImage
                     src={src}
                     alt={`${post.title || '帖子'} 图片 ${index + 1}`}
-                    className="h-full w-full object-cover"
+                    className={images.length === 1 ? 'block h-auto max-h-[400px] max-w-full object-contain' : 'h-full w-full object-cover'}
+                    wrapperClassName={images.length === 1 ? 'inline-block max-w-full align-top' : 'block w-full'}
                     images={images}
                     imageIndex={index}
                   />

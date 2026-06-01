@@ -41,6 +41,14 @@ function DetailPage({
 
   // 获取扁平化的评论列表
   const flatComments = getFlatComments(post.id);
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    onNavigate('home');
+  };
 
   const sortedFlatComments = [...flatComments].sort((a, b) => {
     if (commentSort === 'likes') {
@@ -83,11 +91,11 @@ function DetailPage({
       <div className="flex items-center gap-3 mb-4">
         <button
           className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-line rounded-full bg-white text-text-2 text-sm font-semibold shadow-xs transition-all duration-150 hover:-translate-y-px hover:shadow-sm hover:text-blue hover:border-blue"
-          onClick={() => onNavigate('home')}
+          onClick={handleBack}
           type="button"
         >
           <Icon name="arrow_back" size="18" />
-          返回首页
+          返回
         </button>
       </div>
       <section className="detail-card p-[18px] max-sm:p-3 rounded-lg border border-line-soft bg-surface shadow-sm">

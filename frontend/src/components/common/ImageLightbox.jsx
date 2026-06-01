@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom';
 import Icon from './Icon';
 
@@ -12,6 +12,18 @@ function ImageLightbox({ images = [], initialIndex = 0, onClose }) {
   const [swipeStart, setSwipeStart] = useState(null);
   const safeImages = useMemo(() => (Array.isArray(images) ? images.filter(Boolean) : []), [images]);
   const hasMultiple = safeImages.length > 1;
+
+  const showPrevious = useCallback(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    setActiveIndex((current) => (current - 1 + safeImages.length) % safeImages.length);
+  }, [safeImages.length]);
+
+  const showNext = useCallback(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    setActiveIndex((current) => (current + 1) % safeImages.length);
+  }, [safeImages.length]);
 
   useEffect(() => {
     setMounted(true);
@@ -40,7 +52,7 @@ function ImageLightbox({ images = [], initialIndex = 0, onClose }) {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [mounted, safeImages.length, hasMultiple, onClose]);
+  }, [mounted, safeImages.length, hasMultiple, onClose, showPrevious, showNext]);
 
   useEffect(() => {
     setActiveIndex(initialIndex);
@@ -57,18 +69,6 @@ function ImageLightbox({ images = [], initialIndex = 0, onClose }) {
   if (!mounted || safeImages.length === 0) return null;
 
   const currentImage = safeImages[activeIndex] || safeImages[0];
-
-  const showPrevious = () => {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-    setActiveIndex((current) => (current - 1 + safeImages.length) % safeImages.length);
-  };
-
-  const showNext = () => {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-    setActiveIndex((current) => (current + 1) % safeImages.length);
-  };
 
   const toggleZoom = () => {
     if (scale > 1) {

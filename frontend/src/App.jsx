@@ -84,6 +84,8 @@ const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
 /* ─── App Root ─── */
 
 function App() {
+  const skipNextDetailReloadRef = React.useRef(false);
+
   // ── Auth ──
   const { isAuthenticated, restoreSession } = useAuth();
   const initialized = useAuthStore(selectInitialized);
@@ -195,6 +197,9 @@ function App() {
       try {
         const data = JSON.parse(event.data || '{}');
         if (data.postId) {
+          if (activePage === 'detail' && selectedPost?.id === data.postId) {
+            skipNextDetailReloadRef.current = true;
+          }
           usePostStore.getState().removePostById(data.postId);
         }
       } catch {
@@ -311,6 +316,10 @@ function App() {
   // ── Load post from URL when refreshing on detail page ──
   React.useEffect(() => {
     if (activePage === 'detail' && !selectedPost) {
+      if (skipNextDetailReloadRef.current) {
+        skipNextDetailReloadRef.current = false;
+        return;
+      }
       const match = window.location.pathname.match(/^\/detail\/(.+)/);
       if (match) {
         const postId = match[1];
@@ -409,6 +418,9 @@ function App() {
 
   const handleDeletePost = async (postId) => {
     try {
+      if (activePage === 'detail' && selectedPost?.id === postId) {
+        skipNextDetailReloadRef.current = true;
+      }
       await usePostStore.getState().deletePost(postId, { clearSelectedPost: false });
       if (activePage === 'detail') {
         navigate('home', undefined, { force: true });

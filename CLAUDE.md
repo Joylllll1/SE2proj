@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+**先决规则：每次回答前加上"Joy"。如果我没加，说明上下文已满，请开启新对话。**
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
@@ -129,3 +131,4 @@ Touch only what you must. Don't improve adjacent code, refactor things that aren
 ### 4. Goal-Driven Execution
 
 Define verifiable success criteria before starting. For multi-step tasks, state a brief plan with checks. Loop until criteria met.
+

@@ -452,30 +452,28 @@ function AnnouncementsPage({ showToast }) {
                   <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.22em] text-text-3">Current Flow</p>
                   <h2 className="m-0 text-[22px] tracking-tight">正在发生的活动</h2>
                 </div>
-                <div className="announcement-rail-controls">
+                <div className="announcement-rail-controls max-lg:hidden">
                   <p className="hidden text-sm text-text-3 md:block">轻扫、触控板或箭头切换。</p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="announcement-rail-arrow"
-                      onClick={() => handleRailArrow(-1)}
-                      aria-label="查看上一个活动"
-                    >
-                      <Icon name="arrow_back" />
-                    </button>
-                    <button
-                      type="button"
-                      className="announcement-rail-arrow"
-                      onClick={() => handleRailArrow(1)}
-                      aria-label="查看下一个活动"
-                    >
-                      <Icon name="arrow_forward" />
-                    </button>
-                  </div>
                 </div>
               </div>
 
               <div className="announcement-rail-mask">
+                <button
+                  type="button"
+                  className="announcement-rail-arrow announcement-rail-arrow-prev"
+                  onClick={() => handleRailArrow(-1)}
+                  aria-label="查看上一个活动"
+                >
+                  <Icon name="arrow_back" />
+                </button>
+                <button
+                  type="button"
+                  className="announcement-rail-arrow announcement-rail-arrow-next"
+                  onClick={() => handleRailArrow(1)}
+                  aria-label="查看下一个活动"
+                >
+                  <Icon name="arrow_forward" />
+                </button>
                 <div
                   className="announcement-rail"
                   onWheel={handleRailWheel}

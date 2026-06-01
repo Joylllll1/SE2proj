@@ -6,7 +6,7 @@ function ClickableImage({
   src,
   alt,
   className = '',
-  wrapperClassName = '',
+  wrapperClassName = 'block w-full',
   images = null,
   imageIndex = 0,
   onClick,
@@ -24,7 +24,7 @@ function ClickableImage({
     <>
       <button
         type="button"
-        className={`group block w-full cursor-zoom-in border-0 bg-transparent p-0 text-left ${wrapperClassName}`.trim()}
+        className={`group cursor-zoom-in border-0 bg-transparent p-0 text-left ${wrapperClassName}`.trim()}
         onClick={handleOpen}
         aria-label="查看图片"
       >

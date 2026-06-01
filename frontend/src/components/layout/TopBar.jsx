@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import Icon from '../common/Icon';
 import useNotificationStore from '../../store/notificationStore';
 import usePostStore from '../../store/postStore';
@@ -27,7 +28,6 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
     return window.innerWidth < 640;
   });
 
-  const notifDropdownRef = useRef(null);
   const searchContainerRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -52,9 +52,6 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
   // Close dropdown & expanded search when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showNotifs && notifDropdownRef.current && !notifDropdownRef.current.contains(event.target)) {
-        setShowNotifs(false);
-      }
       if (searchExpanded && searchContainerRef.current
           && !searchContainerRef.current.contains(event.target)
           && !event.target.closest('.search-action-btn')) {
@@ -68,19 +65,23 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchend', handleClickOutside);
     };
-  }, [showNotifs, searchExpanded, collapseSearch, query]);
+  }, [searchExpanded, collapseSearch, query]);
 
   // ESC key to collapse search
   useEffect(() => {
-    if (!searchExpanded) return;
+    if (!searchExpanded && !showNotifs) return;
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
-        collapseSearch(false);
+        if (showNotifs) {
+          setShowNotifs(false);
+        } else {
+          collapseSearch(false);
+        }
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [searchExpanded, collapseSearch]);
+  }, [searchExpanded, showNotifs, collapseSearch]);
 
   // Focus input after expand animation
   useEffect(() => {
@@ -140,131 +141,160 @@ function TopBar({ query, onQueryChange, onNavigate, onAIOpen }) {
   const desktopPlaceholder = '搜索帖子、话题或匿名 ID...';
 
   const isExpanded = isMobile && searchExpanded;
+  const notificationModal = showNotifs
+    ? ReactDOM.createPortal(
+      <div
+        className="notif-modal-overlay fixed inset-0 z-[180] grid place-items-start justify-items-center bg-[rgba(76,54,61,0.24)] px-4 pt-[92px] backdrop-blur-[5px] animate-modal-fade-in max-sm:place-items-end max-sm:px-3 max-sm:pb-[calc(14px+env(safe-area-inset-bottom,0px))] max-sm:pt-0"
+        onClick={() => setShowNotifs(false)}
+      >
+        <div
+          className="notif-modal-panel w-[min(420px,100%)] max-h-[min(620px,calc(100vh-130px))] overflow-hidden rounded-[26px] border border-line bg-surface shadow-glass animate-modal-scale-in max-sm:max-h-[78vh] max-sm:rounded-[24px]"
+          onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="notification-modal-title"
+        >
+          <div className="notif-header">
+            <strong id="notification-modal-title">通知</strong>
+            <div>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  className="notif-mark-read"
+                  onClick={handleMarkAllRead}
+                >
+                  全部已读
+                </button>
+              )}
+              <button
+                type="button"
+                className="notif-close-btn grid w-7 h-7 place-items-center border border-line rounded-full bg-white text-text-3 text-sm cursor-pointer transition-colors duration-150 hover:text-text hover:border-text-3"
+                onClick={() => setShowNotifs(false)}
+                aria-label="关闭通知"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div className="notif-modal-list max-h-[520px] overflow-y-auto max-sm:max-h-[calc(78vh-58px)]">
+            {notifications.length === 0 ? (
+              <div className="notif-empty">暂无通知</div>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  className={`notif-item cursor-pointer ${n.read ? '' : 'unread'}`}
+                  key={n._id}
+                  onClick={() => handleNotifClick(n)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleNotifClick(n);
+                    }
+                  }}
+                >
+                  <span className={`notif-dot ${n.read ? 'opacity-0' : 'opacity-1'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="m-0 text-sm leading-normal text-text truncate">{n.title}</p>
+                    <p className="m-0 text-sm leading-normal text-text-2 truncate">{n.content}</p>
+                    <small className="block mt-1 text-text-3 text-xs">{formatRelativeTime(n.createdAt)}</small>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )
+    : null;
 
   return (
-    <header
-      className={`topbar sticky top-0 z-20 flex items-center justify-between gap-5 h-[60px] px-7 border-b border-line bg-white/82 backdrop-blur-xs max-sm:h-[48px] max-sm:px-3 max-sm:gap-2 ${isExpanded ? 'topbar-search-expanded' : ''}`}
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-    >
-      {isExpanded ? (
-        /* ── Mobile expanded search layout ── */
-        <div ref={searchContainerRef} className="search-box">
-          <Icon name="search" />
-          <input
-            ref={inputRef}
-            className="w-full border-0 outline-0 text-text bg-transparent text-sm"
-            aria-label="搜索树洞"
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder={desktopPlaceholder}
-            value={query}
-          />
-          {query && (
-            <button
-              className="search-clear-btn"
-              onClick={handleClearSearch}
-              type="button"
-              aria-label="清除搜索"
-            >
-              ×
-            </button>
-          )}
-        </div>
-      ) : (
-        /* ── Normal layout ── */
-        <>
-          <div className="search-box">
+    <>
+      <header
+        className={`topbar sticky top-0 z-20 flex items-center justify-between gap-5 h-[60px] px-7 border-b border-line bg-white/82 backdrop-blur-xs max-sm:h-[48px] max-sm:px-3 max-sm:gap-2 ${isExpanded ? 'topbar-search-expanded' : ''}`}
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      >
+        {isExpanded ? (
+          /* ── Mobile expanded search layout ── */
+          <div ref={searchContainerRef} className="search-box">
             <Icon name="search" />
             <input
+              ref={inputRef}
               className="w-full border-0 outline-0 text-text bg-transparent text-sm"
               aria-label="搜索树洞"
-              onFocus={handleSearchFocus}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder={isMobile ? mobilePlaceholder : desktopPlaceholder}
+              placeholder={desktopPlaceholder}
               value={query}
             />
-          </div>
-          <div className="topbar-actions flex items-center gap-2.5 max-sm:gap-1.5">
-            <button className="ai-topbar-btn flex items-center gap-1.5 h-[38px] px-4 border-0 rounded-full text-white bg-gradient-to-br from-blue to-[#6c5ce7] text-[13px] font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md" onClick={onAIOpen} type="button" aria-label="树洞 AI">
-              <Icon name="smart_toy" filled />
-              <span>AI</span>
-            </button>
-            <div className="notif-wrapper relative">
+            {query && (
               <button
-                className={`icon-button grid w-[38px] h-[38px] place-items-center rounded-full border border-line bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px ${unreadCount > 0 ? 'notification' : ''}`}
+                className="search-clear-btn"
+                onClick={handleClearSearch}
                 type="button"
-                aria-label="通知"
-                onClick={() => setShowNotifs(!showNotifs)}
+                aria-label="清除搜索"
               >
-                <Icon name="notifications" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red text-white text-xs font-bold flex items-center justify-center">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
+                ×
               </button>
-              {showNotifs && (
-                <div ref={notifDropdownRef} className="notif-dropdown">
-                  <div className="notif-header flex items-center justify-between px-4 py-[14px] border-b border-line-soft bg-surface-soft max-sm:px-3 max-sm:py-3">
-                    <strong className="text-[15px] max-sm:text-sm">通知</strong>
-                    <div className="flex items-center gap-2 max-sm:gap-1.5">
-                      {unreadCount > 0 && (
-                        <button
-                          type="button"
-                          className="notif-mark-read px-[10px] py-1 border-0 rounded-full bg-blue-soft text-blue text-xs font-semibold max-sm:px-[8px] max-sm:text-[11px]"
-                          onClick={handleMarkAllRead}
-                        >
-                          全部已读
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="notif-close-btn grid w-7 h-7 place-items-center border border-line rounded-full bg-white text-text-3 text-sm cursor-pointer transition-colors duration-150 hover:text-text hover:border-text-3"
-                        onClick={() => setShowNotifs(false)}
-                        aria-label="关闭通知"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                  {notifications.length === 0 ? (
-                    <div className="notif-empty py-8 px-4 text-center text-text-3">暂无通知</div>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        className={`notif-item flex gap-3 px-4 py-3 border-b border-line-soft transition-colors duration-150 last:border-0 hover:bg-surface-soft cursor-pointer max-sm:px-3 max-sm:py-2.5 ${n.read ? '' : 'unread bg-blue/[0.04]'}`}
-                        key={n._id}
-                        onClick={() => handleNotifClick(n)}
-                      >
-                        <span className={`notif-dot w-2 h-2 flex-shrink-0 mt-1.5 rounded-full bg-blue ${n.read ? 'opacity-0' : 'opacity-1'}`} />
-                        <div className="min-w-0 flex-1">
-                          <p className="m-0 text-sm leading-normal text-text truncate">{n.title}</p>
-                          <p className="m-0 text-sm leading-normal text-text-2 truncate">{n.content}</p>
-                          <small className="block mt-1 text-text-3 text-xs">{formatRelativeTime(n.createdAt)}</small>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-            <button className="icon-button max-sm:hidden grid w-[38px] h-[38px] place-items-center rounded-full border border-line bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px" type="button" aria-label="个人设置" onClick={() => onNavigate('settings')}>
-              <Icon name="person" />
-            </button>
+            )}
           </div>
-        </>
-      )}
+        ) : (
+          /* ── Normal layout ── */
+          <>
+            <div className="search-box">
+              <Icon name="search" />
+              <input
+                className="w-full border-0 outline-0 text-text bg-transparent text-sm"
+                aria-label="搜索树洞"
+                onFocus={handleSearchFocus}
+                onChange={(event) => onQueryChange(event.target.value)}
+                placeholder={isMobile ? mobilePlaceholder : desktopPlaceholder}
+                value={query}
+              />
+            </div>
+            <div className="topbar-actions flex items-center gap-2.5 max-sm:gap-1.5">
+              <button className="ai-topbar-btn flex items-center gap-1.5 h-[38px] px-4 border-0 rounded-full text-white bg-gradient-to-br from-blue to-[#6c5ce7] text-[13px] font-bold shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md" onClick={onAIOpen} type="button" aria-label="树洞 AI">
+                <Icon name="smart_toy" filled />
+                <span>AI</span>
+              </button>
+              <div className="notif-wrapper relative">
+                <button
+                  className={`icon-button grid w-[38px] h-[38px] place-items-center rounded-full border border-line bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px ${unreadCount > 0 ? 'notification' : ''}`}
+                  type="button"
+                  aria-label="通知"
+                  aria-haspopup="dialog"
+                  aria-expanded={showNotifs}
+                  onClick={() => setShowNotifs(!showNotifs)}
+                >
+                  <Icon name="notifications" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red text-white text-xs font-bold flex items-center justify-center">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+              <button className="icon-button max-sm:hidden grid w-[38px] h-[38px] place-items-center rounded-full border border-line bg-white text-text-2 shadow-xs transition-all duration-150 hover:text-blue hover:border-[#b0c4de] hover:-translate-y-px" type="button" aria-label="个人设置" onClick={() => onNavigate('settings')}>
+                <Icon name="person" />
+              </button>
+            </div>
+          </>
+        )}
 
-      {/* Action button next to expanded search box */}
-      {isExpanded && (
-        <button
-          className="search-action-btn"
-          onClick={handleSearchAction}
-          type="button"
-        >
-          {query.trim() ? '确认' : '取消'}
-        </button>
-      )}
-    </header>
+        {/* Action button next to expanded search box */}
+        {isExpanded && (
+          <button
+            className="search-action-btn"
+            onClick={handleSearchAction}
+            type="button"
+          >
+            {query.trim() ? '确认' : '取消'}
+          </button>
+        )}
+      </header>
+      {notificationModal}
+    </>
   );
 }
 

@@ -2,42 +2,54 @@
 
 > 面向南京大学师生的半匿名表达、互助交流与内容治理平台
 
-## 项目概述
+## 项目简介
 
-NJU树洞提供一个更低压力、但仍可治理的校园匿名社区。项目核心目标不是“完全匿名放飞”，而是在熟人环境里提供可表达、可互动、可追责的平衡方案。
+NJU树洞是一个校园匿名社区系统，目标是在“低压力表达”和“可治理、可追责”之间取得平衡。项目支持匿名发帖、评论互动、收藏管理、活动公告、管理员审核、通知中心，以及带工具调用能力的 AI 助手。
 
-当前仓库已经包含完整前后端：
+当前仓库是一个前后端分离项目：
 
-- 前端：React + Vite + Tailwind CSS v4
-- 后端：Express + MongoDB + JWT
-- AI：流式聊天、会话管理、人格设置、联网搜索工具
+- 前端：React 18 + Vite 5 + Tailwind CSS v4 + Zustand
+- 后端：Express 4 + MongoDB / Mongoose + JWT + SSE
+- AI：兼容 OpenAI Chat Completions 风格接口，支持会话、人格设置和联网搜索工具
 
-## 当前能力
+## 主要功能
 
-### 社区与内容
+### 用户账号
 
-- 帖子级匿名身份：同一用户在同一帖内匿名名稳定，跨帖不可关联
-- 发帖、草稿、详情页、多图、评论、回复、点赞、收藏
-- 搜索、公告、活动、每日运势
-- 举报、后台审核、审计与管理员治理
+- 支持注册、登录、退出登录
+- 支持邮箱验证码、忘记密码和修改密码
+- 支持个人设置与通知偏好管理
+
+### 社区互动
+
+- 支持匿名发帖、浏览帖子和查看详情
+- 支持评论、回复、点赞、收藏、举报
+- 支持草稿箱、我的帖子、我的收藏、我的喜欢等个人内容管理
+- 支持搜索帖子、话题和部分站内内容
+
+### 校园公告
+
+- 支持校园活动浏览、分类筛选和活动详情查看
+- 支持用户提交活动申请
+- 支持在公告页查看自己的活动申请记录
 
 ### AI 助手
 
-- 侧边滑出的 AI 面板，支持多轮会话、历史会话切换与删除
-- 流式输出、重新生成、停止生成
-- 停止支持按钮，也支持 `Esc`
-- 人格设置支持“用户默认”和“当前会话覆盖”两层
-- 支持工具调用：`web_search`、`fetch_url`、站内搜索等
-- 已接入百度千帆联网搜索接口，适合新闻、天气、政策、人物近况等时效性问题
-- LLM 接口可配置，不强绑定 OpenAI；当前代码兼容 DeepSeek / 兼容 OpenAI Chat Completions 的提供方
+- 提供侧边滑出的 AI 面板
+- 支持多会话管理、流式回复、重新生成、停止生成
+- 支持聊天风格设置，包括角色、语气、回复长度等
+- 支持工具调用和联网搜索能力
 
-### 移动端 UI
+### 管理后台
 
-- 底部导航 + 中央发布按钮
-- 顶部搜索框移动端展开
-- 搜索确认后自动滚动到首页 feed 区域
-- `MyPage` 聚合“我的帖子 / 我的收藏 / 我的喜爱”
-- 适配 `safe-area-inset`
+- 提供管理员页面与审核面板
+- 支持举报处理、活动审核、轮播管理、封禁管理和审计相关能力
+
+### 体验与交互
+
+- 适配桌面端和移动端导航
+- 支持通知弹窗、图片灯箱、确认离开弹窗等常用交互
+- 已处理主要浮层内部滚动区域的 scroll chaining，滚动到边界时不会继续带动背景页面
 
 ## 技术栈
 
@@ -47,6 +59,7 @@ NJU树洞提供一个更低压力、但仍可治理的校园匿名社区。项�
 - Vite 5
 - Tailwind CSS v4
 - Zustand
+- react-markdown + remark-gfm
 - Vitest + Testing Library
 - Playwright
 
@@ -54,51 +67,243 @@ NJU树洞提供一个更低压力、但仍可治理的校园匿名社区。项�
 
 - Node.js ESM
 - Express 4
-- MongoDB + Mongoose 8
-- JWT + HTTP-only Cookie
-- nodemon
+- MongoDB
+- Mongoose 8
+- jsonwebtoken
+- bcryptjs
+- nodemailer
+- SSE（Server-Sent Events）
 
 ## 仓库结构
 
 ```text
 SE2proj/
-├── backend/
+├── backend/                        # Express 后端
 │   ├── src/
-│   │   ├── config/          # 数据库与运行配置
-│   │   ├── controllers/     # 路由控制器
-│   │   ├── middlewares/     # 鉴权、错误处理等
-│   │   ├── models/          # Mongoose 模型
-│   │   ├── routes/          # API 路由
-│   │   ├── services/        # 业务层（含 AI、工具循环、搜索）
-│   │   ├── scripts/         # 数据初始化脚本
-│   │   └── utils/           # 通用工具
-│   └── .env.example
-├── frontend/
+│   │   ├── config/
+│   │   │   └── db.js              # MongoDB 连接
+│   │   ├── controllers/           # Controller 层：参数处理、响应组织
+│   │   │   ├── adminController.js
+│   │   │   ├── aiController.js
+│   │   │   ├── authController.js
+│   │   │   ├── commentController.js
+│   │   │   ├── draftController.js
+│   │   │   ├── eventController.js
+│   │   │   ├── fortuneController.js
+│   │   │   ├── likeController.js
+│   │   │   ├── notificationController.js
+│   │   │   ├── passwordController.js
+│   │   │   ├── postController.js
+│   │   │   ├── reportController.js
+│   │   │   └── verifyController.js
+│   │   ├── middlewares/           # 鉴权、封禁校验、错误处理
+│   │   │   ├── auth.js
+│   │   │   ├── checkBan.js
+│   │   │   ├── errorHandler.js
+│   │   │   ├── isAdmin.js
+│   │   │   └── optionalAuth.js
+│   │   ├── models/                # Mongoose 模型
+│   │   │   ├── AIMessage.js
+│   │   │   ├── AIProfile.js
+│   │   │   ├── AISession.js
+│   │   │   ├── AuditLog.js
+│   │   │   ├── Ban.js
+│   │   │   ├── CheckIn.js
+│   │   │   ├── Comment.js
+│   │   │   ├── Draft.js
+│   │   │   ├── Event.js
+│   │   │   ├── FortuneItem.js
+│   │   │   ├── Notification.js
+│   │   │   ├── Post.js
+│   │   │   ├── Report.js
+│   │   │   ├── User.js
+│   │   │   ├── VerificationCode.js
+│   │   │   └── schemas/           # 预留子 schema 目录
+│   │   ├── routes/                # 路由注册
+│   │   │   ├── adminRoutes.js
+│   │   │   ├── aiRoutes.js
+│   │   │   ├── authRoutes.js
+│   │   │   ├── commentRoutes.js
+│   │   │   ├── draftRoutes.js
+│   │   │   ├── eventRoutes.js
+│   │   │   ├── fortuneRoutes.js
+│   │   │   ├── likeRoutes.js
+│   │   │   ├── notificationRoutes.js
+│   │   │   ├── passwordRoutes.js
+│   │   │   ├── postRoutes.js
+│   │   │   ├── sseRoutes.js
+│   │   │   └── verifyRoutes.js
+│   │   ├── scripts/               # 数据脚本 / 初始化脚本
+│   │   │   ├── migrate-admin.js
+│   │   │   ├── seedFortune.js
+│   │   │   └── seedUsers.js
+│   │   ├── services/              # 业务核心层
+│   │   │   ├── llm/               # LLM 相关子模块目录
+│   │   │   ├── tools/             # AI 工具子模块目录
+│   │   │   ├── adminService.js
+│   │   │   ├── aiPersonaConfig.js
+│   │   │   ├── aiPersonaService.js
+│   │   │   ├── aiPromptBuilder.js
+│   │   │   ├── aiService.js
+│   │   │   ├── authService.js
+│   │   │   ├── commentCountService.js
+│   │   │   ├── commentService.js
+│   │   │   ├── draftService.js
+│   │   │   ├── emailService.js
+│   │   │   ├── eventService.js
+│   │   │   ├── fortuneService.js
+│   │   │   ├── likeService.js
+│   │   │   ├── notificationService.js
+│   │   │   ├── postService.js
+│   │   │   └── sseManager.js
+│   │   ├── utils/                 # 通用工具
+│   │   │   ├── AppError.js
+│   │   │   ├── image.js
+│   │   │   └── jwt.js
+│   │   └── index.js               # 后端入口
+│   └── package.json
+├── frontend/                       # React 前端
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── pages/       # 页面级组件
-│   │   │   ├── features/    # AIPanel、HeroCarousel 等
-│   │   │   ├── layout/      # TopBar、Sidebar、MobileNav
-│   │   │   └── common/      # Icon、Toast、Modal 等
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   ├── store/
-│   │   └── tailwind.css
-│   └── README.md
+│   │   │   ├── common/            # 通用基础组件
+│   │   │   │   ├── ClickableImage.jsx
+│   │   │   │   ├── Comment.jsx
+│   │   │   │   ├── ConfirmLeaveDialog.jsx
+│   │   │   │   ├── EmptyState.jsx
+│   │   │   │   ├── EventModals.jsx
+│   │   │   │   ├── Icon.jsx
+│   │   │   │   ├── ImageLightbox.jsx
+│   │   │   │   ├── Modal.jsx
+│   │   │   │   ├── PostCard.jsx
+│   │   │   │   ├── Progress.jsx
+│   │   │   │   ├── ReplyCard.jsx
+│   │   │   │   ├── RichMessageContent.jsx
+│   │   │   │   ├── StatCard.jsx
+│   │   │   │   ├── TimeAgo.jsx
+│   │   │   │   ├── Toast.jsx
+│   │   │   │   └── UnderConstruction.jsx
+│   │   │   ├── features/          # 功能组件
+│   │   │   │   ├── AIPanel.jsx
+│   │   │   │   ├── DailyFortune.jsx
+│   │   │   │   ├── DailyLuck.jsx
+│   │   │   │   ├── HeroCarousel.jsx
+│   │   │   │   └── ReportModal.jsx
+│   │   │   ├── layout/            # 布局组件
+│   │   │   │   ├── AdminMobileNav.jsx
+│   │   │   │   ├── AdminSidebar.jsx
+│   │   │   │   ├── AdminTopBar.jsx
+│   │   │   │   ├── MobileNav.jsx
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   └── TopBar.jsx
+│   │   │   └── pages/             # 页面级组件
+│   │   │       ├── AdminDashboard.jsx
+│   │   │       ├── AdminPage.jsx
+│   │   │       ├── AnnouncementsPage.jsx
+│   │   │       ├── BookmarksPage.jsx
+│   │   │       ├── ComposePage.jsx
+│   │   │       ├── DetailPage.jsx
+│   │   │       ├── DraftsPage.jsx
+│   │   │       ├── ForgetPasswordPage.jsx
+│   │   │       ├── HomePage.jsx
+│   │   │       ├── LandingPage.jsx
+│   │   │       ├── LikesPage.jsx
+│   │   │       ├── LoginPage.jsx
+│   │   │       ├── MyPage.jsx
+│   │   │       ├── MyPostsPage.jsx
+│   │   │       ├── PasswordChangePage.jsx
+│   │   │       ├── RegisterPage.jsx
+│   │   │       ├── SettingsPage.jsx
+│   │   │       └── TodoPage.jsx
+│   │   ├── data/                  # 静态数据目录
+│   │   ├── hooks/                 # 逻辑封装
+│   │   │   ├── useAuth.js
+│   │   │   ├── useEventActions.js
+│   │   │   ├── useLikeBookmark.js
+│   │   │   ├── useNotificationPolling.js
+│   │   │   └── usePostActions.js
+│   │   ├── services/              # 前端 API 请求封装
+│   │   │   ├── adminService.js
+│   │   │   ├── aiService.js
+│   │   │   ├── apiClient.js
+│   │   │   ├── authService.js
+│   │   │   ├── commentService.js
+│   │   │   ├── draftService.js
+│   │   │   ├── eventService.js
+│   │   │   ├── fortuneService.js
+│   │   │   ├── notificationService.js
+│   │   │   ├── postService.js
+│   │   │   ├── reportService.js
+│   │   │   ├── storageService.js
+│   │   │   └── verifyService.js
+│   │   ├── store/                 # Zustand 全局状态
+│   │   │   ├── adminStore.js
+│   │   │   ├── aiStore.js
+│   │   │   ├── authStore.js
+│   │   │   ├── bookmarkStore.js
+│   │   │   ├── commentStore.js
+│   │   │   ├── eventStore.js
+│   │   │   ├── notificationStore.js
+│   │   │   ├── postStore.js
+│   │   │   └── uiStore.js
+│   │   ├── test/                  # 测试初始化
+│   │   │   └── setup.js
+│   │   ├── utils/                 # 工具函数
+│   │   │   ├── image.js
+│   │   │   └── search.js
+│   │   ├── App.jsx                # 前端主应用
+│   │   ├── App.test.jsx
+│   │   ├── main.jsx               # React 挂载入口
+│   │   ├── tailwind.css           # 全局样式与设计 token
+│   │   └── utils.js               # 通用前端工具
+│   └── package.json
 ├── docs/
-│   └── wiki/
-├── openspec/
-├── CLAUDE.md
+│   ├── superpowers/               # 过程性设计/规格文档
+│   └── wiki/                      # 项目知识库
+│       ├── architecture.md
+│       ├── coding-standards.md
+│       ├── collaboration-workflow.md
+│       ├── conventions.md
+│       ├── decisions/
+│       ├── glossary.md
+│       ├── landing-page.md
+│       ├── setup.md
+│       └── todo.md
+├── openspec/                      # 变更提案、设计、任务记录
+├── .github/                       # GitHub 配置
+├── CLAUDE.md                      # 仓库协作说明
 └── README.md
 ```
+
+## 关键架构说明
+
+### 前端
+
+- 使用 `activePage + history.pushState/popstate` 实现轻量 SPA 路由，没有引入 React Router
+- 页面状态以 Zustand 为核心
+- 样式集中在 `frontend/src/tailwind.css`，组件内优先复用语义类
+- 详情页、首页、AI 面板、通知弹窗等交互都依赖 store 和局部状态协同
+
+### 后端
+
+- 分层结构：`routes -> controllers -> services -> models`
+- MongoDB 保存正式数据
+- 正式内容以逻辑删除为主，草稿允许物理删除
+- SSE 用于首页/详情页的部分实时同步
+- AI 相关逻辑集中在 `aiService`、人格配置和工具子模块
+
+### 实时能力现状
+
+- 已接入 SSE 的代码入口位于 `/api/stream` 与 `sseManager`
+- 首页和详情页存在对 SSE 事件的消费逻辑
+- 通知中心前端包含轮询逻辑 `useNotificationPolling`
 
 ## 快速开始
 
 ### 环境要求
 
 - Node.js 18+
-- MongoDB 6+
 - npm 9+
+- MongoDB 6+
 
 ### 1. 启动后端
 
@@ -109,7 +314,7 @@ npm install
 npm run dev
 ```
 
-后端默认监听 `http://localhost:3001`。
+默认地址：`http://localhost:3001`
 
 ### 2. 启动前端
 
@@ -119,44 +324,7 @@ npm install
 npm run dev
 ```
 
-前端默认监听 `http://localhost:5173`。
-
-## 关键环境变量
-
-后端环境变量示例见 [`backend/.env.example`](backend/.env.example)。
-
-常用项如下：
-
-```env
-PORT=3001
-MONGODB_URI=mongodb://127.0.0.1:27017/treehole
-
-JWT_SECRET=...
-JWT_REFRESH_SECRET=...
-
-SMTP_HOST=smtp.qq.com
-SMTP_PORT=465
-SMTP_USER=
-SMTP_PASS=
-
-LLM_API_KEY=
-LLM_API_URL=https://api.deepseek.com/v1/chat/completions
-LLM_MODEL=deepseek-chat
-
-AI_WEB_SEARCH_BAIDU_API_KEY=
-AI_WEB_SEARCH_BAIDU_URL=https://qianfan.baidubce.com/v2/ai_search/web_search
-AI_WEB_SEARCH_MAX_RESULTS=8
-
-AI_TOOL_MAX_CALLS=3
-AI_TOOL_TIMEOUT_MS=8000
-AI_STREAM_IDLE_TIMEOUT_MS=30000
-```
-
-说明：
-
-- `LLM_API_URL` / `LLM_MODEL` 可以替换成你自己的兼容接口
-- 联网搜索默认走百度千帆，至少需要配置 `AI_WEB_SEARCH_BAIDU_API_KEY`
-- 如果没配搜索 key，AI 仍可聊天，但时效性问题不会拿到联网结果
+默认地址：`http://localhost:5173`
 
 ## 常用命令
 
@@ -165,7 +333,9 @@ AI_STREAM_IDLE_TIMEOUT_MS=30000
 ```bash
 cd frontend && npm run dev
 cd frontend && npm run build
+cd frontend && npm run preview
 cd frontend && npm run lint
+cd frontend && npm run lint:fix
 cd frontend && npm run test
 ```
 
@@ -175,44 +345,84 @@ cd frontend && npm run test
 cd backend && npm run dev
 cd backend && npm run start
 cd backend && npm run lint
+cd backend && npm run lint:fix
+cd backend && npm run test
+cd backend && npm run seed:fortune
 ```
 
 说明：
 
-- 前端测试当前使用 Vitest
-- 后端 `npm test` 仍是占位脚本，暂未建立正式测试集
+- 后端 `npm test` 目前仍是占位脚本，没有正式测试集
+- 前端已有 Vitest 测试和少量页面 / store 测试
 
-## 部署
+## 关键环境变量
 
-### 后端
+后端示例见 `backend/.env.example`。常用变量通常包括：
 
-```bash
-cd backend
-pm2 start src/index.js --name treehole-api
+```env
+PORT=3001
+MONGODB_URI=mongodb://127.0.0.1:27017/treehole
+
+JWT_SECRET=
+JWT_REFRESH_SECRET=
+
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+
+LLM_API_KEY=
+LLM_API_URL=
+LLM_MODEL=
+
+AI_WEB_SEARCH_BAIDU_API_KEY=
+AI_WEB_SEARCH_BAIDU_URL=
+AI_WEB_SEARCH_MAX_RESULTS=8
+
+AI_TOOL_MAX_CALLS=3
+AI_TOOL_TIMEOUT_MS=8000
+AI_STREAM_IDLE_TIMEOUT_MS=30000
 ```
 
-### 前端
+说明：
 
-```bash
-cd frontend
-npm run build
-```
+- `LLM_API_URL` / `LLM_MODEL` 使用兼容 OpenAI Chat Completions 的提供方即可
+- 不配置联网搜索 key 时，AI 仍能聊天，但无法回答强时效问题
 
-将 `frontend/dist/` 部署到 Nginx 或其他静态服务器即可。
+## API 模块概览
 
-## 开发备注
+后端当前主要 API 入口：
 
-- AI 流式中断链路是前后端打通的：前端 `AbortController` + 后端请求级 abort
-- DeepSeek 一类接口如果返回 `reasoning_content`，后端会透传并兼容处理
-- 首页移动端搜索依赖 `uiStore.feedScrollToken` 触发滚动定位
-- 语义化样式主要收敛在 `frontend/src/tailwind.css`
+- `/api/auth`
+- `/api/verify`
+- `/api/password`
+- `/api/posts`
+- `/api/comments`
+- `/api/likes`
+- `/api/drafts`
+- `/api/events`
+- `/api/notifications`
+- `/api/admin`
+- `/api/fortune`
+- `/api/ai`
+- `/api/stream`
+
+## 阅读说明
+
+- 本 README 现在按“仓库中可确认存在的模块”来写，不再把未核实的业务链路写成“已实现功能”
+- 如果 README 与代码不一致，以实际代码和 `docs/wiki/architecture.md` 为准
 
 ## 相关文档
 
-- [`CLAUDE.md`](CLAUDE.md)
-- [`frontend/README.md`](frontend/README.md)
-- [`docs/wiki/`](docs/wiki)
+- [CLAUDE.md](CLAUDE.md)
+- [docs/wiki/architecture.md](docs/wiki/architecture.md)
+- [docs/wiki/conventions.md](docs/wiki/conventions.md)
+- [docs/wiki/coding-standards.md](docs/wiki/coding-standards.md)
+- [frontend/README.md](frontend/README.md)
 
 ## 团队成员
 
-王祎、王嘉乐、邱添、张浩宇
+- 王祎
+- 王嘉乐
+- 邱添
+- 张浩宇
