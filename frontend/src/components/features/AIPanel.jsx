@@ -706,7 +706,7 @@ function AIPanel({ open, onClose }) {
 
             {messages.length === 0 && (
               <div className="ai-welcome py-8">
-                <h2 className="ai-welcome-title">你好，我是树洞 AI</h2>
+                <h2 className="ai-welcome-title">今天想聊点什么？</h2>
                 <div className="ai-suggestion-cloud" role="list" aria-label="建议提问">
                   {SUGGESTED_PROMPTS.map((prompt) => (
                     <button

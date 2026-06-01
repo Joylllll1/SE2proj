@@ -1437,19 +1437,19 @@ h1, h2, h3, p {
 }
 
 .ai-welcome {
-  @apply mx-auto flex min-h-[46vh] w-full max-w-[720px] flex-col items-center justify-center text-center;
+  @apply mx-auto flex min-h-[40vh] w-full max-w-[720px] flex-col items-center justify-center text-center;
 }
 
 .ai-welcome-title {
-  @apply m-0 text-[clamp(38px,5.4vw,62px)] font-bold tracking-tight text-text;
+  @apply m-0 text-[clamp(26px,3.4vw,40px)] font-semibold tracking-tight text-text;
 }
 
 .ai-suggestion-cloud {
-  @apply mt-12 flex w-full flex-wrap justify-center gap-4 max-sm:mt-9 max-sm:gap-3;
+  @apply mt-10 flex w-full flex-wrap justify-center gap-4 max-sm:mt-8 max-sm:gap-3;
 }
 
 .ai-suggestion-chip {
-  @apply border-0 rounded-[20px] bg-[#f3f3f4] px-7 py-[15px] text-left text-[15px] leading-7 text-text shadow-none transition-colors duration-150;
+  @apply border-0 rounded-[20px] bg-[#f3f3f4] px-6 py-3 text-left text-[15px] leading-7 text-text shadow-none transition-colors duration-150;
   max-width: min(100%, 420px);
 }
 
