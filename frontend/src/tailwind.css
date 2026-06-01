@@ -938,17 +938,23 @@ h1, h2, h3, p {
 }
 
 .announcement-rail-arrow {
-  @apply inline-flex items-center justify-center rounded-full border border-line bg-white/92 text-text-2 shadow-sm transition-all duration-200;
+  @apply inline-flex items-center justify-center rounded-full border border-line bg-white/75 text-text-3 shadow-sm opacity-65 transition-[opacity,color,border-color,background-color,box-shadow] duration-200;
   width: var(--announcement-rail-control-size);
   height: var(--announcement-rail-control-size);
   backdrop-filter: blur(10px);
 }
 
 .announcement-rail-arrow:hover {
-  @apply text-blue;
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 16px 30px rgba(59, 130, 246, 0.14);
-  transform: translateY(-1px);
+  @apply text-text opacity-100;
+  border-color: rgba(59, 130, 246, 0.24);
+  box-shadow: 0 16px 30px rgba(59, 130, 246, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.announcement-rail-arrow:focus-visible {
+  @apply outline-none opacity-100 text-text;
+  border-color: rgba(59, 130, 246, 0.34);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .announcement-rail-arrow-prev,
