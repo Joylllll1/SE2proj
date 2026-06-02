@@ -226,8 +226,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
               '-=0.05',
             );
 
-          blobs.forEach((blob, index) => {
-            gsap.to(blob, {
+          const blobTweens = blobs.map((blob, index) => gsap.to(blob, {
               xPercent: index === 0 ? 8 : index === 1 ? -7 : 6,
               yPercent: index === 0 ? -6 : index === 1 ? 8 : -9,
               scale: index === 0 ? 1.08 : index === 1 ? 0.94 : 1.05,
@@ -235,10 +234,9 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
               repeat: -1,
               yoyo: true,
               ease: 'sine.inOut',
-            });
-          });
+            }));
 
-          gsap.to(scrollIndicatorRef.current, {
+          const scrollIndicatorTween = gsap.to(scrollIndicatorRef.current, {
             y: 8,
             opacity: 0.38,
             duration: 1.8,
@@ -247,7 +245,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             ease: 'sine.inOut',
           });
 
-          gsap.to(heroGlowRef.current, {
+          const glowTween = gsap.to(heroGlowRef.current, {
             scale: 1.05,
             opacity: 0.88,
             duration: 6.2,
@@ -256,7 +254,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             ease: 'sine.inOut',
           });
 
-          gsap.to(['.lp-ambient-shu', '.lp-ambient-dong'], {
+          const ambientTween = gsap.to(['.lp-ambient-shu', '.lp-ambient-dong'], {
             y: -18,
             opacity: 0.06,
             duration: 8.4,
@@ -266,7 +264,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             stagger: 0.4,
           });
 
-          gsap.to('.lp-hero-vignette', {
+          const vignetteTween = gsap.to('.lp-hero-vignette', {
             opacity: 0.82,
             duration: 7.2,
             repeat: -1,
@@ -321,34 +319,81 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             });
           }
 
+          const navTween = gsap.timeline({ paused: true })
+            .to(navRef.current, {
+              backgroundColor: 'rgba(255,255,255,0.82)',
+              boxShadow: '0 14px 36px rgba(34, 22, 28, 0.08)',
+              duration: 1,
+              ease: 'none',
+            }, 0)
+            .to(navRef.current, {
+              '--lp-nav-blur': '18px',
+              duration: 1,
+              ease: 'none',
+            }, 0)
+            .to(navRef.current?.querySelector('.lp-nav-brand-text'), {
+              color: '#35272d',
+              duration: 1,
+              ease: 'none',
+            }, 0)
+            .to(navRef.current?.querySelector('.lp-nav-actions'), {
+              color: '#65515b',
+              duration: 1,
+              ease: 'none',
+            }, 0);
+
           ScrollTrigger.create({
             trigger: heroRef.current,
             start: 'top top',
             end: 'bottom top',
-            onUpdate: (self) => {
-              const progress = self.progress;
-              gsap.to(navRef.current, {
-                backgroundColor: `rgba(255,255,255,${0.08 + progress * 0.74})`,
-                backdropFilter: `blur(${4 + progress * 14}px)`,
-                WebkitBackdropFilter: `blur(${4 + progress * 14}px)`,
-                boxShadow: `0 14px 36px rgba(34, 22, 28, ${progress * 0.08})`,
-                duration: 0.18,
-                overwrite: 'auto',
-              });
-              gsap.to(navRef.current?.querySelector('.lp-nav-brand-text'), {
-                color: progress > 0.55 ? '#35272d' : '#f4dfe2',
-                duration: 0.18,
-                overwrite: 'auto',
-              });
-              gsap.to(navRef.current?.querySelector('.lp-nav-actions'), {
-                color: progress > 0.55 ? '#65515b' : '#f0cfd4',
-                duration: 0.18,
-                overwrite: 'auto',
-              });
+            animation: navTween,
+            scrub: true,
+          });
+
+          ScrollTrigger.create({
+            trigger: heroRef.current,
+            start: 'top top',
+            end: 'bottom top',
+            onEnter: () => {
+              [
+                ...blobTweens,
+                scrollIndicatorTween,
+                glowTween,
+                ambientTween,
+                vignetteTween,
+              ].forEach((tween) => tween.play());
+            },
+            onEnterBack: () => {
+              [
+                ...blobTweens,
+                scrollIndicatorTween,
+                glowTween,
+                ambientTween,
+                vignetteTween,
+              ].forEach((tween) => tween.play());
+            },
+            onLeave: () => {
+              [
+                ...blobTweens,
+                scrollIndicatorTween,
+                glowTween,
+                ambientTween,
+                vignetteTween,
+              ].forEach((tween) => tween.pause());
+            },
+            onLeaveBack: () => {
+              [
+                ...blobTweens,
+                scrollIndicatorTween,
+                glowTween,
+                ambientTween,
+                vignetteTween,
+              ].forEach((tween) => tween.pause());
             },
           });
 
           reveals.forEach((element, index) => {
+            if (element.dataset.reveal === 'wipe') return;
             const offset = element.dataset.reveal === 'quote' ? 28 : 40;
             const axis = element.dataset.axis === 'x' ? 30 : 0;
             const start = element.dataset.start || 'top 84%';
@@ -377,57 +422,6 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             );
           });
 
-          if (cards.length) {
-            gsap.fromTo(
-              cards,
-              { y: 48, opacity: 0, scale: 0.96, filter: 'blur(12px)', rotationX: 4 },
-              {
-                y: 0, opacity: 1, scale: 1, filter: 'blur(0px)', rotationX: 0,
-                duration: 0.8, ease: 'power3.out', stagger: 0.12,
-                scrollTrigger: {
-                  trigger: cards[0].parentElement,
-                  start: 'top 82%',
-                  once: true,
-                },
-              },
-            );
-          }
-
-          if (quotes.length) {
-            gsap.fromTo(
-              quotes,
-              { x: (index) => (index % 2 === 0 ? -40 : 40), opacity: 0, filter: 'blur(12px)', scale: 0.97 },
-              {
-                x: 0, opacity: 1, filter: 'blur(0px)', scale: 1,
-                duration: 0.82, ease: 'power3.out', stagger: 0.16,
-                scrollTrigger: {
-                  trigger: quotes[0].parentElement,
-                  start: 'top 82%',
-                  once: true,
-                },
-              },
-            );
-          }
-
-          if (trustItems.length) {
-            gsap.fromTo(
-              trustItems,
-              { y: 22, opacity: 0 },
-              {
-                y: 0,
-                opacity: 1,
-                duration: 0.62,
-                ease: 'power2.out',
-                stagger: 0.08,
-                scrollTrigger: {
-                  trigger: trustItems[0].parentElement,
-                  start: 'top 88%',
-                  once: true,
-                },
-              },
-            );
-          }
-
           /* Intro lead heading — phrase-by-phrase cinematic reveal */
           gsap.fromTo('.lp-lead-phrase',
             { y: 48, opacity: 0, filter: 'blur(12px)', rotationX: 8 },
@@ -448,14 +442,211 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             },
           );
 
+          const animateSectionHeading = (timeline, heading) => {
+            if (!heading) return;
+            const title = heading.querySelector('h2');
+            const paragraph = heading.querySelector('p');
+            const lineHeight = title ? Number.parseFloat(window.getComputedStyle(title).lineHeight) : 0;
+            const singleLine = title && lineHeight > 0
+              ? Math.round(title.getBoundingClientRect().height / lineHeight) <= 1
+              : false;
+
+            if (singleLine) {
+              timeline.fromTo(
+                heading,
+                { clipPath: 'inset(0 100% 0 0)', opacity: 0.96 },
+                { clipPath: 'inset(0 0% 0 0)', opacity: 1, duration: 0.88, ease: 'power3.inOut' },
+              );
+              if (paragraph) {
+                timeline.fromTo(
+                  paragraph,
+                  { y: 16, opacity: 0, filter: 'blur(4px)' },
+                  { y: 0, opacity: 1, filter: 'blur(0px)', duration: 0.5, ease: 'power2.out' },
+                  '-=0.2',
+                );
+              }
+              return;
+            }
+
+            timeline.fromTo(
+              title || heading,
+              { y: 28, opacity: 0, filter: 'blur(10px)' },
+              { y: 0, opacity: 1, filter: 'blur(0px)', duration: 0.76, ease: 'power3.out' },
+            );
+
+            if (paragraph) {
+              timeline.fromTo(
+                paragraph,
+                { y: 18, opacity: 0 },
+                { y: 0, opacity: 1, duration: 0.54, ease: 'power2.out' },
+                '-=0.32',
+              );
+            }
+          };
+
+          const sceneSection = root.querySelector('.lp-scene-section');
+          if (sceneSection) {
+            const sceneHeading = sceneSection.querySelector('[data-reveal="wipe"]');
+            const sceneCards = sceneSection.querySelectorAll('.lp-scene-fragment');
+            const sceneTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: sceneSection,
+                start: 'top 78%',
+                once: true,
+              },
+            });
+
+            animateSectionHeading(sceneTl, sceneHeading);
+
+            if (sceneCards.length) {
+              sceneTl.fromTo(
+                sceneCards,
+                { y: 48, opacity: 0, scale: 0.96, filter: 'blur(12px)', rotationX: 4 },
+                {
+                  y: 0,
+                  opacity: 1,
+                  scale: 1,
+                  filter: 'blur(0px)',
+                  rotationX: 0,
+                  duration: 0.8,
+                  ease: 'power3.out',
+                  stagger: 0.12,
+                },
+                '-=0.18',
+              );
+            }
+          }
+
+          const featureSection = root.querySelector('.lp-feature-section');
+          if (featureSection) {
+            const featureHeading = featureSection.querySelector('[data-reveal="wipe"]');
+            const featureCards = featureSection.querySelectorAll('.lp-feature-card');
+            const featureTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: featureSection,
+                start: 'top 78%',
+                once: true,
+              },
+            });
+
+            animateSectionHeading(featureTl, featureHeading);
+
+            if (featureCards.length) {
+              featureTl.fromTo(
+                featureCards,
+                { y: 48, opacity: 0, scale: 0.96, filter: 'blur(12px)', rotationX: 4 },
+                {
+                  y: 0,
+                  opacity: 1,
+                  scale: 1,
+                  filter: 'blur(0px)',
+                  rotationX: 0,
+                  duration: 0.8,
+                  ease: 'power3.out',
+                  stagger: 0.12,
+                },
+                '-=0.18',
+              );
+            }
+          }
+
+          const voicesSection = root.querySelector('.lp-voices-section');
+          if (voicesSection) {
+            const voicesHeading = voicesSection.querySelector('[data-reveal="wipe"]');
+            const voiceCards = voicesSection.querySelectorAll('.lp-voice-fragment');
+            const voicesTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: voicesSection,
+                start: 'top 80%',
+                once: true,
+              },
+            });
+
+            animateSectionHeading(voicesTl, voicesHeading);
+
+            if (voiceCards.length) {
+              voicesTl.fromTo(
+                voiceCards,
+                { x: (index) => (index % 2 === 0 ? -30 : 30), opacity: 0, filter: 'blur(10px)' },
+                {
+                  x: 0,
+                  opacity: 1,
+                  filter: 'blur(0px)',
+                  duration: 0.76,
+                  ease: 'power3.out',
+                  stagger: 0.14,
+                },
+                '-=0.16',
+              );
+            }
+          }
+
+          if (trustItems.length) {
+            const trustSection = root.querySelector('.lp-trust-section');
+            const trustHeading = trustSection?.querySelector('[data-reveal="wipe"]');
+            const trustTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: trustSection,
+                start: 'top 82%',
+                once: true,
+              },
+            });
+
+            animateSectionHeading(trustTl, trustHeading);
+
+            trustTl.fromTo(
+              trustItems,
+              { y: 22, opacity: 0 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.62,
+                ease: 'power2.out',
+                stagger: 0.08,
+              },
+              '-=0.14',
+            );
+          }
+
+          const ctaSection = root.querySelector('.lp-cta-section');
+          if (ctaSection) {
+            const ctaStage = ctaSection.querySelector('[data-reveal="wipe"]');
+            const ctaActions = ctaSection.querySelectorAll('.lp-cta-actions > *');
+            const ctaTl = gsap.timeline({
+              scrollTrigger: {
+                trigger: ctaSection,
+                start: 'top 84%',
+                once: true,
+              },
+            });
+
+            animateSectionHeading(ctaTl, ctaStage);
+
+            if (ctaActions.length) {
+              ctaTl.fromTo(
+                ctaActions,
+                { y: 14, opacity: 0, scale: 0.98 },
+                {
+                  y: 0,
+                  opacity: 1,
+                  scale: 1,
+                  duration: 0.46,
+                  ease: 'power2.out',
+                  stagger: 0.08,
+                },
+                '-=0.16',
+              );
+            }
+          }
+
           /* CTA button — subtle living glow */
-          gsap.to('.lp-cta-primary', {
+          const ctaGlowTween = gsap.to('.lp-cta-primary', {
             boxShadow: '0 20px 40px rgba(144, 58, 65, 0.36), inset 0 1px 0 rgba(255, 239, 239, 0.38)',
             duration: 2.4, repeat: -1, yoyo: true, ease: 'sine.inOut',
           });
 
           /* Section index numbers — gentle pulse */
-          gsap.to('.lp-section-index', {
+          const sectionIndexTween = gsap.to('.lp-section-index', {
             opacity: 0.55, duration: 3.2, repeat: -1, yoyo: true, ease: 'sine.inOut',
             stagger: 0.3,
             scrollTrigger: {
@@ -488,23 +679,22 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             },
           });
 
-          cardRefs.current.forEach((card, index) => {
+          cardRefs.current.forEach((card) => {
             gsap.to(card, {
-              y: index % 2 === 0 ? -18 : -10,
+              y: -8,
               ease: 'none',
               scrollTrigger: {
                 trigger: card,
                 start: 'top bottom',
                 end: 'bottom top',
-                scrub: 0.8,
+                scrub: 0.6,
               },
             });
           });
 
-          quoteRefs.current.forEach((quote, index) => {
+          quoteRefs.current.forEach((quote) => {
             gsap.to(quote, {
-              y: index === 1 ? -22 : -12,
-              rotation: index === 1 ? -0.6 : index === 0 ? 0.5 : -0.4,
+              y: -8,
               ease: 'none',
               scrollTrigger: {
                 trigger: quote,
@@ -513,6 +703,26 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
                 scrub: 1,
               },
             });
+          });
+
+          ScrollTrigger.create({
+            trigger: '.lp-cta-section',
+            start: 'top bottom',
+            end: 'bottom top',
+            onEnter: () => ctaGlowTween.play(),
+            onEnterBack: () => ctaGlowTween.play(),
+            onLeave: () => ctaGlowTween.pause(),
+            onLeaveBack: () => ctaGlowTween.pause(),
+          });
+
+          ScrollTrigger.create({
+            trigger: '.lp-story-shell',
+            start: 'top bottom',
+            end: 'bottom top',
+            onEnter: () => sectionIndexTween.play(),
+            onEnterBack: () => sectionIndexTween.play(),
+            onLeave: () => sectionIndexTween.pause(),
+            onLeaveBack: () => sectionIndexTween.pause(),
           });
 
           return () => {
@@ -572,12 +782,12 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
               </div>
               <div ref={heroShotRef} className="lp-hero-shot">
                 <div className="lp-shot-copy lp-hero-copy-parallax">
-                  <h1 ref={heroTitleRef} className="lp-hero-title">
-                    <span className="lp-hero-char">N</span>
-                    <span className="lp-hero-char">J</span>
-                    <span className="lp-hero-char">U</span>
-                    <span className="lp-hero-char lp-hero-char-gap">树</span>
-                    <span className="lp-hero-char">洞</span>
+                  <h1 ref={heroTitleRef} className="lp-hero-title" aria-label="NJU 树洞">
+                    <span className="lp-hero-char" aria-hidden="true">N</span>
+                    <span className="lp-hero-char" aria-hidden="true">J</span>
+                    <span className="lp-hero-char" aria-hidden="true">U</span>
+                    <span className="lp-hero-char lp-hero-char-gap" aria-hidden="true">树</span>
+                    <span className="lp-hero-char" aria-hidden="true">洞</span>
                   </h1>
                   <p ref={heroEyebrowRef} className="lp-hero-eyebrow">
                     Anonymous, but never adrift.
@@ -633,7 +843,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           </section>
 
           <section className="lp-scene-section">
-            <div ref={pushRevealRef} className="lp-section-heading" data-reveal="copy">
+            <div ref={pushRevealRef} className="lp-section-heading" data-reveal="wipe">
               <span className="lp-section-index">01</span>
               <div>
                 <h2>那些被压低音量的校园时刻</h2>
@@ -658,7 +868,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           </section>
 
           <section className="lp-feature-section">
-            <div ref={pushRevealRef} className="lp-section-heading lp-section-heading-wide" data-reveal="copy">
+            <div ref={pushRevealRef} className="lp-section-heading lp-section-heading-wide" data-reveal="wipe">
               <span className="lp-section-index">02</span>
               <div>
                 <h2>它不是完全自由的匿名，而是被精心设计过的安全感。</h2>
@@ -683,7 +893,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           </section>
 
           <section className="lp-voices-section">
-            <div ref={pushRevealRef} className="lp-section-heading" data-reveal="copy">
+            <div ref={pushRevealRef} className="lp-section-heading" data-reveal="wipe">
               <span className="lp-section-index">03</span>
               <div>
                 <h2>真实的声音，不总是 loud，也不总是完整。</h2>
@@ -711,7 +921,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           </section>
 
           <section className="lp-trust-section">
-            <div ref={pushRevealRef} className="lp-trust-copy" data-reveal="copy">
+            <div ref={pushRevealRef} className="lp-trust-copy" data-reveal="wipe">
               <span className="lp-section-index">04</span>
               <h2>真正让人放心的，不是“完全匿名”，而是“匿名但可治理”。</h2>
               <p>
@@ -731,7 +941,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           </section>
 
           <section className="lp-cta-section">
-            <div ref={pushRevealRef} className="lp-cta-stage" data-reveal="copy" data-start="top 96%">
+            <div ref={pushRevealRef} className="lp-cta-stage" data-reveal="wipe" data-start="top 96%">
               <span className="lp-cta-eyebrow">05 / Ready to enter</span>
               <h2>如果你也有一些不想被熟人立刻看见的话。</h2>
               <p>

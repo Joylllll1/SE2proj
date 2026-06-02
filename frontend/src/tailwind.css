@@ -1930,9 +1930,12 @@ h1, h2, h3, p {
 /* ── Nav ── */
 .lp-nav {
   @apply fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6;
+  --lp-nav-blur: 4px;
   height: 72px;
   background: rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(var(--lp-nav-blur));
+  -webkit-backdrop-filter: blur(var(--lp-nav-blur));
 }
 
 .lp-nav-brand {
@@ -2502,6 +2505,7 @@ h1, h2, h3, p {
   position: relative;
   display: flex;
   min-height: 260px;
+  height: 100%;
   flex-direction: column;
   justify-content: flex-end;
   gap: 14px;
@@ -2576,6 +2580,7 @@ h1, h2, h3, p {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+  align-items: stretch;
 }
 
 .lp-feature-card {
@@ -2584,6 +2589,7 @@ h1, h2, h3, p {
   flex-direction: column;
   border-radius: 30px;
   min-height: 252px;
+  height: 100%;
   padding: 24px 24px 26px;
   background: rgba(255, 250, 247, 0.74);
   border: 1px solid rgba(136, 97, 107, 0.08);
@@ -2637,6 +2643,7 @@ h1, h2, h3, p {
 
 .lp-voice-fragment {
   min-height: 230px;
+  height: 100%;
   margin: 0;
   padding: 28px 24px;
   border-radius: 28px;
@@ -2788,6 +2795,10 @@ h1, h2, h3, p {
   .lp-voices-track,
   .lp-scene-layout {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .lp-voice-fragment:last-child {
+    grid-column: 1 / -1;
   }
 }
 
