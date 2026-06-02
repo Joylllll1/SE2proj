@@ -464,7 +464,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
 
           ScrollTrigger.create({
             trigger: heroRef.current,
-            start: 'top top',
+            start: 'top bottom',
             end: 'bottom top',
             onEnter: () => {
               [
