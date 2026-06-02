@@ -2328,8 +2328,8 @@ h1, h2, h3, p {
 /* ── CTA Primary ── */
 .lp-cta-primary {
   @apply inline-flex items-center justify-center border-0 text-white font-bold;
-  min-height: 52px;
-  padding: 0 28px;
+  min-height: 50px;
+  padding: 0 24px;
   border-radius: 999px;
   background:
     linear-gradient(135deg, rgba(232, 148, 157, 0.98), rgba(197, 92, 99, 0.98));
@@ -2355,17 +2355,17 @@ h1, h2, h3, p {
 }
 
 .lp-cta-large {
-  min-height: 58px;
-  min-width: 168px;
-  padding: 0 34px;
-  font-size: 16px;
+  min-height: 54px;
+  min-width: 154px;
+  padding: 0 28px;
+  font-size: 15px;
 }
 
 .lp-cta-secondary {
   @apply inline-flex items-center justify-center bg-transparent font-semibold;
-  min-height: 58px;
-  min-width: 168px;
-  padding: 0 34px;
+  min-height: 54px;
+  min-width: 154px;
+  padding: 0 28px;
   border-radius: 999px;
   border: 1px solid rgba(117, 72, 84, 0.16);
   color: #5a414b;
@@ -2631,6 +2631,7 @@ h1, h2, h3, p {
 }
 
 .lp-feature-card .lp-hover-surface {
+  position: relative;
   display: flex;
   min-height: 252px;
   height: 100%;
@@ -2653,12 +2654,24 @@ h1, h2, h3, p {
 }
 
 .lp-feature-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   min-height: 50px;
   margin-bottom: 14px;
+  padding-right: 56px;
+}
+
+.lp-feature-card-icon {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(255, 246, 242, 0.76);
+  border: 1px solid rgba(185, 110, 124, 0.12);
+  box-shadow: 0 10px 24px rgba(109, 71, 82, 0.08);
 }
 
 .lp-feature-card-icon,
@@ -2964,6 +2977,56 @@ h1, h2, h3, p {
 
   .lp-voice-fragment p {
     font-size: 20px;
+  }
+
+  .lp-feature-card {
+    min-height: auto;
+  }
+
+  .lp-feature-card .lp-hover-surface {
+    min-height: auto;
+    padding: 20px 18px 22px;
+  }
+
+  .lp-feature-tone {
+    margin-bottom: 14px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+
+  .lp-feature-card-head {
+    min-height: 0;
+    margin-bottom: 12px;
+    padding-right: 44px;
+  }
+
+  .lp-feature-card h3 {
+    font-size: 17px;
+    line-height: 1.34;
+  }
+
+  .lp-feature-card p {
+    font-size: 13px;
+    line-height: 1.72;
+  }
+
+  .lp-feature-card small {
+    padding-top: 16px;
+    font-size: 11px;
+    line-height: 1.65;
+  }
+
+  .lp-feature-card-icon {
+    top: 18px;
+    right: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+
+  .lp-feature-card-icon .app-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .lp-cta-actions {

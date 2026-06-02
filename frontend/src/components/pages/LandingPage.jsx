@@ -1056,12 +1056,12 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
                 >
                   <div className="lp-hover-surface">
                     <span className="lp-hover-sheen" aria-hidden="true" />
+                    <span className="lp-feature-card-icon" aria-hidden="true">
+                      <Icon name={feature.icon} />
+                    </span>
                     <span className="lp-feature-tone">{feature.tone}</span>
                     <div className="lp-feature-card-head">
                       <h3>{feature.title}</h3>
-                      <span className="lp-feature-card-icon">
-                        <Icon name={feature.icon} />
-                      </span>
                     </div>
                     <p>{feature.body}</p>
                     <small>{feature.note}</small>
