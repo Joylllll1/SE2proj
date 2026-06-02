@@ -1,10 +1,11 @@
 import React, { useId, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import Icon from '../common/Icon';
 import Modal from '../common/Modal';
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 const sceneFragments = [
   {
@@ -91,6 +92,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
   const cardRefs = useRef([]);
   const quoteRefs = useRef([]);
   const trustRefs = useRef([]);
+  const hoverCardRefs = useRef([]);
 
   const setBlobRef = (index) => (element) => {
     blobRefs.current[index] = element;
@@ -116,6 +118,11 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
     if (!trustRefs.current.includes(element)) trustRefs.current.push(element);
   };
 
+  const pushHoverCardRef = (element) => {
+    if (!element) return;
+    if (!hoverCardRefs.current.includes(element)) hoverCardRefs.current.push(element);
+  };
+
   useLayoutEffect(() => {
     const media = gsap.matchMedia();
     const root = rootRef.current;
@@ -125,6 +132,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
     cardRefs.current = cardRefs.current.filter((element) => root.contains(element));
     quoteRefs.current = quoteRefs.current.filter((element) => root.contains(element));
     trustRefs.current = trustRefs.current.filter((element) => root.contains(element));
+    hoverCardRefs.current = hoverCardRefs.current.filter((element) => root.contains(element));
 
     const ctx = gsap.context(() => {
       media.add(
@@ -141,6 +149,11 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           const cards = cardRefs.current.filter(Boolean);
           const quotes = quoteRefs.current.filter(Boolean);
           const trustItems = trustRefs.current.filter(Boolean);
+          const hoverCards = hoverCardRefs.current.filter(Boolean);
+
+          hoverCards.forEach((card) => {
+            card.dataset.hoverReady = 'false';
+          });
 
           if (reduce) {
             gsap.set(
@@ -161,6 +174,9 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
               ],
               { clearProps: 'all', opacity: 1, y: 0, x: 0, scale: 1, filter: 'blur(0px)' },
             );
+            hoverCards.forEach((card) => {
+              card.dataset.hoverReady = 'true';
+            });
             return undefined;
           }
 
@@ -327,6 +343,91 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             context.add('cleanupHeroPointer', () => {
               heroRef.current?.removeEventListener('pointermove', handlePointerMove);
               heroRef.current?.removeEventListener('pointerleave', handlePointerLeave);
+            });
+
+            hoverCards.forEach((card, index) => {
+              const hoverSurface = card.querySelector('.lp-hover-surface');
+              const cardSheen = card.querySelector('.lp-hover-sheen');
+              if (!hoverSurface) return;
+
+              const handleCardEnter = () => {
+                if (card.dataset.hoverReady !== 'true') return;
+                gsap.to(hoverSurface, {
+                  y: -10,
+                  scale: 1.015,
+                  boxShadow: '0 34px 64px rgba(45, 28, 34, 0.22)',
+                  borderColor: 'rgba(214, 149, 161, 0.24)',
+                  duration: 0.35,
+                  ease: 'power2.out',
+                  overwrite: 'auto',
+                });
+              };
+
+              const handleCardMove = (event) => {
+                if (card.dataset.hoverReady !== 'true') return;
+                const rect = card.getBoundingClientRect();
+                const offsetX = event.clientX - rect.left;
+                const offsetY = event.clientY - rect.top;
+                const rotateY = ((offsetX / rect.width) - 0.5) * 7;
+                const rotateX = (0.5 - (offsetY / rect.height)) * 6;
+
+                gsap.to(hoverSurface, {
+                  rotateX,
+                  rotateY,
+                  transformPerspective: 1000,
+                  duration: 0.45,
+                  ease: 'power3.out',
+                  overwrite: 'auto',
+                });
+
+                if (cardSheen) {
+                  gsap.to(cardSheen, {
+                    opacity: 0.38,
+                    x: (offsetX / rect.width - 0.5) * 8,
+                    y: (offsetY / rect.height - 0.5) * 7,
+                    duration: 0.45,
+                    ease: 'power3.out',
+                    overwrite: 'auto',
+                  });
+                }
+              };
+
+              const handleCardLeave = () => {
+                if (card.dataset.hoverReady !== 'true') return;
+                gsap.to(hoverSurface, {
+                  x: 0,
+                  y: 0,
+                  scale: 1,
+                  rotateX: 0,
+                  rotateY: 0,
+                  boxShadow: '',
+                  borderColor: '',
+                  duration: 0.55,
+                  ease: 'power3.out',
+                  overwrite: 'auto',
+                });
+
+                if (cardSheen) {
+                  gsap.to(cardSheen, {
+                    opacity: 0,
+                    x: 0,
+                    y: 0,
+                    duration: 0.45,
+                    ease: 'power2.out',
+                    overwrite: 'auto',
+                  });
+                }
+              };
+
+              card.addEventListener('pointerenter', handleCardEnter);
+              card.addEventListener('pointermove', handleCardMove);
+              card.addEventListener('pointerleave', handleCardLeave);
+
+              context.add(`cleanupHoverCard${index}`, () => {
+                card.removeEventListener('pointerenter', handleCardEnter);
+                card.removeEventListener('pointermove', handleCardMove);
+                card.removeEventListener('pointerleave', handleCardLeave);
+              });
             });
           }
 
@@ -498,7 +599,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           const sceneSection = root.querySelector('.lp-scene-section');
           if (sceneSection) {
             const sceneHeading = sceneSection.querySelector('[data-reveal="wipe"]');
-            const sceneCards = sceneSection.querySelectorAll('.lp-scene-fragment');
+            const sceneCards = sceneSection.querySelectorAll('.lp-scene-fragment .lp-hover-surface');
             const sceneTl = gsap.timeline({
               scrollTrigger: {
                 trigger: sceneSection,
@@ -512,26 +613,29 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             if (sceneCards.length) {
               sceneTl.fromTo(
                 sceneCards,
-                { y: 48, opacity: 0, scale: 0.96, filter: 'blur(12px)', rotationX: 4 },
+                { y: 34, opacity: 0, scale: 0.985 },
                 {
                   y: 0,
                   opacity: 1,
                   scale: 1,
-                  filter: 'blur(0px)',
-                  rotationX: 0,
-                  duration: 0.8,
+                  duration: 0.56,
                   ease: 'power3.out',
                   stagger: 0.12,
                 },
                 '-=0.18',
               );
+              sceneTl.add(() => {
+                sceneSection.querySelectorAll('.lp-hover-card').forEach((card) => {
+                  card.dataset.hoverReady = 'true';
+                });
+              });
             }
           }
 
           const featureSection = root.querySelector('.lp-feature-section');
           if (featureSection) {
             const featureHeading = featureSection.querySelector('[data-reveal="wipe"]');
-            const featureCards = featureSection.querySelectorAll('.lp-feature-card');
+            const featureCards = featureSection.querySelectorAll('.lp-feature-card .lp-hover-surface');
             const featureTl = gsap.timeline({
               scrollTrigger: {
                 trigger: featureSection,
@@ -545,26 +649,29 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             if (featureCards.length) {
               featureTl.fromTo(
                 featureCards,
-                { y: 48, opacity: 0, scale: 0.96, filter: 'blur(12px)', rotationX: 4 },
+                { y: 34, opacity: 0, scale: 0.985 },
                 {
                   y: 0,
                   opacity: 1,
                   scale: 1,
-                  filter: 'blur(0px)',
-                  rotationX: 0,
-                  duration: 0.8,
+                  duration: 0.56,
                   ease: 'power3.out',
                   stagger: 0.12,
                 },
                 '-=0.18',
               );
+              featureTl.add(() => {
+                featureSection.querySelectorAll('.lp-hover-card').forEach((card) => {
+                  card.dataset.hoverReady = 'true';
+                });
+              });
             }
           }
 
           const voicesSection = root.querySelector('.lp-voices-section');
           if (voicesSection) {
             const voicesHeading = voicesSection.querySelector('[data-reveal="wipe"]');
-            const voiceCards = voicesSection.querySelectorAll('.lp-voice-fragment');
+            const voiceCards = voicesSection.querySelectorAll('.lp-voice-fragment .lp-hover-surface');
             const voicesTl = gsap.timeline({
               scrollTrigger: {
                 trigger: voicesSection,
@@ -578,23 +685,28 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             if (voiceCards.length) {
               voicesTl.fromTo(
                 voiceCards,
-                { x: (index) => (index % 2 === 0 ? -30 : 30), opacity: 0, filter: 'blur(10px)' },
+                { x: (index) => (index % 2 === 0 ? -20 : 20), opacity: 0 },
                 {
                   x: 0,
                   opacity: 1,
-                  filter: 'blur(0px)',
-                  duration: 0.76,
+                  duration: 0.54,
                   ease: 'power3.out',
                   stagger: 0.14,
                 },
                 '-=0.16',
               );
+              voicesTl.add(() => {
+                voicesSection.querySelectorAll('.lp-hover-card').forEach((card) => {
+                  card.dataset.hoverReady = 'true';
+                });
+              });
             }
           }
 
           if (trustItems.length) {
             const trustSection = root.querySelector('.lp-trust-section');
             const trustHeading = trustSection?.querySelector('[data-reveal="wipe"]');
+            const trustSurfaces = trustSection?.querySelectorAll('.lp-trust-pill .lp-hover-surface') || [];
             const trustTl = gsap.timeline({
               scrollTrigger: {
                 trigger: trustSection,
@@ -606,17 +718,23 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             animateSectionHeading(trustTl, trustHeading);
 
             trustTl.fromTo(
-              trustItems,
-              { y: 22, opacity: 0 },
+              trustSurfaces,
+              { y: 16, opacity: 0, scale: 0.99 },
               {
                 y: 0,
                 opacity: 1,
-                duration: 0.62,
+                scale: 1,
+                duration: 0.48,
                 ease: 'power2.out',
                 stagger: 0.08,
               },
               '-=0.14',
             );
+            trustTl.add(() => {
+              trustSection?.querySelectorAll('.lp-hover-card').forEach((card) => {
+                card.dataset.hoverReady = 'true';
+              });
+            });
           }
 
           const ctaSection = root.querySelector('.lp-cta-section');
@@ -691,6 +809,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           });
 
           cardRefs.current.forEach((card) => {
+            if (card.classList.contains('lp-hover-card')) return;
             gsap.to(card, {
               y: -8,
               ease: 'none',
@@ -704,6 +823,7 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
           });
 
           quoteRefs.current.forEach((quote) => {
+            if (quote.classList.contains('lp-hover-card')) return;
             gsap.to(quote, {
               y: -8,
               ease: 'none',
@@ -738,6 +858,9 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
 
           return () => {
             if (context.cleanupHeroPointer) context.cleanupHeroPointer();
+            hoverCards.forEach((_card, index) => {
+              if (context[`cleanupHoverCard${index}`]) context[`cleanupHoverCard${index}`]();
+            });
           };
         },
       );
@@ -749,16 +872,39 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
     };
   }, []);
 
+  const scrollToIntro = () => {
+    gsap.to(window, {
+      duration: 1.2,
+      scrollTo: { y: '.lp-story-intro', offsetY: 40 },
+      ease: 'power4.inOut',
+      overwrite: 'auto',
+    });
+  };
+
+  const scrollToTop = () => {
+    gsap.to(window, {
+      scrollTo: 0,
+      duration: 0.8,
+      ease: 'power3.inOut',
+      overwrite: 'auto',
+    });
+  };
+
   return (
     <>
       <div ref={rootRef} className="lp-shell">
         <div className="lp-grain" />
 
         <nav ref={navRef} className="lp-nav">
-          <div className="lp-nav-brand">
+          <button
+            type="button"
+            className="lp-nav-brand lp-nav-brand-button"
+            onClick={scrollToTop}
+            aria-label="NJU 树洞，回到顶部"
+          >
             <span className="lp-brand-mark">N</span>
             <span className="lp-nav-brand-text">NJU 树洞</span>
-          </div>
+          </button>
           <div className="lp-nav-actions">
             <button type="button" className="lp-nav-link" onClick={onLogin || onGetStarted}>登录</button>
             <span className="lp-nav-divider" aria-hidden="true">/</span>
@@ -820,12 +966,18 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             </div>
           </div>
 
-          <div ref={scrollIndicatorRef} className="lp-scroll-indicator" aria-hidden="true">
+          <button
+            ref={scrollIndicatorRef}
+            type="button"
+            className="lp-scroll-indicator"
+            onClick={scrollToIntro}
+            aria-label="滚动到下一节"
+          >
             <span>向下看</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
               <path d="M7 10l5 5 5-5" />
             </svg>
-          </div>
+          </button>
         </section>
 
         <main className="lp-story-shell">
@@ -865,14 +1017,20 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
               {sceneFragments.map((scene) => (
                 <article
                   key={scene.label}
-                  ref={pushCardRef}
-                  className="lp-scene-fragment"
+                  ref={(element) => {
+                    pushCardRef(element);
+                    pushHoverCardRef(element);
+                  }}
+                  className="lp-scene-fragment lp-hover-card"
                 >
-                  <div className="lp-scene-icon">
-                    <Icon name={scene.icon} />
+                  <div className="lp-hover-surface">
+                    <span className="lp-hover-sheen" aria-hidden="true" />
+                    <div className="lp-scene-icon">
+                      <Icon name={scene.icon} />
+                    </div>
+                    <h3>{scene.label}</h3>
+                    <p>{scene.desc}</p>
                   </div>
-                  <h3>{scene.label}</h3>
-                  <p>{scene.desc}</p>
                 </article>
               ))}
             </div>
@@ -888,16 +1046,26 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             </div>
             <div className="lp-feature-grid">
               {featureMoments.map((feature) => (
-                <article key={feature.title} ref={pushCardRef} className="lp-feature-card">
-                  <span className="lp-feature-tone">{feature.tone}</span>
-                  <div className="lp-feature-card-head">
-                    <h3>{feature.title}</h3>
-                    <span className="lp-feature-card-icon">
-                      <Icon name={feature.icon} />
-                    </span>
+                <article
+                  key={feature.title}
+                  ref={(element) => {
+                    pushCardRef(element);
+                    pushHoverCardRef(element);
+                  }}
+                  className="lp-feature-card lp-hover-card"
+                >
+                  <div className="lp-hover-surface">
+                    <span className="lp-hover-sheen" aria-hidden="true" />
+                    <span className="lp-feature-tone">{feature.tone}</span>
+                    <div className="lp-feature-card-head">
+                      <h3>{feature.title}</h3>
+                      <span className="lp-feature-card-icon">
+                        <Icon name={feature.icon} />
+                      </span>
+                    </div>
+                    <p>{feature.body}</p>
+                    <small>{feature.note}</small>
                   </div>
-                  <p>{feature.body}</p>
-                  <small>{feature.note}</small>
                 </article>
               ))}
             </div>
@@ -918,14 +1086,18 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
                   ref={(element) => {
                     pushRevealRef(element);
                     pushQuoteRef(element);
+                    pushHoverCardRef(element);
                   }}
-                  className="lp-voice-fragment"
+                  className="lp-voice-fragment lp-hover-card"
                   data-reveal="quote"
                   data-axis="x"
                   data-start="top 90%"
                 >
-                  <p>&ldquo;{item.quote}&rdquo;</p>
-                  <footer>&mdash; {item.footer}</footer>
+                  <div className="lp-hover-surface">
+                    <span className="lp-hover-sheen" aria-hidden="true" />
+                    <p>&ldquo;{item.quote}&rdquo;</p>
+                    <footer>&mdash; {item.footer}</footer>
+                  </div>
                 </blockquote>
               ))}
             </div>
@@ -941,11 +1113,21 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
             </div>
             <div className="lp-trust-band">
               {trustPoints.map((point) => (
-                <div key={point.label} ref={pushTrustRef} className="lp-trust-pill">
-                  <span className="lp-trust-pill-icon">
-                    <Icon name={point.icon} />
-                  </span>
-                  <span>{point.label}</span>
+                <div
+                  key={point.label}
+                  ref={(element) => {
+                    pushTrustRef(element);
+                    pushHoverCardRef(element);
+                  }}
+                  className="lp-trust-pill lp-hover-card"
+                >
+                  <div className="lp-hover-surface">
+                    <span className="lp-hover-sheen" aria-hidden="true" />
+                    <span className="lp-trust-pill-icon">
+                      <Icon name={point.icon} />
+                    </span>
+                    <span>{point.label}</span>
+                  </div>
                 </div>
               ))}
             </div>

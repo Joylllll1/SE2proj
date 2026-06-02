@@ -1942,6 +1942,13 @@ h1, h2, h3, p {
   @apply flex items-center gap-3;
 }
 
+.lp-nav-brand-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
 .lp-nav-brand-text,
 .lp-footer-brand-text {
   font-size: 17px;
@@ -2295,12 +2302,22 @@ h1, h2, h3, p {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
   transform: translateX(-50%);
   color: rgba(250, 236, 238, 0.52);
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   will-change: transform, opacity;
+  transition: color 0.24s ease, transform 0.24s ease;
+}
+
+.lp-scroll-indicator:hover {
+  color: rgba(250, 236, 238, 0.8);
+  transform: translateX(-50%) translateY(-2px);
 }
 
 .lp-scroll-indicator svg {
@@ -2507,9 +2524,38 @@ h1, h2, h3, p {
 
 .lp-scene-fragment {
   position: relative;
-  display: flex;
   min-height: 260px;
   height: 100%;
+  border-radius: 28px;
+}
+
+.lp-hover-card {
+  overflow: hidden;
+}
+
+.lp-hover-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.015) 34%, rgba(255, 255, 255, 0) 66%),
+    linear-gradient(180deg, rgba(255, 247, 247, 0.04), rgba(255, 247, 247, 0));
+  will-change: transform, opacity;
+}
+
+.lp-hover-surface {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  will-change: transform, box-shadow;
+  transform-style: preserve-3d;
+}
+
+.lp-scene-fragment .lp-hover-surface {
+  display: flex;
+  min-height: 260px;
   flex-direction: column;
   justify-content: flex-end;
   gap: 14px;
@@ -2517,21 +2563,11 @@ h1, h2, h3, p {
   border-radius: 28px;
   color: #fff7f3;
   background:
-    linear-gradient(180deg, rgba(255, 244, 244, 0.04), rgba(255, 244, 244, 0.02)),
+    linear-gradient(180deg, rgba(255, 246, 246, 0.06), rgba(255, 246, 246, 0.02)),
     linear-gradient(160deg, #60414d, #3f2a33);
   border: 1px solid rgba(255, 240, 240, 0.08);
   box-shadow: 0 26px 46px rgba(45, 28, 34, 0.18);
   transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
-  background:
-    linear-gradient(180deg, rgba(255, 246, 246, 0.06), rgba(255, 246, 246, 0.02)),
-    linear-gradient(160deg, #60414d, #3f2a33);
-}
-
-.lp-scene-fragment:hover,
-.lp-feature-card:hover,
-.lp-voice-fragment:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 30px 52px rgba(45, 28, 34, 0.18);
 }
 
 .lp-scene-icon {
@@ -2589,16 +2625,22 @@ h1, h2, h3, p {
 
 .lp-feature-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
   border-radius: 30px;
   min-height: 252px;
   height: 100%;
+}
+
+.lp-feature-card .lp-hover-surface {
+  display: flex;
+  min-height: 252px;
+  height: 100%;
+  flex-direction: column;
   padding: 24px 24px 26px;
+  border-radius: 30px;
   background: rgba(255, 250, 247, 0.74);
   border: 1px solid rgba(136, 97, 107, 0.08);
   box-shadow: 0 20px 40px rgba(68, 44, 52, 0.08);
-  transition: transform 0.28s ease, box-shadow 0.28s ease;
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
 }
 
 .lp-feature-tone {
@@ -2646,18 +2688,24 @@ h1, h2, h3, p {
 }
 
 .lp-voice-fragment {
-  min-height: 230px;
+  position: relative;
   height: 100%;
   margin: 0;
+  border-radius: 28px;
+}
+
+.lp-voice-fragment .lp-hover-surface {
+  display: flex;
+  min-height: 230px;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
   padding: 28px 24px;
   border-radius: 28px;
   background: rgba(255, 249, 246, 0.68);
   border: 1px solid rgba(140, 102, 112, 0.08);
   box-shadow: 0 18px 38px rgba(68, 44, 52, 0.08);
-  transition: transform 0.28s ease, box-shadow 0.28s ease;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
 }
 
 .lp-voice-fragment p {
@@ -2689,15 +2737,23 @@ h1, h2, h3, p {
 }
 
 .lp-trust-pill {
+  position: relative;
+  min-height: 82px;
+  border-radius: 22px;
+}
+
+.lp-trust-pill .lp-hover-surface {
   display: flex;
+  min-height: 82px;
+  height: 100%;
   align-items: center;
   gap: 14px;
-  min-height: 82px;
   padding: 0 20px;
   border-radius: 22px;
   background: rgba(255, 251, 248, 0.72);
   border: 1px solid rgba(142, 101, 111, 0.08);
   box-shadow: 0 16px 34px rgba(68, 44, 52, 0.06);
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
 }
 
 .lp-trust-pill-icon {

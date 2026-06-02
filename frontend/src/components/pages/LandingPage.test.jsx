@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import LandingPage from './LandingPage';
 
+const { gsapTo } = vi.hoisted(() => ({
+  gsapTo: vi.fn(),
+}));
+
 vi.mock('gsap', () => {
   const noopTween = {
     play: vi.fn(),
@@ -28,7 +32,7 @@ vi.mock('gsap', () => {
       },
       set: vi.fn(),
       timeline: vi.fn(() => noopTimeline),
-      to: vi.fn(() => noopTween),
+      to: gsapTo.mockImplementation(() => noopTween),
       fromTo: vi.fn(() => noopTween),
     },
   };
@@ -38,6 +42,10 @@ vi.mock('gsap/ScrollTrigger', () => ({
   ScrollTrigger: {
     create: vi.fn(),
   },
+}));
+
+vi.mock('gsap/ScrollToPlugin', () => ({
+  ScrollToPlugin: {},
 }));
 
 vi.mock('../common/Icon', () => ({
@@ -76,6 +84,36 @@ describe('LandingPage', () => {
     expect(onLogin).toHaveBeenCalledTimes(1);
     expect(onRegister).toHaveBeenCalledTimes(2);
     expect(onGetStarted).toHaveBeenCalledTimes(2);
+  });
+
+  it('scrolls to the intro section and back to top through GSAP scroll tweens', () => {
+    render(<LandingPage onGetStarted={vi.fn()} onLogin={vi.fn()} onRegister={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '滚动到下一节' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NJU 树洞，回到顶部' }));
+
+    expect(gsapTo).toHaveBeenCalledWith(window, expect.objectContaining({
+      duration: 1.2,
+      scrollTo: { y: '.lp-story-intro', offsetY: 40 },
+      ease: 'power4.inOut',
+      overwrite: 'auto',
+    }));
+
+    expect(gsapTo).toHaveBeenCalledWith(window, expect.objectContaining({
+      scrollTo: 0,
+      duration: 0.8,
+      ease: 'power3.inOut',
+      overwrite: 'auto',
+    }));
+  });
+
+  it('renders hover surfaces inside animated cards so hover transforms do not fight scroll transforms', () => {
+    const { container } = render(<LandingPage onGetStarted={vi.fn()} onLogin={vi.fn()} onRegister={vi.fn()} />);
+
+    expect(container.querySelectorAll('.lp-hover-card').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.lp-hover-card > .lp-hover-surface').length).toBe(
+      container.querySelectorAll('.lp-hover-card').length,
+    );
   });
 
   it('opens the about modal with dialog semantics and closes on Escape', () => {
