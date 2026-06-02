@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useId, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Icon from '../common/Icon';
@@ -72,6 +72,8 @@ const trustPoints = [
 
 export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
   const [activeModal, setActiveModal] = useState(null);
+  const aboutTitleId = useId();
+  const privacyTitleId = useId();
   const rootRef = useRef(null);
   const navRef = useRef(null);
   const heroRef = useRef(null);
@@ -95,25 +97,34 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
   };
 
   const pushRevealRef = (element) => {
-    if (element && !revealRefs.current.includes(element)) revealRefs.current.push(element);
+    if (!element) return;
+    if (!revealRefs.current.includes(element)) revealRefs.current.push(element);
   };
 
   const pushCardRef = (element) => {
-    if (element && !cardRefs.current.includes(element)) cardRefs.current.push(element);
+    if (!element) return;
+    if (!cardRefs.current.includes(element)) cardRefs.current.push(element);
   };
 
   const pushQuoteRef = (element) => {
-    if (element && !quoteRefs.current.includes(element)) quoteRefs.current.push(element);
+    if (!element) return;
+    if (!quoteRefs.current.includes(element)) quoteRefs.current.push(element);
   };
 
   const pushTrustRef = (element) => {
-    if (element && !trustRefs.current.includes(element)) trustRefs.current.push(element);
+    if (!element) return;
+    if (!trustRefs.current.includes(element)) trustRefs.current.push(element);
   };
 
   useLayoutEffect(() => {
     const media = gsap.matchMedia();
     const root = rootRef.current;
     if (!root) return undefined;
+
+    revealRefs.current = revealRefs.current.filter((element) => root.contains(element));
+    cardRefs.current = cardRefs.current.filter((element) => root.contains(element));
+    quoteRefs.current = quoteRefs.current.filter((element) => root.contains(element));
+    trustRefs.current = trustRefs.current.filter((element) => root.contains(element));
 
     const ctx = gsap.context(() => {
       media.add(
@@ -975,12 +986,13 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
         </footer>
       </div>
 
-      <Modal isOpen={activeModal === 'about'} onClose={() => setActiveModal(null)}>
+      <Modal isOpen={activeModal === 'about'} onClose={() => setActiveModal(null)} labelledBy={aboutTitleId}>
         <div className="p-6 max-sm:p-4">
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-bold tracking-tight">关于 NJU 树洞</h2>
+            <h2 id={aboutTitleId} className="text-xl font-bold tracking-tight">关于 NJU 树洞</h2>
             <button
               type="button"
+              aria-label="关闭关于我们弹窗"
               className="grid h-8 w-8 place-items-center rounded-full text-text-2 transition-colors hover:bg-surface-soft"
               onClick={() => setActiveModal(null)}
             >
@@ -1003,12 +1015,13 @@ export default function LandingPage({ onGetStarted, onLogin, onRegister }) {
         </div>
       </Modal>
 
-      <Modal isOpen={activeModal === 'privacy'} onClose={() => setActiveModal(null)}>
+      <Modal isOpen={activeModal === 'privacy'} onClose={() => setActiveModal(null)} labelledBy={privacyTitleId}>
         <div className="p-6 max-sm:p-4">
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-bold tracking-tight">隐私政策</h2>
+            <h2 id={privacyTitleId} className="text-xl font-bold tracking-tight">隐私政策</h2>
             <button
               type="button"
+              aria-label="关闭隐私政策弹窗"
               className="grid h-8 w-8 place-items-center rounded-full text-text-2 transition-colors hover:bg-surface-soft"
               onClick={() => setActiveModal(null)}
             >

@@ -1963,6 +1963,10 @@ h1, h2, h3, p {
 }
 
 .lp-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 6px;
   transition: color 0.22s ease, opacity 0.22s ease;
 }
 
