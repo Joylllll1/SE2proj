@@ -142,6 +142,15 @@ export const addReply = async (req, res) => {
   res.status(201).json(reply);
 };
 
+export const toggleReplyLike = async (req, res) => {
+  const result = await ratingService.toggleRatingReplyLike(
+    req.user._id.toString(),
+    req.params.commentId,
+    req.params.replyId,
+  );
+  res.json(result);
+};
+
 export const reportTheme = async (req, res) => {
   await submitReport(req, res, req.params.themeId, 'rating_theme');
 };

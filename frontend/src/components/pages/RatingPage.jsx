@@ -44,6 +44,14 @@ export default function RatingPage() {
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-text-2 transition-all duration-150 hover:border-blue/40 hover:text-text"
+            onClick={() => navigate('rating-my-themes')}
+          >
+            <Icon name="folder" style={{ fontSize: '18px' }} />
+            我的主题
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-text-2 transition-all duration-150 hover:border-blue/40 hover:text-text"
             onClick={() => navigate('rating-mine')}
           >
             <Icon name="description" style={{ fontSize: '18px' }} />
@@ -95,11 +103,25 @@ export default function RatingPage() {
                 </div>
 
                 <div className="rating-list-body flex flex-1 flex-col p-4">
-                  <div className="flex items-start justify-between gap-3 min-h-[2.75rem]">
-                    <h2 className="font-bold text-base line-clamp-2 flex-1 leading-snug text-text">
-                      {theme.name}
-                    </h2>
-                    <div className="flex shrink-0 items-start gap-1">
+                  <h2 className="font-bold text-base line-clamp-2 min-h-[2.75rem] leading-snug text-text">
+                    {theme.name}
+                  </h2>
+
+                  {preview ? (
+                    <>
+                      <p className="mt-2 text-sm font-semibold text-text line-clamp-1">{preview.title}</p>
+                      <p className="rating-list-desc mt-1 min-h-[2.5rem] text-text-2 text-xs leading-5 line-clamp-2">
+                        {preview.description || '\u00A0'}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-2 min-h-[2.5rem] text-text-2 text-xs leading-5">
+                      {theme.description || '该主题下还没有评分帖，点击进入后创建第一个吧'}
+                    </p>
+                  )}
+
+                  <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         className="grid w-7 h-7 place-items-center border-0 rounded-full bg-transparent text-text-3 hover:bg-black/5 hover:text-text transition-colors"
@@ -111,47 +133,19 @@ export default function RatingPage() {
                       >
                         <Icon name="report_problem" style={{ fontSize: '16px' }} />
                       </button>
-                    <div className="flex flex-col items-stretch gap-1">
                       <span className="rating-theme-stat inline-flex h-6 w-[4.5rem] items-center justify-center gap-1 rounded-full bg-red-soft/60 text-[10px] font-bold leading-none text-red">
-                        <Icon name="favorite" filled style={{ fontSize: '12px' }} />
+                        <Icon name="favorite" solid style={{ fontSize: '12px' }} />
                         {formatCount(theme.totalLikes || 0)}
                       </span>
                       <span className="rating-theme-stat inline-flex h-6 w-[4.5rem] items-center justify-center rounded-full bg-blue-soft text-[10px] font-bold leading-none text-blue">
                         {theme.topicCount} 帖
                       </span>
                     </div>
-                    </div>
+                    <span className="flex shrink-0 items-center gap-1 text-xs text-blue font-semibold">
+                      进入主题
+                      <Icon name="chevron_right" style={{ fontSize: '16px' }} />
+                    </span>
                   </div>
-
-                  {preview ? (
-                    <>
-                      <p className="mt-2 text-sm font-semibold text-text line-clamp-1">{preview.title}</p>
-                      <p className="rating-list-desc mt-1 min-h-[2.5rem] text-text-2 text-xs leading-5 line-clamp-2">
-                        {preview.description || '\u00A0'}
-                      </p>
-                      <div className="mt-auto pt-3 flex items-center justify-between gap-2 text-xs text-text-3">
-                        <span>
-                          {preview.totalCount > 0
-                            ? `${preview.totalCount} 人评分 · 均分 ${preview.averageScore.toFixed(1)}`
-                            : '暂无评分'}
-                        </span>
-                        <span className="flex items-center gap-1 text-blue font-semibold">
-                          进入主题
-                          <Icon name="chevron_right" style={{ fontSize: '16px' }} />
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="mt-2 min-h-[2.5rem] text-text-2 text-xs leading-5">
-                        {theme.description || '该主题下还没有评分帖，点击进入后创建第一个吧'}
-                      </p>
-                      <div className="mt-auto pt-3 flex items-center justify-end text-xs text-blue font-semibold">
-                        进入主题
-                        <Icon name="chevron_right" style={{ fontSize: '16px' }} />
-                      </div>
-                    </>
-                  )}
                 </div>
               </article>
             );

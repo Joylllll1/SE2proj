@@ -6,10 +6,11 @@ import useRatingStore from '../../store/ratingStore';
 import useUiStore from '../../store/uiStore';
 
 export default function MyRatingTopicsPage() {
-  const myThemes = useRatingStore((s) => s.myThemes);
-  const myThemesLoading = useRatingStore((s) => s.myThemesLoading);
-  const fetchMyThemes = useRatingStore((s) => s.fetchMyThemes);
-  const deleteTheme = useRatingStore((s) => s.deleteTheme);
+  const myTopics = useRatingStore((s) => s.myTopics);
+  const myTopicsLoading = useRatingStore((s) => s.myTopicsLoading);
+  const themeDeletedAt = useRatingStore((s) => s.themeDeletedAt);
+  const fetchMyTopics = useRatingStore((s) => s.fetchMyTopics);
+  const deleteTopic = useRatingStore((s) => s.deleteTopic);
   const navigate = useUiStore((s) => s.navigate);
   const showToast = useUiStore((s) => s.showToast);
 
@@ -17,30 +18,30 @@ export default function MyRatingTopicsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const loadMyThemes = useCallback(async () => {
+  const loadMyTopics = useCallback(async () => {
     setLoadError('');
     try {
-      await fetchMyThemes();
+      await fetchMyTopics();
     } catch (error) {
-      setLoadError(error?.message || '加载我的主题失败，请稍后重试');
+      setLoadError(error?.message || '加载我的评分帖失败，请稍后重试');
     }
-  }, [fetchMyThemes]);
+  }, [fetchMyTopics]);
 
   useEffect(() => {
-    loadMyThemes();
-  }, [loadMyThemes]);
+    loadMyTopics();
+  }, [loadMyTopics, themeDeletedAt]);
 
-  const openTheme = (themeId) => {
-    navigate('rating-theme-detail', { themeId });
+  const openTopic = (topic) => {
+    navigate('rating-detail', { topicId: topic.id, themeId: topic.themeId });
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await deleteTheme(deleteTarget.id);
+      await deleteTopic(deleteTarget.id);
       setDeleteTarget(null);
-      showToast('主题已删除');
+      showToast('评分帖已删除');
     } catch (error) {
       showToast(error?.message || '删除失败，请稍后重试');
     } finally {
@@ -49,10 +50,10 @@ export default function MyRatingTopicsPage() {
   };
 
   const renderContent = () => {
-    if (myThemesLoading && myThemes.length === 0) {
+    if (myTopicsLoading && myTopics.length === 0) {
       return (
         <section className="grid place-items-center rounded-xl border border-line bg-surface p-12 text-center text-text-2 text-sm">
-          正在加载你的主题...
+          正在加载你的评分帖...
         </section>
       );
     }
@@ -66,7 +67,7 @@ export default function MyRatingTopicsPage() {
           </div>
           <button
             type="button"
-            onClick={loadMyThemes}
+            onClick={loadMyTopics}
             className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-text-2 transition-colors duration-150 hover:text-text hover:border-blue/40"
           >
             重试
@@ -75,87 +76,81 @@ export default function MyRatingTopicsPage() {
       );
     }
 
-    if (myThemes.length === 0) {
+    if (myTopics.length === 0) {
       return (
         <EmptyState
-          title="还没有创建过主题"
-          description="先创建评分主题，再在主题内添加具体评分帖"
-          actionLabel="创建主题"
-          onAction={() => navigate('rating-theme-compose')}
+          title="还没有创建过评分帖"
+          description="进入某个主题后，可以创建属于你的评分帖"
+          actionLabel="浏览主题"
+          onAction={() => navigate('rating')}
         />
       );
     }
 
     return (
       <section className="grid gap-3 mt-6">
-        {myThemes.map((theme) => {
-          const preview = theme.previewTopic;
-          return (
-            <div
-              key={theme.id}
-              className="rating-mine-item min-w-0 flex items-center gap-4 p-4 rounded-xl border border-line bg-surface shadow-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md hover:border-blue/30"
-            >
-              {preview?.image ? (
-                <button
-                  type="button"
-                  className="rating-mine-thumb shrink-0 h-16 w-24 overflow-hidden rounded-lg bg-surface-soft"
-                  onClick={() => openTheme(theme.id)}
-                >
-                  <img src={preview.image} alt={preview.title} className="h-full w-full object-cover" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="rating-mine-thumb shrink-0 grid h-16 w-24 place-items-center rounded-lg bg-surface-soft text-text-3"
-                  onClick={() => openTheme(theme.id)}
-                >
-                  <Icon name="folder" style={{ fontSize: '24px' }} />
-                </button>
-              )}
-
+        {myTopics.map((topic) => (
+          <div
+            key={topic.id}
+            className="rating-mine-item min-w-0 flex items-center gap-4 p-4 rounded-xl border border-line bg-surface shadow-sm transition-all duration-200 hover:-translate-y-px hover:shadow-md hover:border-blue/30"
+          >
+            {topic.image ? (
               <button
                 type="button"
-                className="min-w-0 flex-1 text-left"
-                onClick={() => openTheme(theme.id)}
+                className="rating-mine-thumb shrink-0 h-16 w-24 overflow-hidden rounded-lg bg-surface-soft"
+                onClick={() => openTopic(topic)}
               >
-                <div className="font-semibold text-text truncate">{theme.name}</div>
-                {preview ? (
-                  <p className="mt-1 mb-0 text-text-2 text-xs line-clamp-1">
-                    榜首：{preview.title}
-                    {preview.totalCount > 0 ? ` · 均分 ${preview.averageScore.toFixed(1)}` : ''}
-                  </p>
-                ) : (
-                  <p className="mt-1 mb-0 text-text-2 text-xs line-clamp-1">
-                    {theme.description || '暂无评分帖'}
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-text-3">
-                  <span>{theme.time}</span>
-                  <span>{theme.topicCount} 个评分帖</span>
-                </div>
+                <img src={topic.image} alt={topic.title} className="h-full w-full object-cover" />
               </button>
+            ) : (
+              <button
+                type="button"
+                className="rating-mine-thumb shrink-0 grid h-16 w-24 place-items-center rounded-lg bg-surface-soft text-text-3"
+                onClick={() => openTopic(topic)}
+              >
+                <Icon name="image" style={{ fontSize: '24px' }} />
+              </button>
+            )}
 
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue transition-colors hover:text-blue/80"
-                  onClick={() => openTheme(theme.id)}
-                >
-                  进入
-                  <Icon name="chevron_right" style={{ fontSize: '16px' }} />
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-text-3 transition-all duration-150 hover:border-red/40 hover:bg-red-soft/50 hover:text-red"
-                  aria-label={`删除主题 ${theme.name}`}
-                  onClick={() => setDeleteTarget(theme)}
-                >
-                  <Icon name="close" style={{ fontSize: '18px' }} />
-                </button>
+            <button
+              type="button"
+              className="min-w-0 flex-1 text-left"
+              onClick={() => openTopic(topic)}
+            >
+              <div className="font-semibold text-text truncate">{topic.title}</div>
+              <p className="mt-1 mb-0 text-text-2 text-xs line-clamp-1">
+                {topic.description || '暂无描述'}
+              </p>
+              <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-text-3">
+                <span>{topic.time}</span>
+                {topic.totalCount > 0 ? (
+                  <span>{topic.totalCount} 人评分 · 均分 {topic.averageScore.toFixed(1)}</span>
+                ) : (
+                  <span>暂无评分</span>
+                )}
               </div>
+            </button>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue transition-colors hover:text-blue/80"
+                onClick={() => openTopic(topic)}
+              >
+                进入
+                <Icon name="chevron_right" style={{ fontSize: '16px' }} />
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-text-3 transition-all duration-150 hover:border-red/40 hover:bg-red-soft/50 hover:text-red"
+                aria-label={`删除评分帖 ${topic.title}`}
+                onClick={() => setDeleteTarget(topic)}
+              >
+                <Icon name="close" style={{ fontSize: '18px' }} />
+              </button>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </section>
     );
   };
@@ -173,15 +168,15 @@ export default function MyRatingTopicsPage() {
             返回主题列表
           </button>
           <h1 className="text-2xl font-bold tracking-tight">我的评分帖</h1>
-          <p className="mt-1 text-text-2 text-sm">管理你创建的评分主题，进入主题后可管理具体评分帖</p>
+          <p className="mt-1 text-text-2 text-sm">管理你创建的评分帖，可进入详情或删除</p>
         </div>
         <button
           type="button"
-          className="primary-button flex items-center gap-2 px-5 py-2.5 text-sm shrink-0"
-          onClick={() => navigate('rating-theme-compose')}
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-text-2 transition-all duration-150 hover:border-blue/40 hover:text-text shrink-0"
+          onClick={() => navigate('rating')}
         >
-          <Icon name="add" style={{ fontSize: '18px' }} />
-          创建主题
+          <Icon name="dynamic_feed" style={{ fontSize: '18px' }} />
+          浏览主题
         </button>
       </header>
 
@@ -189,8 +184,8 @@ export default function MyRatingTopicsPage() {
 
       <ConfirmLeaveDialog
         open={!!deleteTarget}
-        title="删除主题"
-        description={deleteTarget ? `确定要删除「${deleteTarget.name}」及其下全部评分帖吗？此操作不可撤销。` : ''}
+        title="删除评分帖"
+        description={deleteTarget ? `确定要删除「${deleteTarget.title}」吗？此操作不可撤销。` : ''}
         confirmText={deleting ? '删除中...' : '确认删除'}
         cancelText="取消"
         mode="discard"

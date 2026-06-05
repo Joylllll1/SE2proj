@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as ratingService from '../services/ratingService';
+import { flattenRatingComments } from '../utils/ratingComments';
 
 function sortTopicsByScore(topics) {
   return [...topics].sort((a, b) => {
@@ -22,6 +23,7 @@ const useRatingStore = create((set, get) => ({
   themeDetail: null,
   themeTopics: [],
   themeDetailLoading: false,
+  themeDeletedAt: 0,
 
   topics: [],
   myTopics: [],
@@ -104,6 +106,14 @@ const useRatingStore = create((set, get) => ({
     set((state) => ({
       myThemes: state.myThemes.filter((t) => t.id !== themeId),
       themes: state.themes.filter((t) => t.id !== themeId),
+      myTopics: state.myTopics.filter((t) => t.themeId !== themeId),
+      topics: state.topics.filter((t) => t.themeId !== themeId),
+      themeTopics:
+        state.themeDetail?.id === themeId
+          ? []
+          : state.themeTopics.filter((t) => t.themeId !== themeId),
+      themeDetail: state.themeDetail?.id === themeId ? null : state.themeDetail,
+      themeDeletedAt: Date.now(),
     }));
   },
 
@@ -304,6 +314,25 @@ const useRatingStore = create((set, get) => ({
     }));
     return reply;
   },
+
+  toggleReplyLike: async (commentId, replyId) => {
+    const result = await ratingService.toggleRatingReplyLike(commentId, replyId);
+    set((state) => ({
+      comments: state.comments.map((c) =>
+        c.id === commentId
+          ? {
+              ...c,
+              replies: (c.replies || []).map((r) =>
+                r.id === replyId ? { ...r, likes: result.likes, isLiked: result.isLiked } : r,
+              ),
+            }
+          : c,
+      ),
+    }));
+    return result;
+  },
+
+  getFlatComments: () => flattenRatingComments(get().comments),
 
   applyStatsUpdate: (stats) => {
     if (stats) set({ stats });

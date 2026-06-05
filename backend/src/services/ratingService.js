@@ -7,6 +7,15 @@ import { generateAnonId } from '../utils/anonymous.js';
 import { normalizeInlineImages } from '../utils/image.js';
 import { broadcast } from './sseManager.js';
 
+const MAX_PAGE_LIMIT = 50;
+
+export function clampPagination(page = 1, limit = 20) {
+  return {
+    page: Math.max(1, Number(page) || 1),
+    limit: Math.min(Math.max(1, Number(limit) || 20), MAX_PAGE_LIMIT),
+  };
+}
+
 function formatRelativeTime(date) {
   if (!date) return '';
   const now = Date.now();
@@ -82,13 +91,52 @@ async function getTopicStatsMap(topicIds) {
   );
 }
 
-function sortTopicsByScore(topics) {
+export function sortTopicsByScore(topics) {
   return [...topics].sort((a, b) => {
     const scoreA = a.averageScore || 0;
     const scoreB = b.averageScore || 0;
     if (scoreB !== scoreA) return scoreB - scoreA;
     return (a.title || '').localeCompare(b.title || '', 'zh-CN');
   });
+}
+
+function roundAverageScore(avgStars) {
+  return Math.round(avgStars * 2 * 10) / 10;
+}
+
+async function aggregateTopicScores(matchFilter) {
+  const rows = await RatingTopic.aggregate([
+    { $match: matchFilter },
+    {
+      $lookup: {
+        from: 'ratings',
+        localField: '_id',
+        foreignField: 'topicId',
+        as: 'ratings',
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        title: 1,
+        totalCount: { $size: '$ratings' },
+        averageScore: {
+          $cond: [
+            { $gt: [{ $size: '$ratings' }, 0] },
+            { $avg: '$ratings.stars' },
+            0,
+          ],
+        },
+      },
+    },
+  ]);
+
+  return rows.map((row) => ({
+    _id: row._id,
+    title: row.title,
+    totalCount: row.totalCount,
+    averageScore: roundAverageScore(row.averageScore || 0),
+  }));
 }
 
 function toTopicDto(topic, stats = { averageScore: 0, totalCount: 0 }, userId = null) {
@@ -256,7 +304,10 @@ export async function deleteTheme(userId, themeId) {
   theme.isDeleted = true;
   await theme.save();
 
-  await RatingTopic.updateMany({ themeId, isDeleted: false }, { isDeleted: true });
+  await RatingTopic.updateMany(
+    { themeId: theme._id, isDeleted: false },
+    { $set: { isDeleted: true } },
+  );
 
   try {
     broadcast('rating-theme-deleted', { themeId: themeId.toString() });
@@ -266,6 +317,10 @@ export async function deleteTheme(userId, themeId) {
 }
 
 export async function listTopics({ page = 1, limit = 20, query, themeId, userId = null } = {}) {
+  const pagination = clampPagination(page, limit);
+  page = pagination.page;
+  limit = pagination.limit;
+
   const filter = { isDeleted: false };
   if (themeId) {
     filter.themeId = themeId;
@@ -274,21 +329,42 @@ export async function listTopics({ page = 1, limit = 20, query, themeId, userId 
     filter.$text = { $search: query.trim() };
   }
 
-  const skip = (page - 1) * limit;
-  const [topics, total] = await Promise.all([
-    RatingTopic.find(filter).lean(),
+  const [total, scoredTopics] = await Promise.all([
     RatingTopic.countDocuments(filter),
+    aggregateTopicScores(filter),
   ]);
 
-  const topicIds = topics.map((t) => t._id);
-  const statsMap = await getTopicStatsMap(topicIds);
+  const sortedScores = sortTopicsByScore(scoredTopics);
+  const skip = (page - 1) * limit;
+  const pageScores = sortedScores.slice(skip, skip + limit);
 
-  const items = sortTopicsByScore(
-    topics.map((topic) => {
+  if (pageScores.length === 0) {
+    return {
+      items: [],
+      total,
+      page,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
+  }
+
+  const pageIds = pageScores.map((item) => item._id);
+  const statsMap = new Map(
+    pageScores.map((item) => [
+      item._id.toString(),
+      { averageScore: item.averageScore, totalCount: item.totalCount },
+    ]),
+  );
+
+  const topics = await RatingTopic.find({ _id: { $in: pageIds } }).lean();
+  const topicMap = new Map(topics.map((topic) => [topic._id.toString(), topic]));
+
+  const items = pageIds
+    .map((id) => topicMap.get(id.toString()))
+    .filter(Boolean)
+    .map((topic) => {
       const stats = statsMap.get(topic._id.toString()) || { averageScore: 0, totalCount: 0 };
       return toTopicDto(topic, stats, userId);
-    }),
-  ).slice(skip, skip + limit);
+    });
 
   return {
     items,
@@ -299,12 +375,29 @@ export async function listTopics({ page = 1, limit = 20, query, themeId, userId 
 }
 
 export async function listMyTopics(userId, { page = 1, limit = 20 } = {}) {
+  const pagination = clampPagination(page, limit);
+  page = pagination.page;
+  limit = pagination.limit;
+
   const filter = { isDeleted: false, creatorUserId: userId };
 
   const topics = await RatingTopic.find(filter).lean();
-  const statsMap = await getTopicStatsMap(topics.map((topic) => topic._id));
+
+  const themeIds = [...new Set(topics.map((t) => t.themeId?.toString()).filter(Boolean))];
+  const activeThemeIds = themeIds.length > 0
+    ? new Set(
+        (await RatingTheme.find({ _id: { $in: themeIds }, isDeleted: false }).select('_id').lean())
+          .map((t) => t._id.toString()),
+      )
+    : new Set();
+
+  const visibleTopics = topics.filter(
+    (t) => t.themeId && activeThemeIds.has(t.themeId.toString()),
+  );
+
+  const statsMap = await getTopicStatsMap(visibleTopics.map((topic) => topic._id));
   const sorted = sortTopicsByScore(
-    topics.map((topic) => {
+    visibleTopics.map((topic) => {
       const stats = statsMap.get(topic._id.toString()) || { averageScore: 0, totalCount: 0 };
       return toTopicDto(topic, stats, userId);
     }),
@@ -379,7 +472,7 @@ export async function createTopic(userId, data) {
 
   const images = normalizeInlineImages(sourceImages, {
     label: '评分帖图片',
-    maxCount: 3,
+    maxCount: 1,
   });
 
   const topic = await RatingTopic.create({
@@ -450,11 +543,12 @@ export async function submitRating(userId, topicId, stars) {
 
   const existing = await Rating.findOne({ topicId, userId });
   if (existing) {
-    throw new AppError('您已提交评分，无法修改', 409, 'RATING_ALREADY_SUBMITTED');
+    existing.stars = stars;
+    await existing.save();
+  } else {
+    const anonId = generateAnonId(userId, topicId);
+    await Rating.create({ topicId, userId, stars, anonId });
   }
-
-  const anonId = generateAnonId(userId, topicId);
-  await Rating.create({ topicId, userId, stars, anonId });
 
   const ratings = await getRatingsForTopic(topicId);
   const stats = computeStats(ratings);
@@ -466,6 +560,38 @@ export async function submitRating(userId, topicId, stars) {
   }
 
   return { stats, userRating: { stars } };
+}
+
+function mapRatingReplyDto(reply, comment, userId) {
+  let parentContent = comment.content;
+  let parentAuthorId = comment.ownerUserId.toString();
+  let parentTime = comment.createdAt;
+
+  if (reply.replyToId) {
+    const parentReply = (comment.replies || []).find(
+      (r) => r._id.toString() === reply.replyToId.toString() && !r.isDeleted,
+    );
+    if (parentReply) {
+      parentContent = parentReply.content;
+      parentAuthorId = parentReply.ownerUserId.toString();
+      parentTime = parentReply.createdAt;
+    }
+  }
+
+  return {
+    id: reply._id.toString(),
+    parentId: comment._id.toString(),
+    ownerUserId: reply.ownerUserId.toString(),
+    parentAuthorId,
+    parentContent,
+    parentTime,
+    content: reply.content,
+    likes: reply.likes || 0,
+    isLiked: userId ? reply.likedBy?.some((uid) => uid.toString() === userId) : false,
+    replyToId: reply.replyToId?.toString() || null,
+    time: formatRelativeTime(reply.createdAt),
+    createdAt: reply.createdAt,
+  };
 }
 
 function toCommentDto(comment, userId) {
@@ -484,17 +610,7 @@ function toCommentDto(comment, userId) {
     createdAt: comment.createdAt,
     replies: (comment.replies || [])
       .filter((r) => !r.isDeleted)
-      .map((reply) => ({
-        id: reply._id.toString(),
-        ownerUserId: reply.ownerUserId.toString(),
-        parentAuthorId: comment.ownerUserId.toString(),
-        content: reply.content,
-        likes: reply.likes || 0,
-        isLiked: userId ? reply.likedBy?.some((uid) => uid.toString() === userId) : false,
-        replyToId: reply.replyToId?.toString() || null,
-        time: formatRelativeTime(reply.createdAt),
-        createdAt: reply.createdAt,
-      })),
+      .map((reply) => mapRatingReplyDto(reply, comment, userId)),
   };
 }
 
@@ -542,20 +658,31 @@ export async function createRatingComment(userId, topicId, content, stars = null
 }
 
 export async function toggleCommentLike(userId, commentId) {
-  const comment = await RatingComment.findOne({ _id: commentId, isDeleted: false });
+  const unlikedComment = await RatingComment.findOneAndUpdate(
+    { _id: commentId, isDeleted: false, likedBy: userId },
+    { $pull: { likedBy: userId }, $inc: { likes: -1 } },
+    { new: true },
+  ).lean();
+
+  if (unlikedComment) {
+    return { likes: Math.max(0, unlikedComment.likes || 0), isLiked: false };
+  }
+
+  const likedComment = await RatingComment.findOneAndUpdate(
+    { _id: commentId, isDeleted: false, likedBy: { $ne: userId } },
+    { $addToSet: { likedBy: userId }, $inc: { likes: 1 } },
+    { new: true },
+  ).lean();
+
+  if (likedComment) {
+    return { likes: likedComment.likes || 0, isLiked: true };
+  }
+
+  const comment = await RatingComment.findOne({ _id: commentId, isDeleted: false }).lean();
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
 
-  const liked = comment.likedBy.some((id) => id.toString() === userId);
-  if (liked) {
-    comment.likedBy = comment.likedBy.filter((id) => id.toString() !== userId);
-    comment.likes = Math.max(0, (comment.likes || 0) - 1);
-  } else {
-    comment.likedBy.push(userId);
-    comment.likes = (comment.likes || 0) + 1;
-  }
-  await comment.save();
-
-  return { likes: comment.likes, isLiked: !liked };
+  const isLiked = comment.likedBy?.some((id) => id.toString() === userId) || false;
+  return { likes: comment.likes || 0, isLiked };
 }
 
 export async function addRatingReply(userId, commentId, content, replyToId = null) {
@@ -578,15 +705,64 @@ export async function addRatingReply(userId, commentId, content, replyToId = nul
   await comment.save();
 
   const savedReply = comment.replies[comment.replies.length - 1];
-  return {
-    id: savedReply._id.toString(),
-    ownerUserId: userId,
-    parentAuthorId: comment.ownerUserId.toString(),
-    content: savedReply.content,
-    likes: 0,
-    isLiked: false,
-    replyToId: replyToId?.toString() || null,
-    time: formatRelativeTime(savedReply.createdAt),
-    createdAt: savedReply.createdAt,
-  };
+  return mapRatingReplyDto(savedReply, comment, userId);
+}
+
+export async function toggleRatingReplyLike(userId, commentId, replyId) {
+  const unlikedComment = await RatingComment.findOneAndUpdate(
+    {
+      _id: commentId,
+      isDeleted: false,
+      replies: {
+        $elemMatch: {
+          _id: replyId,
+          isDeleted: { $ne: true },
+          likedBy: userId,
+        },
+      },
+    },
+    {
+      $pull: { 'replies.$.likedBy': userId },
+      $inc: { 'replies.$.likes': -1 },
+    },
+    { new: true },
+  ).lean();
+
+  if (unlikedComment) {
+    const reply = unlikedComment.replies?.find((item) => item._id.toString() === replyId.toString());
+    return { likes: Math.max(0, reply?.likes || 0), isLiked: false };
+  }
+
+  const likedComment = await RatingComment.findOneAndUpdate(
+    {
+      _id: commentId,
+      isDeleted: false,
+      replies: {
+        $elemMatch: {
+          _id: replyId,
+          isDeleted: { $ne: true },
+          likedBy: { $ne: userId },
+        },
+      },
+    },
+    {
+      $addToSet: { 'replies.$.likedBy': userId },
+      $inc: { 'replies.$.likes': 1 },
+    },
+    { new: true },
+  ).lean();
+
+  if (likedComment) {
+    const reply = likedComment.replies?.find((item) => item._id.toString() === replyId.toString());
+    return { likes: reply?.likes || 0, isLiked: true };
+  }
+
+  const comment = await RatingComment.findOne({ _id: commentId, isDeleted: false }).lean();
+  if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+
+  const reply = comment.replies?.find((item) => item._id.toString() === replyId.toString());
+  if (!reply || reply.isDeleted) throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
+
+  const isLiked = reply.likedBy?.some((id) => id.toString() === userId) || false;
+  return { likes: reply.likes || 0, isLiked };
 }

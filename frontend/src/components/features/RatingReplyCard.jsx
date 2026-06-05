@@ -1,25 +1,28 @@
 import React, { useState, useRef } from 'react';
 import Icon from '../common/Icon';
-import TimeAgo from '../common/TimeAgo';
 import ReportModal from './ReportModal';
-import { StarRatingDisplay } from './StarRatingInput';
+import TimeAgo from '../common/TimeAgo';
 import { getDisplayName } from '../../utils';
+import useRatingStore from '../../store/ratingStore';
 
-export default function RatingCommentCard({
-  comment,
-  topicId,
-  onLike,
-  onReply,
-  onReport,
-}) {
-  const [showReplyInput, setShowReplyInput] = useState(false);
+const selectToggleReplyLike = (s) => s.toggleReplyLike;
+
+export default function RatingReplyCard({ reply, topicId, onReply, onReport }) {
+  const toggleReplyLike = useRatingStore(selectToggleReplyLike);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [showReplyInput, setShowReplyInput] = useState(false);
   const replyInputRef = useRef(null);
 
-  const displayName = getDisplayName(comment.ownerUserId, topicId);
+  const replyName = getDisplayName(reply.ownerUserId, topicId);
+  const parentAuthorName = getDisplayName(reply.parentAuthorId, topicId);
+
+  const handleLike = () => {
+    toggleReplyLike(reply.parentId, reply.id);
+  };
 
   const handleReport = (targetId, reason) => {
-    onReport?.(targetId, reason, 'rating_comment');
+    onReport?.(targetId, reason, 'rating_reply');
     setShowReportModal(false);
   };
 
@@ -29,54 +32,77 @@ export default function RatingCommentCard({
   };
 
   const handleReplySubmit = async (content) => {
-    await onReply(comment.id, content, null);
+    await onReply(reply.parentId, content, reply.id);
     setShowReplyInput(false);
   };
 
+  const isLongContent = (reply.parentContent || '').length > 60;
+  const displayContent = expanded || !isLongContent
+    ? reply.parentContent
+    : `${reply.parentContent.slice(0, 60)}...`;
+
   return (
     <>
-      <article className="rating-comment-card flex gap-[12px] max-sm:gap-2 relative">
+      <article className="rating-reply-card flex gap-[12px] max-sm:gap-2 relative">
         <div className="anon-avatar small grid w-[34px] h-[34px] max-sm:w-7 max-sm:h-7 flex-none place-items-center border border-line rounded-[8px] bg-surface-soft text-text-3">
           <Icon name="person" />
         </div>
-        <div className="comment-body flex-1 p-4 max-sm:p-3 rounded-md border border-line-soft bg-surface">
-          <div className="comment-meta flex items-center justify-between gap-[8px]">
+        <div className="reply-body flex-1 p-4 max-sm:p-3 rounded-md border border-line-soft bg-surface">
+          <div className="quoted-content p-2 mb-3 rounded-md bg-[#f5f5f5] border border-[#e0e0e0] text-text-2 text-sm">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <strong className="text-sm">{displayName}</strong>
-                {comment.stars && <StarRatingDisplay stars={comment.stars} size="sm" />}
-              </div>
-              <TimeAgo timeString={comment.createdAt} className="block mt-0.5 text-text-3 text-xs" />
+              <strong className="text-text text-sm">{parentAuthorName}</strong>
+              <TimeAgo timeString={reply.parentTime} className="block mt-0.5 text-text-3 text-xs" />
+            </div>
+            <div className="mt-2">
+              <span className={isLongContent && !expanded ? 'line-clamp-2' : ''}>{displayContent}</span>
+              {isLongContent && (
+                <button
+                  type="button"
+                  className="text-blue text-xs hover:underline ml-2"
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  {expanded ? '[收起]' : '[展开]'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="reply-meta flex items-center justify-between gap-[8px] mb-2">
+            <div>
+              <strong className="text-sm">{replyName}</strong>
+              <TimeAgo timeString={reply.createdAt} className="block mt-0.5 text-text-3 text-xs" />
             </div>
             {onReport && (
               <button
-                type="button"
                 className="flex-shrink-0 grid w-7 h-7 place-items-center border-0 rounded-full bg-transparent text-text-3 hover:bg-black/5 hover:text-text transition-colors duration-150"
                 onClick={() => setShowReportModal(true)}
-                aria-label="举报评论"
+                type="button"
+                aria-label="举报"
               >
                 <Icon name="report_problem" style={{ fontSize: '14px' }} />
               </button>
             )}
           </div>
 
-          {comment.content && <p className="my-[9px]">{comment.content}</p>}
+          {reply.content && (
+            <p className="my-[9px]">回复 {parentAuthorName}: {reply.content}</p>
+          )}
 
-          <div className="comment-actions flex gap-[14px] max-sm:gap-2 text-text-3 text-xs font-semibold">
+          <div className="reply-actions flex gap-[14px] max-sm:gap-2 text-text-3 text-xs font-semibold">
             <button type="button" onClick={handleReplyClick}>回复</button>
             <button
               type="button"
-              onClick={() => onLike(comment.id)}
-              className={`inline-flex items-center gap-1 transition-colors duration-150 ${comment.isLiked ? 'text-red' : 'hover:text-red'}`}
+              onClick={handleLike}
+              className={`inline-flex items-center gap-1 transition-colors duration-150 ${reply.isLiked ? 'text-red' : 'hover:text-red'}`}
             >
-              <Icon name={comment.isLiked ? 'favorite' : 'favorite_border'} /> {comment.likes || 0}
+              <Icon name={reply.isLiked ? 'favorite' : 'favorite_border'} /> {reply.likes || 0}
             </button>
           </div>
 
           {showReplyInput && (
-            <RatingCommentReplyInput
+            <RatingReplyInput
               ref={replyInputRef}
-              replyToName={displayName}
+              replyToName={replyName}
               onSubmit={handleReplySubmit}
               onCancel={() => setShowReplyInput(false)}
             />
@@ -86,8 +112,8 @@ export default function RatingCommentCard({
 
       {showReportModal && onReport && (
         <ReportModal
-          targetId={comment.id}
-          targetType="rating_comment"
+          targetId={reply.id}
+          targetType="rating_reply"
           onClose={() => setShowReportModal(false)}
           onSubmit={handleReport}
         />
@@ -96,7 +122,7 @@ export default function RatingCommentCard({
   );
 }
 
-const RatingCommentReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) => {
+const RatingReplyInput = React.forwardRef(({ replyToName, onSubmit, onCancel }, ref) => {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -116,7 +142,7 @@ const RatingCommentReplyInput = React.forwardRef(({ replyToName, onSubmit, onCan
   };
 
   return (
-    <div ref={ref} className="comment-reply-input mt-3 p-[14px] max-sm:p-3 rounded-md border border-blue bg-blue-soft">
+    <div ref={ref} className="reply-input mt-3 p-[14px] max-sm:p-3 rounded-md border border-blue bg-blue-soft">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-blue font-semibold">回复 {replyToName}</span>
         <button type="button" className="text-text-3 hover:text-text" onClick={onCancel}>取消</button>
@@ -141,4 +167,4 @@ const RatingCommentReplyInput = React.forwardRef(({ replyToName, onSubmit, onCan
   );
 });
 
-RatingCommentReplyInput.displayName = 'RatingCommentReplyInput';
+RatingReplyInput.displayName = 'RatingReplyInput';

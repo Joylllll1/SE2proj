@@ -1,16 +1,17 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Icon from '../common/Icon';
 import EmptyState from '../common/EmptyState';
 import StarRatingInput, { StarRatingDisplay } from '../features/StarRatingInput';
-import RatingTopicImageStack from '../features/RatingTopicImageStack';
 import Modal from '../common/Modal';
 import RatingDistribution from '../features/RatingDistribution';
 import RatingCommentCard from '../features/RatingCommentCard';
+import RatingReplyCard from '../features/RatingReplyCard';
 import RatingTopicLikeButton from '../features/RatingTopicLikeButton';
 import ReportModal from '../features/ReportModal';
 import useRatingStore from '../../store/ratingStore';
 import useUiStore from '../../store/uiStore';
 import { getDisplayName } from '../../utils';
+import { flattenRatingComments } from '../../utils/ratingComments';
 import * as reportService from '../../services/reportService';
 function getTopicIdFromUrl() {
   const match = window.location.pathname.match(/^\/rating\/topics\/([^/]+)/);
@@ -40,6 +41,8 @@ export default function RatingDetailPage({ topicId: propTopicId, themeId: propTh
   const toggleTopicLike = useRatingStore((s) => s.toggleTopicLike);
   const clearDetail = useRatingStore((s) => s.clearDetail);
 
+  const flatComments = useMemo(() => flattenRatingComments(comments), [comments]);
+
   const [commentText, setCommentText] = useState('');
   const [loadError, setLoadError] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -62,7 +65,6 @@ export default function RatingDetailPage({ topicId: propTopicId, themeId: propTh
   }, [loadDetail, clearDetail]);
 
   const handleStarSelect = (stars) => {
-    if (userRating) return;
     setPendingStars(stars);
     setConfirmOpen(true);
   };
@@ -73,7 +75,7 @@ export default function RatingDetailPage({ topicId: propTopicId, themeId: propTh
       await submitRating(topicId, pendingStars);
       setConfirmOpen(false);
       setPendingStars(0);
-      showToast('评分成功');
+      showToast(userRating ? '评分已更新' : '评分成功');
     } catch (err) {
       showToast(err?.message || '评分失败');
     }
@@ -190,80 +192,74 @@ export default function RatingDetailPage({ topicId: propTopicId, themeId: propTh
 
       <div className="rating-detail-layout flex gap-6 max-lg:flex-col">
         <div className="rating-detail-main flex-1 min-w-0">
-          <section className="rating-summary-card rounded-2xl border border-line bg-surface p-5 sm:p-6 mb-6">
-            {topicImages.length > 0 && (
-              <RatingTopicImageStack images={topicImages} title={detail.title} />
-            )}
-            <div className="rating-summary-inner flex flex-col sm:flex-row gap-6">
-              <div className="rating-subject flex items-center gap-4 sm:w-[220px] shrink-0">
-                <div className="rating-subject-avatar grid w-16 h-16 place-items-center rounded-full bg-blue-soft border border-line text-blue text-2xl font-bold overflow-hidden shrink-0">
+          <section className="rating-summary-card rounded-2xl border border-line bg-surface overflow-hidden mb-6">
+            <div className="rating-detail-top flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:gap-6">
+              <div className="flex items-center gap-4 sm:gap-5 min-w-0 flex-1">
+                <div className="rating-detail-thumb grid w-[72px] h-[72px] shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-surface-soft text-red text-2xl font-bold">
                   {topicImages[0] ? (
-                    <img src={topicImages[0]} alt="" className="w-full h-full object-cover" />
+                    <img src={topicImages[0]} alt={detail.title} className="h-full w-full object-cover" />
                   ) : (
                     avatarLabel
                   )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <h1 className="font-bold text-base line-clamp-2 flex-1">{detail.title}</h1>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        className="grid w-8 h-8 place-items-center border-0 rounded-full bg-transparent text-text-3 hover:bg-black/5 hover:text-text transition-colors"
-                        onClick={() => setShowReportModal(true)}
-                        aria-label="举报评分帖"
-                      >
-                        <Icon name="report_problem" style={{ fontSize: '18px' }} />
-                      </button>
-                      <RatingTopicLikeButton
-                        topicId={topicId}
-                        likes={detail.likes}
-                        isLiked={detail.isLiked}
-                        onToggle={handleToggleLike}
-                        size="lg"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-text-3 text-xs mt-1">{subtitle}</p>
+
+                <div className="rating-detail-score shrink-0">
+                  <span className="rating-score-number block text-4xl font-extrabold leading-none text-red sm:text-[2.75rem]">
+                    {stats?.totalCount > 0 ? stats.averageScore.toFixed(1) : '—'}
+                  </span>
+                  <span className="mt-1 block text-xs font-medium text-text-3">
+                    {stats?.totalCount > 0 ? `${stats.totalCount}人评分` : '暂无评分'}
+                  </span>
                 </div>
+
+                <RatingDistribution
+                  distribution={stats?.distribution}
+                  accent="red"
+                  showPercent={false}
+                  className="max-w-[220px]"
+                />
               </div>
 
-              <div className="rating-score-block flex flex-col items-center justify-center shrink-0 sm:px-4">
-                <span className="rating-score-number text-5xl font-extrabold text-blue leading-none">
-                  {stats?.totalCount > 0 ? stats.averageScore.toFixed(1) : '—'}
-                </span>
-                <span className="text-text-3 text-xs mt-2 font-medium">
-                  {stats?.totalCount > 0 ? `${stats.totalCount} 人评分` : '暂无评分'}
-                </span>
-              </div>
+              <div className="hidden lg:block w-px self-stretch bg-line-soft shrink-0" />
 
-              <RatingDistribution distribution={stats?.distribution} />
-
-              <div className="rating-input-block flex flex-col items-center justify-center shrink-0 sm:pl-2 border-t sm:border-t-0 sm:border-l border-line-soft pt-4 sm:pt-0 sm:pl-6">
-                {userRating ? (
-                  <>
-                    <p className="text-sm font-bold mb-2">你的评分</p>
-                    <StarRatingDisplay stars={userRating.stars} size="lg" />
-                    <p className="text-text-3 text-[11px] mt-2 text-center">提交后不可修改</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm font-bold mb-2">立即评分</p>
-                    <StarRatingInput
-                      value={0}
-                      onChange={handleStarSelect}
-                      disabled={submittingRating}
-                    />
-                    <p className="text-text-3 text-[11px] mt-2 text-center">点击星星并确认提交</p>
-                  </>
-                )}
+              <div className="rating-input-block flex flex-col items-center justify-center shrink-0 border-t border-line-soft pt-4 lg:min-w-[148px] lg:border-t-0 lg:pt-0">
+                <p className="mb-2 text-sm font-bold">你的评分</p>
+                <StarRatingInput
+                  value={userRating?.stars ?? 0}
+                  onChange={handleStarSelect}
+                  disabled={submittingRating}
+                  accent="red"
+                />
+                <p className="mt-2 text-center text-[11px] text-text-3">点击星星可修改评分</p>
               </div>
             </div>
-            {detail.description && (
-              <p className="mt-4 pt-4 border-t border-line-soft text-sm text-text-2 leading-relaxed">
-                {detail.description}
-              </p>
-            )}
+
+            <div className="rating-detail-bottom flex items-end justify-between gap-4 border-t border-line-soft px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <h1 className="font-bold text-base text-text">{detail.title}</h1>
+                <p className="mt-1 text-xs text-text-3">{subtitle}</p>
+                {detail.description && (
+                  <p className="mt-2 text-sm leading-relaxed text-text-2">{detail.description}</p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="grid w-8 h-8 place-items-center border-0 rounded-full bg-transparent text-text-3 transition-colors hover:bg-black/5 hover:text-text"
+                  onClick={() => setShowReportModal(true)}
+                  aria-label="举报评分帖"
+                >
+                  <Icon name="report_problem" style={{ fontSize: '18px' }} />
+                </button>
+                <RatingTopicLikeButton
+                  topicId={topicId}
+                  likes={detail.likes}
+                  isLiked={detail.isLiked}
+                  onToggle={handleToggleLike}
+                  size="lg"
+                />
+              </div>
+            </div>
           </section>
 
           <section className="rating-comments-section">
@@ -298,16 +294,26 @@ export default function RatingDetailPage({ topicId: propTopicId, themeId: propTh
               <p className="text-text-3 text-sm text-center py-8">还没有评论，来做第一个吧</p>
             ) : (
               <div className="rating-comments-list grid gap-4">
-                {comments.map((comment) => (
-                  <RatingCommentCard
-                    key={comment.id}
-                    comment={comment}
-                    topicId={topicId}
-                    onLike={toggleCommentLike}
-                    onReply={handleReply}
-                    onReport={handleReportComment}
-                  />
-                ))}
+                {flatComments.map((item) =>
+                  item.itemType === 'comment' ? (
+                    <RatingCommentCard
+                      key={item.id}
+                      comment={item}
+                      topicId={topicId}
+                      onLike={toggleCommentLike}
+                      onReply={handleReply}
+                      onReport={handleReportComment}
+                    />
+                  ) : (
+                    <RatingReplyCard
+                      key={item.id}
+                      reply={item}
+                      topicId={topicId}
+                      onReply={handleReply}
+                      onReport={handleReportComment}
+                    />
+                  ),
+                )}
               </div>
             )}
           </section>
@@ -342,13 +348,12 @@ export default function RatingDetailPage({ topicId: propTopicId, themeId: propTh
 
       <Modal isOpen={confirmOpen} onClose={handleCancelConfirm} ariaLabel="确认评分">
         <div className="p-6 max-w-md">
-          <h2 className="text-xl font-bold mb-2">确认提交评分？</h2>
+          <h2 className="text-xl font-bold mb-2">是否确定评分？</h2>
           <p className="text-text-2 text-sm leading-relaxed mb-4">
-            你选择了 <strong className="text-blue">{pendingStars} 星</strong>。
-            评分提交后将<strong>无法修改</strong>，请确认后再提交。
+            你选择了 <strong className="text-red">{pendingStars} 星</strong>，确认后将{userRating ? '更新' : '提交'}你的评分。
           </p>
           <div className="flex justify-center mb-5">
-            <StarRatingDisplay stars={pendingStars} size="lg" />
+            <StarRatingDisplay stars={pendingStars} size="lg" accent="red" />
           </div>
           <div className="flex justify-end gap-3">
             <button
@@ -365,7 +370,7 @@ export default function RatingDetailPage({ topicId: propTopicId, themeId: propTh
               onClick={handleConfirmRating}
               disabled={submittingRating}
             >
-              {submittingRating ? '提交中…' : '确认提交'}
+              {submittingRating ? '提交中…' : '确定'}
             </button>
           </div>
         </div>

@@ -19,6 +19,11 @@ const errorHandler = (err, _req, res, _next) => {
     return res.status(400).json({ error: messages.join('; ') });
   }
 
+  // Invalid MongoDB ObjectId in query
+  if (err.name === 'CastError') {
+    return res.status(404).json({ error: '资源不存在', errorCode: 'NOT_FOUND' });
+  }
+
   console.error('Unexpected error:', err);
   return res.status(500).json({ error: '服务器内部错误' });
 };

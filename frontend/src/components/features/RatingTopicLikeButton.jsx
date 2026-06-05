@@ -28,7 +28,7 @@ export default function RatingTopicLikeButton({
     >
       <Icon
         name={isLiked ? 'favorite' : 'favorite_border'}
-        filled={isLiked}
+        solid={isLiked}
         style={{ fontSize: iconSize }}
       />
       {formatCount(likes)}

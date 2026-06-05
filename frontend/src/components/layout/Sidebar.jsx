@@ -62,14 +62,14 @@ function Sidebar({ activePage, onNavigate }) {
         <nav className="grid gap-[5px]">
           {navItems.map((item) => (
             <button
-              className={`nav-item relative flex items-center gap-2.5 w-full min-h-10 px-3 border border-transparent rounded-lg text-text-2 bg-transparent text-sm font-semibold text-left transition-colors duration-150 hover:text-text hover:bg-black/[0.04] ${activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine')) ? 'active text-blue bg-blue-soft font-bold' : ''}`}
+              className={`nav-item relative flex items-center gap-2.5 w-full min-h-10 px-3 border border-transparent rounded-lg text-text-2 bg-transparent text-sm font-semibold text-left transition-colors duration-150 hover:text-text hover:bg-black/[0.04] ${activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine' || activePage === 'rating-my-themes')) ? 'active text-blue bg-blue-soft font-bold' : ''}`}
               key={item.id}
               onClick={() => onNavigate(item.id)}
               type="button"
             >
-              <Icon name={item.icon} filled={activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine'))} />
+              <Icon name={item.icon} filled={activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine' || activePage === 'rating-my-themes'))} />
               <span>{item.label}</span>
-              {activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine')) ? (
+              {activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine' || activePage === 'rating-my-themes')) ? (
                 <span className="absolute -left-[14px] w-[3px] h-5 rounded-r-full bg-blue" />
               ) : null}
             </button>

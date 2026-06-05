@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Icon = ({ name, filled = false, className = '', size, style }) => {
+const Icon = ({ name, filled = false, solid = false, className = '', size, style }) => {
   const paths = {
     dynamic_feed: 'M4 5.5h16M4 12h10M4 18.5h13',
     campaign: 'M5 13h3l8 4V7l-8 4H5v2Zm3 0v5',
@@ -78,7 +78,7 @@ const Icon = ({ name, filled = false, className = '', size, style }) => {
 
   return (
     <svg
-      className={`app-icon ${filled ? 'filled' : ''} ${className}`.trim()}
+      className={`app-icon ${filled ? 'filled' : ''} ${solid ? 'shape-filled' : ''} ${className}`.trim()}
       viewBox="0 0 24 24"
       aria-hidden="true"
       style={iconStyle}

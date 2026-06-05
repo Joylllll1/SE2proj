@@ -744,7 +744,10 @@ export async function deleteRatingTheme(themeId, adminId, reason) {
 
   theme.isDeleted = true;
   await theme.save();
-  await RatingTopic.updateMany({ themeId, isDeleted: false }, { isDeleted: true });
+  await RatingTopic.updateMany(
+    { themeId: theme._id, isDeleted: false },
+    { $set: { isDeleted: true } },
+  );
 
   await Report.deleteMany({
     status: 'pending',

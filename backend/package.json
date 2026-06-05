@@ -8,7 +8,7 @@
     "dev": "nodemon src/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "echo \"Error: no test specified\" && exit 0",
+    "test": "vitest run",
     "seed:fortune": "node src/scripts/seedFortune.js"
   },
   "dependencies": {
@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "eslint": "^8.55.0",
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "vitest": "^4.1.8"
   }
 }

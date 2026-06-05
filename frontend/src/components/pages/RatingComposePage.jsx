@@ -6,7 +6,7 @@ import useRatingStore from '../../store/ratingStore';
 import useUiStore from '../../store/uiStore';
 import { fileToOptimizedDataUrl } from '../../utils/image';
 
-const MAX_IMAGES = 3;
+const MAX_IMAGES = 1;
 
 function getThemeIdFromUrl() {
   const match = window.location.pathname.match(/^\/rating\/themes\/([^/]+)\/compose$/);
@@ -228,7 +228,6 @@ export default function RatingComposePage({ themeId: propThemeId }) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            multiple
             className="hidden"
             onChange={handleImageSelect}
           />

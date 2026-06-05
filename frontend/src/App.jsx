@@ -25,6 +25,7 @@ import RatingComposePage from './components/pages/RatingComposePage';
 import RatingThemeComposePage from './components/pages/RatingThemeComposePage';
 import RatingThemePage from './components/pages/RatingThemePage';
 import MyRatingTopicsPage from './components/pages/MyRatingTopicsPage';
+import MyRatingThemesPage from './components/pages/MyRatingThemesPage';
 import AdminDashboard from './components/pages/AdminDashboard';
 import AnnouncementsPage from './components/pages/AnnouncementsPage';
 import UnderConstruction from './components/common/UnderConstruction';
@@ -594,6 +595,7 @@ function App() {
           {activePage === 'rating-theme-detail' && <RatingThemePage />}
           {activePage === 'rating-compose' && <RatingComposePage />}
           {activePage === 'rating-mine' && <MyRatingTopicsPage />}
+          {activePage === 'rating-my-themes' && <MyRatingThemesPage />}
           {activePage === 'rating-detail' && <RatingDetailPage />}
           {activePage === 'settings' && <SettingsPage />}
           {activePage === 'settings-password' && <PasswordChangePage />}

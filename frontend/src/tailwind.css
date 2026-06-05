@@ -145,6 +145,10 @@ h1, h2, h3, p {
 }
 
 .app-icon.filled {
+  stroke-width: 2.15;
+}
+
+.app-icon.shape-filled {
   @apply fill-current;
   stroke: none;
 }
@@ -776,6 +780,10 @@ h1, h2, h3, p {
   @apply min-h-[168px];
 }
 
+.rating-topic-card-body {
+  @apply shrink-0;
+}
+
 .rating-detail-page {
   @apply max-w-[1180px] mx-auto;
 }
@@ -790,6 +798,14 @@ h1, h2, h3, p {
 
 .rating-summary-card {
   @apply shadow-sm;
+}
+
+.rating-detail-top {
+  @apply min-h-0;
+}
+
+.rating-detail-bottom {
+  @apply min-h-0;
 }
 
 .rating-score-number {

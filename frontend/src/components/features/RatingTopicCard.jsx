@@ -15,7 +15,7 @@ export default function RatingTopicCard({ item, onOpen, onToggleLike, onReport }
   return (
     <article className="rating-list-card flex h-full flex-col rounded-xl border border-line bg-surface overflow-hidden transition-all duration-200 hover:border-blue hover:shadow-md hover:-translate-y-0.5">
       <div
-        className="flex flex-1 flex-col cursor-pointer text-left"
+        className="flex flex-col cursor-pointer text-left"
         role="button"
         tabIndex={0}
         onClick={() => onOpen(item.id)}
@@ -39,9 +39,9 @@ export default function RatingTopicCard({ item, onOpen, onToggleLike, onReport }
           )}
         </div>
 
-        <div className="rating-list-body flex flex-1 flex-col p-4 pb-3">
-          <div className="rating-list-title-row flex items-start justify-between gap-3 min-h-[2.75rem]">
-            <h2 className="font-bold text-sm line-clamp-2 flex-1 leading-snug">{item.title}</h2>
+        <div className="rating-topic-card-body px-4 pt-3 pb-2">
+          <div className="rating-list-title-row flex items-start justify-between gap-3">
+            <h2 className="font-bold text-sm line-clamp-2 flex-1 leading-snug min-h-[2.5rem]">{item.title}</h2>
             <div className="rating-list-score shrink-0 min-w-[3.25rem] text-right">
               {item.totalCount > 0 ? (
                 <span className="rating-score-badge text-xl font-extrabold text-blue leading-none">
@@ -52,14 +52,10 @@ export default function RatingTopicCard({ item, onOpen, onToggleLike, onReport }
               )}
             </div>
           </div>
-
-          <p className="rating-list-desc mt-2 min-h-[2.5rem] text-text-2 text-xs leading-5 line-clamp-2">
-            {item.description || '\u00A0'}
-          </p>
         </div>
       </div>
 
-      <div className="rating-list-footer px-4 pb-4 pt-0 mt-auto">
+      <div className="rating-list-footer px-4 pb-4 pt-1 mt-auto">
         <div className="flex items-center justify-between gap-2 text-text-3 text-xs min-h-[1.125rem]">
           <span className="line-clamp-1">
             {item.totalCount > 0 ? `${item.totalCount} 人评分` : '等你来评'}
@@ -96,13 +92,13 @@ export default function RatingTopicCard({ item, onOpen, onToggleLike, onReport }
           </div>
         </div>
 
-        <div className="rating-list-tags mt-2 flex min-h-[1.375rem] flex-wrap items-start gap-1">
-          {item.tags?.length > 0
-            ? item.tags.slice(0, 3).map((tag) => (
-                <span key={tag} className="pill text-[10px] px-2 py-0.5">{tag}</span>
-              ))
-            : null}
-        </div>
+        {item.tags?.length > 0 && (
+          <div className="rating-list-tags mt-2 flex flex-wrap items-start gap-1">
+            {item.tags.slice(0, 3).map((tag) => (
+              <span key={tag} className="pill text-[10px] px-2 py-0.5">{tag}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {showReportModal && onReport && (

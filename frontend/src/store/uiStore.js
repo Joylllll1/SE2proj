@@ -11,6 +11,7 @@ const PAGE_URLS = {
   rating: '/rating',
   'rating-theme-compose': '/rating/themes/compose',
   'rating-mine': '/rating/mine',
+  'rating-my-themes': '/rating/my-themes',
   announcements: '/announcements',
   drafts: '/drafts',
   admin: '/admin',
@@ -51,6 +52,7 @@ function urlToPage(url) {
   if (/^\/rating\/themes\/[^/]+\/compose$/.test(path)) return 'rating-compose';
   if (/^\/rating\/themes\/[^/]+$/.test(path)) return 'rating-theme-detail';
   if (path === '/rating/mine') return 'rating-mine';
+  if (path === '/rating/my-themes') return 'rating-my-themes';
   if (/^\/rating\/topics\//.test(path)) return 'rating-detail';
   return null;
 }

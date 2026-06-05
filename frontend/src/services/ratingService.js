@@ -82,3 +82,7 @@ export async function addRatingReply(commentId, content, replyToId = null) {
     body: JSON.stringify({ content, replyToId }),
   });
 }
+
+export async function toggleRatingReplyLike(commentId, replyId) {
+  return request(`/api/ratings/comments/${commentId}/replies/${replyId}/like`, { method: 'POST' });
+}
