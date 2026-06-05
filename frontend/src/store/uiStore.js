@@ -8,6 +8,9 @@ const PAGE_URLS = {
   bookmarks: '/bookmarks',
   likes: '/likes',
   myposts: '/myposts',
+  rating: '/rating',
+  'rating-theme-compose': '/rating/themes/compose',
+  'rating-mine': '/rating/mine',
   announcements: '/announcements',
   drafts: '/drafts',
   admin: '/admin',
@@ -44,6 +47,11 @@ function urlToPage(url) {
   }
   // 匹配 detail 页：/detail/:id
   if (/^\/detail\//.test(path)) return 'detail';
+  if (path === '/rating/themes/compose') return 'rating-theme-compose';
+  if (/^\/rating\/themes\/[^/]+\/compose$/.test(path)) return 'rating-compose';
+  if (/^\/rating\/themes\/[^/]+$/.test(path)) return 'rating-theme-detail';
+  if (path === '/rating/mine') return 'rating-mine';
+  if (/^\/rating\/topics\//.test(path)) return 'rating-detail';
   return null;
 }
 
@@ -207,6 +215,14 @@ const useUiStore = create((set, get) => ({
     let url;
     if (page === 'detail' && params?.selectedPost) {
       url = `/detail/${params.selectedPost.id}`;
+    } else if (page === 'rating-detail' && params?.topicId) {
+      url = `/rating/topics/${params.topicId}`;
+    } else if (page === 'rating-compose' && params?.themeId) {
+      url = `/rating/themes/${params.themeId}/compose`;
+    } else if (page === 'rating-theme-detail' && params?.themeId) {
+      url = `/rating/themes/${params.themeId}`;
+    } else if (page === 'rating-theme-compose') {
+      url = '/rating/themes/compose';
     } else if (page === 'compose' && params?.draftId) {
       url = `/compose?draftId=${params.draftId}`;
     } else {

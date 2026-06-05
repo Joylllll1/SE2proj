@@ -131,6 +131,50 @@ const useAdminStore = create((set, get) => ({
     }
   },
 
+  deleteRatingTheme: async (themeId, reason) => {
+    try {
+      await adminService.deleteRatingTheme(themeId, reason);
+      set((state) => ({
+        reports: state.reports.filter((r) => {
+          if (r.targetType === 'rating_theme' && r.targetId === themeId) return false;
+          if (r.ratingThemeId === themeId || r.ratingTheme?._id === themeId) return false;
+          return true;
+        }),
+      }));
+    } catch (err) {
+      set({ reportsError: err.message });
+      throw err;
+    }
+  },
+
+  deleteRatingTopic: async (topicId, reason) => {
+    try {
+      await adminService.deleteRatingTopic(topicId, reason);
+      set((state) => ({
+        reports: state.reports.filter((r) => {
+          if (r.targetType === 'rating_topic' && r.targetId === topicId) return false;
+          if (r.ratingTopicId === topicId || r.ratingTopic?._id === topicId) return false;
+          return true;
+        }),
+      }));
+    } catch (err) {
+      set({ reportsError: err.message });
+      throw err;
+    }
+  },
+
+  deleteRatingComment: async (commentId, reason) => {
+    try {
+      await adminService.deleteRatingComment(commentId, reason);
+      set((state) => ({
+        reports: state.reports.filter((r) => r.targetId !== commentId),
+      }));
+    } catch (err) {
+      set({ reportsError: err.message });
+      throw err;
+    }
+  },
+
   // Audit Logs
   fetchAuditLogs: async (action, limit) => {
     set({ auditLogsLoading: true, auditLogsError: null });

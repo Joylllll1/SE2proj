@@ -2,9 +2,25 @@ import mongoose from 'mongoose';
 
 const reportSchema = new mongoose.Schema(
   {
-    targetType: { type: String, enum: ['post', 'comment', 'reply'], default: 'post', required: true, index: true },
-    targetId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true }, // postId 或 commentId/replyId
-    postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', index: true }, // 所属帖子（评论/回复时填充）
+    targetType: {
+      type: String,
+      enum: [
+        'post',
+        'comment',
+        'reply',
+        'rating_theme',
+        'rating_topic',
+        'rating_comment',
+        'rating_reply',
+      ],
+      default: 'post',
+      required: true,
+      index: true,
+    },
+    targetId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', index: true },
+    ratingThemeId: { type: mongoose.Schema.Types.ObjectId, ref: 'RatingTheme', index: true },
+    ratingTopicId: { type: mongoose.Schema.Types.ObjectId, ref: 'RatingTopic', index: true },
     reportCount: { type: Number, default: 1 },
     reasons: [
       {

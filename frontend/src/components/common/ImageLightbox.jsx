@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import Icon from './Icon';
 
@@ -10,6 +10,7 @@ function ImageLightbox({ images = [], initialIndex = 0, onClose }) {
   const [dragging, setDragging] = useState(false);
   const [dragOrigin, setDragOrigin] = useState(null);
   const [swipeStart, setSwipeStart] = useState(null);
+  const wheelLockRef = useRef(false);
   const safeImages = useMemo(() => (Array.isArray(images) ? images.filter(Boolean) : []), [images]);
   const hasMultiple = safeImages.length > 1;
 
@@ -55,6 +56,41 @@ function ImageLightbox({ images = [], initialIndex = 0, onClose }) {
   }, [mounted, safeImages.length, hasMultiple, onClose, showPrevious, showNext]);
 
   useEffect(() => {
+    if (!mounted || !hasMultiple || scale > 1) return undefined;
+
+    const handleWheel = (event) => {
+      const absX = Math.abs(event.deltaX);
+      const absY = Math.abs(event.deltaY);
+      const horizontal = absX > absY && absX > 6;
+      const vertical = absY >= absX && absY > 6;
+
+      if (!horizontal && !vertical) return;
+
+      event.preventDefault();
+      if (wheelLockRef.current) return;
+
+      wheelLockRef.current = true;
+      const delta = horizontal ? event.deltaX : event.deltaY;
+      if (delta > 0) {
+        showNext();
+      } else {
+        showPrevious();
+      }
+
+      window.setTimeout(() => {
+        wheelLockRef.current = false;
+      }, 220);
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      window.removeEventListener('wheel', handleWheel);
+      wheelLockRef.current = false;
+    };
+  }, [mounted, hasMultiple, scale, showNext, showPrevious]);
+
+  useEffect(() => {
     setActiveIndex(initialIndex);
   }, [initialIndex]);
 
@@ -92,7 +128,7 @@ function ImageLightbox({ images = [], initialIndex = 0, onClose }) {
       return;
     }
 
-    if (event.pointerType === 'touch') {
+    if (hasMultiple) {
       setSwipeStart({
         x: event.clientX,
         y: event.clientY,
@@ -263,8 +299,8 @@ function ImageLightbox({ images = [], initialIndex = 0, onClose }) {
           </div>
         )}
 
-        <div className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs text-white/75 backdrop-blur-sm">
-          双击放大，拖拽查看；移动端可左右滑动切换
+        <div className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs text-white/75 backdrop-blur-sm text-center">
+          左右按钮、触控板横滑或滚轮切换；双击放大后可拖拽查看
         </div>
       </div>
 

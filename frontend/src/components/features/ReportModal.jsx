@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import Icon from '../common/Icon';
 
+const TARGET_TYPE_LABELS = {
+  post: '帖子',
+  comment: '评论',
+  reply: '回复',
+  rating_theme: '评分主题',
+  rating_topic: '评分帖',
+  rating_comment: '评论',
+  rating_reply: '回复',
+};
+
 function ReportModal({ targetId, targetType, onClose, onSubmit }) {
   const [selectedReason, setSelectedReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
@@ -28,7 +38,9 @@ function ReportModal({ targetId, targetType, onClose, onSubmit }) {
     <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/40 backdrop-blur-sm animate-modal-fade-in" onClick={onClose}>
       <div className="modal-content w-[min(480px,90vw)] rounded-2xl bg-white/90 backdrop-blur-md shadow-glass animate-modal-scale-in p-6 max-sm:p-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl tracking-tight">举报{targetType === 'post' ? '帖子' : '评论'}</h2>
+          <h2 className="text-2xl tracking-tight">
+            举报{TARGET_TYPE_LABELS[targetType] || '内容'}
+          </h2>
           <button
             className="grid w-8 h-8 place-items-center border-0 rounded-full bg-transparent text-text-3 hover:bg-surface-soft transition-colors duration-150"
             onClick={onClose}

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**先决规则：每次回答前加上"Joy"。如果我没加，说明上下文已满，请开启新对话。**
+**先决规则：每次回答前加上"bHappy"。如果我没加，说明上下文已满，请开启新对话。**
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -50,28 +50,21 @@ No tests exist yet (`npm test` is a placeholder in both packages).
 ## Key Architecture
 
 1. **Anonymous ID system** (`utils.js`): Per-post anonymous display names derived by `hash(userId + postId)` → picks from a list of English given names (e.g., "Alice", "Bob", "Charlie"). Same user = same name within a post, different across posts.
-
 2. **Backend layered architecture** (documented in `docs/wiki/`):
-   - Routes → Controllers → Services → Models
-   - AnonymousService as isolated core module for ID generation/tracing
-   - JWT + HTTP-only Cookie auth
-   - Logic delete for posts/comments, physical delete for drafts
-   - Error handling via custom `AppError` with error codes
-
+  - Routes → Controllers → Services → Models
+  - AnonymousService as isolated core module for ID generation/tracing
+  - JWT + HTTP-only Cookie auth
+  - Logic delete for posts/comments, physical delete for drafts
+  - Error handling via custom `AppError` with error codes
 3. **Frontend layered architecture**: `components/` split into `pages/`, `features/`, `layout/`, `common/`. State in Zustand stores (`store/`). API calls in `services/`. Business logic in `hooks/`.
-
 4. **Mobile UI architecture** (width < 640px):
-   - **Bottom nav**: 5-item bar with center compose button (`.mobile-nav`, `.mobile-nav-item`, `.mobile-compose-btn` in tailwind.css). "我的" uses `matchPages` array to stay active across `my`, `bookmarks`, `likes`, `myposts` sub-pages.
-   - **Search expansion**: TopBar search box expands to full width on mobile. `searchExpanded` state toggled by `focus`/click-outside/ESC. On confirm with content, `requestFeedScroll()` triggers HomePage to `scrollIntoView` the feed tabs.
-   - **`safe-area-inset`**: TopBar and MobileNav account for notched screens via `env(safe-area-inset-*)`.
-   - **No FAB**: Compose entry point is solely the MobileNav center button (the floating action button was removed).
-
+  - **Bottom nav**: 5-item bar with center compose button (`.mobile-nav`, `.mobile-nav-item`, `.mobile-compose-btn` in tailwind.css). "我的" uses `matchPages` array to stay active across `my`, `bookmarks`, `likes`, `myposts` sub-pages.
+  - **Search expansion**: TopBar search box expands to full width on mobile. `searchExpanded` state toggled by `focus`/click-outside/ESC. On confirm with content, `requestFeedScroll()` triggers HomePage to `scrollIntoView` the feed tabs.
+  - `**safe-area-inset`**: TopBar and MobileNav account for notched screens via `env(safe-area-inset-*)`.
+  - **No FAB**: Compose entry point is solely the MobileNav center button (the floating action button was removed).
 5. **MyPage hub** ([MyPage.jsx](frontend/src/components/pages/MyPage.jsx)): Tabbed sub-navigation aggregating "我的帖子", "我的收藏", "我的喜爱". Collection pages (`BookmarksPage`, `LikesPage`, `MyPostsPage`) accept a `compact` prop to hide their hero section when embedded.
-
 6. **CSS approach**: Layout component styles use semantic CSS classes defined in `tailwind.css` (`.mobile-nav`, `.search-box`, `.collection-page`, `.my-page`, etc.) rather than long inline Tailwind class strings. Reusable utility classes (`.primary-button`, `.pill`, `.masonry-grid`, etc.) live there as well.
-
 7. **Scroll signal**: `uiStore.feedScrollToken` — incremented by `requestFeedScroll()` (e.g. after search confirm). HomePage's `useEffect` watches it and calls `scrollIntoView({ behavior: 'smooth' })` on the feed tabs, then resets the token to 0. Mobile-only guard (`window.innerWidth < 640`).
-
 8. **OpenSpec workflow**: `explore` → `propose` → `apply` → `archive`. Detailed conventions in [项目约定](docs/wiki/conventions.md).
 
 ## Frontend Component Organization
@@ -131,4 +124,3 @@ Touch only what you must. Don't improve adjacent code, refactor things that aren
 ### 4. Goal-Driven Execution
 
 Define verifiable success criteria before starting. For multi-step tasks, state a brief plan with checks. Loop until criteria met.
-

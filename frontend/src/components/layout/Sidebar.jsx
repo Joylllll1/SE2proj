@@ -10,6 +10,7 @@ const navItems = [
   { id: 'likes', label: '我的喜爱', icon: 'favorite' },
   { id: 'bookmarks', label: '我的收藏', icon: 'bookmark' },
   { id: 'myposts', label: '我的帖子', icon: 'description' },
+  { id: 'rating', label: '树洞评分', icon: 'star' },
   { id: 'settings', label: '个人设置', icon: 'person' },
 ];
 
@@ -61,16 +62,16 @@ function Sidebar({ activePage, onNavigate }) {
         <nav className="grid gap-[5px]">
           {navItems.map((item) => (
             <button
-              className={`nav-item relative flex items-center gap-2.5 w-full min-h-10 px-3 border border-transparent rounded-lg text-text-2 bg-transparent text-sm font-semibold text-left transition-colors duration-150 hover:text-text hover:bg-black/[0.04] ${activePage === item.id ? 'active text-blue bg-blue-soft font-bold' : ''}`}
+              className={`nav-item relative flex items-center gap-2.5 w-full min-h-10 px-3 border border-transparent rounded-lg text-text-2 bg-transparent text-sm font-semibold text-left transition-colors duration-150 hover:text-text hover:bg-black/[0.04] ${activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine')) ? 'active text-blue bg-blue-soft font-bold' : ''}`}
               key={item.id}
               onClick={() => onNavigate(item.id)}
               type="button"
             >
-              <Icon name={item.icon} filled={activePage === item.id} />
+              <Icon name={item.icon} filled={activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine'))} />
               <span>{item.label}</span>
-              {activePage === item.id && (
+              {activePage === item.id || (item.id === 'rating' && (activePage === 'rating-detail' || activePage === 'rating-compose' || activePage === 'rating-theme-compose' || activePage === 'rating-theme-detail' || activePage === 'rating-mine')) ? (
                 <span className="absolute -left-[14px] w-[3px] h-5 rounded-r-full bg-blue" />
-              )}
+              ) : null}
             </button>
           ))}
         </nav>

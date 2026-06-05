@@ -32,6 +32,25 @@ export const deleteComment = (commentId, reason) =>
     body: JSON.stringify({ reason }),
   });
 
+// Rating
+export const deleteRatingTheme = (themeId, reason) =>
+  request(`${API_BASE}/rating/themes/${themeId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  });
+
+export const deleteRatingTopic = (topicId, reason) =>
+  request(`${API_BASE}/rating/topics/${topicId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  });
+
+export const deleteRatingComment = (commentId, reason) =>
+  request(`${API_BASE}/rating/comments/${commentId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  });
+
 // Users
 export const banUser = (userId, { days, reason, relatedPostId }) =>
   request(`${API_BASE}/users/${userId}/ban`, {

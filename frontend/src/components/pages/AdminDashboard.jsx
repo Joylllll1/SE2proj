@@ -9,6 +9,33 @@ import useAdminStore from '../../store/adminStore';
 import useEventStore from '../../store/eventStore';
 import useUiStore, { ADMIN_PAGE_TABS } from '../../store/uiStore';
 
+const REPORT_TYPE_LABELS = {
+  post: '帖子举报',
+  comment: '评论举报',
+  reply: '回复举报',
+  rating_theme: '评分主题举报',
+  rating_topic: '评分帖举报',
+  rating_comment: '评分评论举报',
+  rating_reply: '评分回复举报',
+};
+
+const REPORT_TYPE_BADGE = {
+  post: 'bg-orange-soft text-orange',
+  comment: 'bg-blue-soft text-blue',
+  reply: 'bg-purple-soft text-purple',
+  rating_theme: 'bg-green-soft text-green',
+  rating_topic: 'bg-blue-soft text-blue',
+  rating_comment: 'bg-blue-soft text-blue',
+  rating_reply: 'bg-purple-soft text-purple',
+};
+
+const isRatingReport = (targetType) => (
+  targetType === 'rating_theme'
+  || targetType === 'rating_topic'
+  || targetType === 'rating_comment'
+  || targetType === 'rating_reply'
+);
+
 // Ban duration options
 const BAN_DURATIONS = [
   { days: 1, label: '1 天' },
@@ -181,6 +208,67 @@ function UnbanModal({ ban, onConfirm, onClose }) {
 function PostDetailModal({ post, onClose }) {
   if (!post) return null;
 
+  if (post.targetType === 'rating_theme') {
+    return (
+      <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+        <div className="modal-content w-[min(640px,90vw)] max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+          <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 mb-2">评分主题</span>
+          <h2 className="text-xl font-bold">{post.targetTitle || '[已删除]'}</h2>
+          <div className="p-4 bg-gray-50 rounded-xl mt-4 mb-4">
+            <p className="text-gray-700 leading-relaxed">{post.targetContent || '无描述'}</p>
+          </div>
+          <div className="flex justify-end">
+            <button className="px-6 py-2 text-sm font-medium text-white bg-gray-800 rounded-full hover:bg-gray-900" onClick={onClose}>关闭</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (post.targetType === 'rating_topic') {
+    return (
+      <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+        <div className="modal-content w-[min(640px,90vw)] max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+          <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-teal-100 text-teal-700 mb-2">评分帖</span>
+          <h2 className="text-xl font-bold">{post.targetTitle || '[已删除]'}</h2>
+          {post.ratingTheme?.name && (
+            <p className="text-gray-500 text-sm mt-2">所属主题：{post.ratingTheme.name}</p>
+          )}
+          <div className="p-4 bg-gray-50 rounded-xl mt-4 mb-4">
+            <p className="text-gray-700 leading-relaxed">{post.targetContent || '无描述'}</p>
+          </div>
+          <div className="flex justify-end">
+            <button className="px-6 py-2 text-sm font-medium text-white bg-gray-800 rounded-full hover:bg-gray-900" onClick={onClose}>关闭</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (post.targetType === 'rating_comment' || post.targetType === 'rating_reply') {
+    return (
+      <div className="modal-overlay fixed inset-0 z-[150] grid place-items-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+        <div className="modal-content w-[min(640px,90vw)] max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+          <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 mb-2">
+            {post.targetType === 'rating_comment' ? '评分评论' : '评分回复'}
+          </span>
+          <div className="p-4 bg-gray-50 rounded-xl mb-4">
+            <p className="text-gray-700 leading-relaxed">{post.targetContent || '[内容已删除]'}</p>
+          </div>
+          {post.ratingTopic?.title && (
+            <p className="text-sm text-gray-500">所属评分帖：{post.ratingTopic.title}</p>
+          )}
+          {post.ratingTheme?.name && (
+            <p className="text-sm text-gray-500 mt-1">所属主题：{post.ratingTheme.name}</p>
+          )}
+          <div className="flex justify-end mt-4">
+            <button className="px-6 py-2 text-sm font-medium text-white bg-gray-800 rounded-full hover:bg-gray-900" onClick={onClose}>关闭</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 评论/回复详情
   if (post.targetType === 'comment' || post.targetType === 'reply') {
     return (
@@ -268,6 +356,7 @@ function AdminDashboard() {
 
   const {
     reports, reportsLoading, fetchReports, dismissReport, deletePost, deleteComment,
+    deleteRatingTheme, deleteRatingTopic, deleteRatingComment,
     bans, bansLoading, fetchBans, banUser, unbanUser,
     traceResult, tracePost, clearTraceResult,
     auditLogs, auditLogsLoading, fetchAuditLogs,
@@ -344,6 +433,68 @@ function AdminDashboard() {
     } catch (err) {
       showToast(err.message || '删除失败');
     }
+  };
+
+  const handleDeleteRatingTheme = async (themeId) => {
+    if (!window.confirm('确定要删除该评分主题吗？主题下所有评分帖将一并删除。')) return;
+    try {
+      await deleteRatingTheme(themeId, '管理员删除违规内容');
+      showToast('评分主题已删除');
+    } catch (err) {
+      showToast(err.message || '删除失败');
+    }
+  };
+
+  const handleDeleteRatingTopic = async (topicId) => {
+    if (!window.confirm('确定要删除该评分帖吗？此操作不可逆。')) return;
+    try {
+      await deleteRatingTopic(topicId, '管理员删除违规内容');
+      showToast('评分帖已删除');
+    } catch (err) {
+      showToast(err.message || '删除失败');
+    }
+  };
+
+  const handleDeleteRatingComment = async (commentId) => {
+    if (!window.confirm('确定要删除该评论吗？此操作不可逆。')) return;
+    try {
+      await deleteRatingComment(commentId, '管理员删除违规内容');
+      showToast('评论已删除');
+    } catch (err) {
+      showToast(err.message || '删除失败');
+    }
+  };
+
+  const getReportDetailPayload = (report) => {
+    if (report.targetType === 'post') return report.postId;
+    if (report.targetType === 'rating_theme') {
+      return {
+        targetType: 'rating_theme',
+        targetTitle: report.targetTitle,
+        targetContent: report.targetContent,
+      };
+    }
+    if (report.targetType === 'rating_topic') {
+      return {
+        targetType: 'rating_topic',
+        targetTitle: report.targetTitle,
+        targetContent: report.targetContent,
+        ratingTheme: report.ratingTheme,
+      };
+    }
+    if (isRatingReport(report.targetType)) {
+      return {
+        targetType: report.targetType,
+        targetContent: report.targetContent,
+        ratingTopic: report.ratingTopic,
+        ratingTheme: report.ratingTheme,
+      };
+    }
+    return {
+      content: report.targetContent,
+      postId: report.postId,
+      targetType: report.targetType,
+    };
   };
 
   // Handle event approval
@@ -425,12 +576,9 @@ function AdminDashboard() {
                     <div className="flex items-start justify-between mb-3 max-sm:flex-col max-sm:gap-2">
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          report.targetType === 'post' ? 'bg-orange-soft text-orange' :
-                          report.targetType === 'comment' ? 'bg-blue-soft text-blue' :
-                          'bg-purple-soft text-purple'
+                          REPORT_TYPE_BADGE[report.targetType] || 'bg-surface-soft text-text-2'
                         }`}>
-                          {report.targetType === 'post' ? '帖子举报' :
-                           report.targetType === 'comment' ? '评论举报' : '回复举报'}
+                          {REPORT_TYPE_LABELS[report.targetType] || '内容举报'}
                         </span>
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-surface-soft text-text-2">
                           {report.reasons?.[0]?.reason || '举报'}
@@ -454,13 +602,41 @@ function AdminDashboard() {
                       </div>
                     )}
 
+                    {report.targetType === 'rating_theme' && (
+                      <div className="p-3 bg-surface-soft rounded-md mb-4">
+                        <h3 className="font-semibold text-text mb-1">{report.targetTitle || '[已删除]'}</h3>
+                        <p className="text-sm text-text-2 line-clamp-2">{report.targetContent || '无描述'}</p>
+                      </div>
+                    )}
+
+                    {report.targetType === 'rating_topic' && (
+                      <div className="p-3 bg-surface-soft rounded-md mb-4">
+                        <h3 className="font-semibold text-text mb-1">{report.targetTitle || '[已删除]'}</h3>
+                        <p className="text-sm text-text-2 line-clamp-2">{report.targetContent || '无描述'}</p>
+                        {report.ratingTheme?.name && (
+                          <p className="text-xs text-text-3 mt-2">所属主题：{report.ratingTheme.name}</p>
+                        )}
+                      </div>
+                    )}
+
                     {/* 评论/回复举报只显示内容本身 */}
-                    {(report.targetType === 'comment' || report.targetType === 'reply') && (
+                    {(report.targetType === 'comment' || report.targetType === 'reply'
+                      || report.targetType === 'rating_comment' || report.targetType === 'rating_reply') && (
                       <div className="p-3 bg-surface-soft rounded-md mb-4">
                         <p className="text-sm text-text-2">{report.targetContent || '[内容已删除]'}</p>
                         {report.postId && (
                           <p className="text-xs text-text-3 mt-2">
                             所属帖子：{report.postId.title || '[已删除]'}
+                          </p>
+                        )}
+                        {report.ratingTopic?.title && (
+                          <p className="text-xs text-text-3 mt-2">
+                            所属评分帖：{report.ratingTopic.title}
+                          </p>
+                        )}
+                        {report.ratingTheme?.name && (
+                          <p className="text-xs text-text-3 mt-1">
+                            所属主题：{report.ratingTheme.name}
                           </p>
                         )}
                       </div>
@@ -469,18 +645,20 @@ function AdminDashboard() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         className="px-3 py-1.5 text-xs font-semibold border border-line rounded-full text-text-2 hover:bg-surface-soft transition-colors duration-150"
-                        onClick={() => setSelectedPost(report.targetType === 'post' ? report.postId : { content: report.targetContent, postId: report.postId, targetType: report.targetType })}
+                        onClick={() => setSelectedPost(getReportDetailPayload(report))}
                         type="button"
                       >
                         查看详情
                       </button>
-                      <button
-                        className="px-3 py-1.5 text-xs font-semibold border border-blue rounded-full text-blue hover:bg-blue-soft transition-colors duration-150"
-                        onClick={() => setTraceModalPost({ _id: report.targetId, targetType: report.targetType })}
-                        type="button"
-                      >
-                        追溯身份
-                      </button>
+                      {!isRatingReport(report.targetType) && (
+                        <button
+                          className="px-3 py-1.5 text-xs font-semibold border border-blue rounded-full text-blue hover:bg-blue-soft transition-colors duration-150"
+                          onClick={() => setTraceModalPost({ _id: report.targetId, targetType: report.targetType })}
+                          type="button"
+                        >
+                          追溯身份
+                        </button>
+                      )}
                       {report.targetType === 'post' && (
                         <button
                           className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
@@ -494,6 +672,33 @@ function AdminDashboard() {
                         <button
                           className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
                           onClick={() => handleDeleteComment(report.targetId)}
+                          type="button"
+                        >
+                          删除评论
+                        </button>
+                      )}
+                      {report.targetType === 'rating_theme' && (
+                        <button
+                          className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
+                          onClick={() => handleDeleteRatingTheme(report.targetId)}
+                          type="button"
+                        >
+                          删除主题
+                        </button>
+                      )}
+                      {report.targetType === 'rating_topic' && (
+                        <button
+                          className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
+                          onClick={() => handleDeleteRatingTopic(report.targetId)}
+                          type="button"
+                        >
+                          删除评分帖
+                        </button>
+                      )}
+                      {(report.targetType === 'rating_comment' || report.targetType === 'rating_reply') && (
+                        <button
+                          className="px-3 py-1.5 text-xs font-semibold border border-red rounded-full text-red hover:bg-red-soft transition-colors duration-150"
+                          onClick={() => handleDeleteRatingComment(report.targetId)}
                           type="button"
                         >
                           删除评论
@@ -607,6 +812,9 @@ function AdminDashboard() {
                             log.action === 'reject_event' ? 'bg-red-soft text-red' :
                             log.action === 'archive_event' ? 'bg-surface-soft text-text-2' :
                             log.action === 'delete_event' ? 'bg-orange-soft text-orange' :
+                            log.action === 'delete_rating_theme' ? 'bg-green-soft text-green' :
+                            log.action === 'delete_rating_topic' ? 'bg-blue-soft text-blue' :
+                            log.action === 'delete_rating_comment' ? 'bg-blue-soft text-blue' :
                             'bg-surface-soft text-text-2'
                           }`}>
                             {log.action === 'trace' ? '追溯' :
@@ -615,7 +823,10 @@ function AdminDashboard() {
                              log.action === 'approve_event' ? '通过活动' :
                              log.action === 'reject_event' ? '拒绝活动' :
                              log.action === 'archive_event' ? '归档活动' :
-                             log.action === 'delete_event' ? '下架活动' : '删帖'}
+                             log.action === 'delete_event' ? '下架活动' :
+                             log.action === 'delete_rating_theme' ? '删评分主题' :
+                             log.action === 'delete_rating_topic' ? '删评分帖' :
+                             log.action === 'delete_rating_comment' ? '删评分评论' : '删帖'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-text-2 max-sm:px-2 max-sm:py-2">

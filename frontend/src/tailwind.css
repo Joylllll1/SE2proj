@@ -145,7 +145,8 @@ h1, h2, h3, p {
 }
 
 .app-icon.filled {
-  stroke-width: 2.15;
+  @apply fill-current;
+  stroke: none;
 }
 
 /* Progress Row */
@@ -760,6 +761,54 @@ h1, h2, h3, p {
 
 .my-page-content {
   @apply min-h-[50vh];
+}
+
+/* Rating page */
+.rating-page {
+  @apply max-w-[1180px] mx-auto;
+}
+
+.rating-list-card {
+  @apply min-h-full;
+}
+
+.rating-list-body {
+  @apply min-h-[168px];
+}
+
+.rating-detail-page {
+  @apply max-w-[1180px] mx-auto;
+}
+
+.rating-star-lg .app-icon {
+  @apply w-8 h-8;
+}
+
+.rating-star-sm .app-icon {
+  @apply w-4 h-4;
+}
+
+.rating-summary-card {
+  @apply shadow-sm;
+}
+
+.rating-score-number {
+  font-variant-numeric: tabular-nums;
+}
+
+.rating-topic-image-stack {
+  @apply w-full max-w-full;
+}
+
+@media (max-width: 640px) {
+  .rating-topic-image-stack {
+    height: auto !important;
+    min-height: 200px;
+  }
+
+  .rating-topic-image-stack-item {
+    max-width: calc(100% - 16px);
+  }
 }
 
 /* Masonry grid */

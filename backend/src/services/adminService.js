@@ -3,6 +3,9 @@ import Ban from '../models/Ban.js';
 import AuditLog from '../models/AuditLog.js';
 import Post from '../models/Post.js';
 import Comment from '../models/Comment.js';
+import RatingTheme from '../models/RatingTheme.js';
+import RatingTopic from '../models/RatingTopic.js';
+import RatingComment from '../models/RatingComment.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import { sendBanNotification, sendUnbanNotification } from './emailService.js';
@@ -29,6 +32,149 @@ async function resolveAssociatedPostId(targetId, targetType) {
   }
 
   return null;
+}
+
+async function resolveReportContext(targetId, targetType) {
+  if (targetType === 'rating_theme') {
+    const theme = await RatingTheme.findOne({ _id: targetId, isDeleted: false }).lean();
+    if (!theme) {
+      throw new AppError('举报目标不存在', 404, 'REPORT_TARGET_NOT_FOUND');
+    }
+    return {
+      postId: null,
+      ratingThemeId: theme._id,
+      ratingTopicId: null,
+    };
+  }
+
+  if (targetType === 'rating_topic') {
+    const topic = await RatingTopic.findOne({ _id: targetId, isDeleted: false }).lean();
+    if (!topic) {
+      throw new AppError('举报目标不存在', 404, 'REPORT_TARGET_NOT_FOUND');
+    }
+    return {
+      postId: null,
+      ratingThemeId: topic.themeId,
+      ratingTopicId: topic._id,
+    };
+  }
+
+  if (targetType === 'rating_comment') {
+    const comment = await RatingComment.findOne({ _id: targetId, isDeleted: false })
+      .select('topicId')
+      .lean();
+    if (!comment) {
+      throw new AppError('举报目标不存在', 404, 'REPORT_TARGET_NOT_FOUND');
+    }
+    const topic = await RatingTopic.findOne({ _id: comment.topicId, isDeleted: false })
+      .select('themeId')
+      .lean();
+    return {
+      postId: null,
+      ratingThemeId: topic?.themeId || null,
+      ratingTopicId: comment.topicId,
+    };
+  }
+
+  if (targetType === 'rating_reply') {
+    const parentComment = await RatingComment.findOne({
+      isDeleted: false,
+      replies: { $elemMatch: { _id: targetId, isDeleted: { $ne: true } } },
+    }).select('topicId').lean();
+    if (!parentComment) {
+      throw new AppError('举报目标不存在', 404, 'REPORT_TARGET_NOT_FOUND');
+    }
+    const topic = await RatingTopic.findOne({ _id: parentComment.topicId, isDeleted: false })
+      .select('themeId')
+      .lean();
+    return {
+      postId: null,
+      ratingThemeId: topic?.themeId || null,
+      ratingTopicId: parentComment.topicId,
+    };
+  }
+
+  const postId = await resolveAssociatedPostId(targetId, targetType);
+  return {
+    postId,
+    ratingThemeId: null,
+    ratingTopicId: null,
+  };
+}
+
+async function enrichRatingReport(report, targetType, targetId) {
+  if (targetType === 'rating_theme') {
+    const theme = targetId
+      ? await RatingTheme.findById(targetId).select('name description creatorUserId isDeleted createdAt').lean()
+      : null;
+    return {
+      ...report,
+      targetType,
+      targetId,
+      targetTitle: theme?.name || '[已删除]',
+      targetContent: theme?.description || '',
+      ratingTheme: theme,
+      ratingTopic: null,
+    };
+  }
+
+  if (targetType === 'rating_topic') {
+    const topic = targetId
+      ? await RatingTopic.findById(targetId).select('title description themeId creatorUserId isDeleted createdAt').lean()
+      : null;
+    const theme = topic?.themeId
+      ? await RatingTheme.findById(topic.themeId).select('name isDeleted').lean()
+      : null;
+    return {
+      ...report,
+      targetType,
+      targetId,
+      targetTitle: topic?.title || '[已删除]',
+      targetContent: topic?.description || '',
+      ratingTheme: theme,
+      ratingTopic: topic,
+    };
+  }
+
+  let target = null;
+  if (targetType === 'rating_reply') {
+    const parentComment = await RatingComment.findOne({ 'replies._id': targetId }).lean();
+    if (parentComment && !parentComment.isDeleted) {
+      target = parentComment.replies.find((reply) => reply._id.toString() === targetId.toString());
+      if (target && !target.isDeleted) {
+        target.topicId = parentComment.topicId;
+      } else {
+        target = null;
+      }
+    }
+  } else {
+    target = targetId
+      ? await RatingComment.findById(targetId).select('content ownerUserId createdAt topicId isDeleted').lean()
+      : null;
+    if (target?.isDeleted) {
+      target = null;
+    }
+  }
+
+  let topic = null;
+  let theme = null;
+  if (target?.topicId) {
+    topic = await RatingTopic.findById(target.topicId).select('title themeId isDeleted').lean();
+    if (topic?.themeId) {
+      theme = await RatingTheme.findById(topic.themeId).select('name isDeleted').lean();
+    }
+  }
+
+  return {
+    ...report,
+    targetType,
+    targetId,
+    targetContent: target?.content || '[已删除]',
+    targetOwnerUserId: target?.ownerUserId,
+    targetCreatedAt: target?.createdAt,
+    ratingTopic: topic,
+    ratingTheme: theme,
+  };
 }
 
 async function getReplyIdsByUser(userId) {
@@ -108,6 +254,15 @@ export async function getPendingReports() {
       return { ...report, targetType: 'post', targetId, postId: post };
     }
 
+    if (
+      targetType === 'rating_theme'
+      || targetType === 'rating_topic'
+      || targetType === 'rating_comment'
+      || targetType === 'rating_reply'
+    ) {
+      return enrichRatingReport(report, targetType, targetId);
+    }
+
     // 评论/回复举报，获取评论/回复内容
     let target = null;
     if (targetType === 'reply') {
@@ -165,8 +320,7 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
     throw error;
   }
 
-  // For comments/replies, find the associated post
-  const postId = await resolveAssociatedPostId(targetId, targetType);
+  const context = await resolveReportContext(targetId, targetType);
 
   const update = {
     $inc: { reportCount: 1 },
@@ -174,7 +328,9 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
     $setOnInsert: {
       targetType,
       targetId,
-      postId,
+      postId: context.postId,
+      ratingThemeId: context.ratingThemeId,
+      ratingTopicId: context.ratingTopicId,
       status: 'pending',
     },
   };
@@ -573,6 +729,144 @@ export async function deleteComment(commentId, adminId, reason) {
     targetUserId: reply.ownerUserId,
     targetCommentId: commentId,
     reason,
+  });
+
+  return reply;
+}
+
+// ─── Rating Moderation ───
+
+export async function deleteRatingTheme(themeId, adminId, reason) {
+  const theme = await RatingTheme.findOne({ _id: themeId, isDeleted: false });
+  if (!theme) {
+    throw new AppError('评分主题不存在', 404, 'RATING_THEME_NOT_FOUND');
+  }
+
+  theme.isDeleted = true;
+  await theme.save();
+  await RatingTopic.updateMany({ themeId, isDeleted: false }, { isDeleted: true });
+
+  await Report.deleteMany({
+    status: 'pending',
+    $or: [
+      { targetId: themeId, targetType: 'rating_theme' },
+      { ratingThemeId: themeId },
+    ],
+  });
+
+  await AuditLog.create({
+    action: 'delete_rating_theme',
+    adminId,
+    targetUserId: theme.creatorUserId,
+    reason,
+    details: { themeId: theme._id.toString() },
+  });
+
+  try {
+    broadcast('rating-theme-deleted', { themeId: theme._id.toString() });
+  } catch (error) {
+    console.error('SSE broadcast failed after admin rating theme deletion:', error);
+  }
+
+  return theme;
+}
+
+export async function deleteRatingTopic(topicId, adminId, reason) {
+  const topic = await RatingTopic.findOne({ _id: topicId, isDeleted: false });
+  if (!topic) {
+    throw new AppError('评分帖不存在', 404, 'RATING_TOPIC_NOT_FOUND');
+  }
+
+  topic.isDeleted = true;
+  await topic.save();
+
+  await Report.deleteMany({
+    status: 'pending',
+    $or: [
+      { targetId: topicId, targetType: 'rating_topic' },
+      { ratingTopicId: topicId },
+    ],
+  });
+
+  await AuditLog.create({
+    action: 'delete_rating_topic',
+    adminId,
+    targetUserId: topic.creatorUserId,
+    reason,
+    details: { topicId: topic._id.toString(), themeId: topic.themeId.toString() },
+  });
+
+  try {
+    broadcast('rating-topic-deleted', { topicId: topic._id.toString() });
+  } catch (error) {
+    console.error('SSE broadcast failed after admin rating topic deletion:', error);
+  }
+
+  return topic;
+}
+
+export async function deleteRatingComment(commentId, adminId, reason) {
+  let comment = await RatingComment.findOne({ _id: commentId, isDeleted: false });
+
+  if (comment) {
+    comment.isDeleted = true;
+    await comment.save();
+
+    const replyIds = (comment.replies || [])
+      .filter((reply) => !reply.isDeleted)
+      .map((reply) => reply._id);
+
+    await Report.deleteMany({
+      status: 'pending',
+      $or: [
+        { targetId: commentId, targetType: 'rating_comment' },
+        ...(replyIds.length > 0 ? [{ targetId: { $in: replyIds }, targetType: 'rating_reply' }] : []),
+      ],
+    });
+
+    await AuditLog.create({
+      action: 'delete_rating_comment',
+      adminId,
+      targetUserId: comment.ownerUserId,
+      reason,
+      details: { commentId: comment._id.toString(), topicId: comment.topicId.toString() },
+    });
+
+    return comment;
+  }
+
+  const parentComment = await RatingComment.findOne({
+    isDeleted: false,
+    replies: { $elemMatch: { _id: commentId, isDeleted: { $ne: true } } },
+  });
+  if (!parentComment) {
+    throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
+  }
+
+  const reply = parentComment.replies.id(commentId);
+  if (!reply) {
+    throw new AppError('回复不存在', 404, 'REPLY_NOT_FOUND');
+  }
+
+  reply.isDeleted = true;
+  await parentComment.save();
+
+  await Report.deleteMany({
+    targetId: commentId,
+    targetType: 'rating_reply',
+    status: 'pending',
+  });
+
+  await AuditLog.create({
+    action: 'delete_rating_comment',
+    adminId,
+    targetUserId: reply.ownerUserId,
+    reason,
+    details: {
+      commentId: parentComment._id.toString(),
+      replyId: commentId.toString(),
+      topicId: parentComment.topicId.toString(),
+    },
   });
 
   return reply;

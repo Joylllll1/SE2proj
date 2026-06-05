@@ -19,6 +19,12 @@ import ComposePage from './components/pages/ComposePage';
 import DraftsPage from './components/pages/DraftsPage';
 import LikesPage from './components/pages/LikesPage';
 import MyPostsPage from './components/pages/MyPostsPage';
+import RatingPage from './components/pages/RatingPage';
+import RatingDetailPage from './components/pages/RatingDetailPage';
+import RatingComposePage from './components/pages/RatingComposePage';
+import RatingThemeComposePage from './components/pages/RatingThemeComposePage';
+import RatingThemePage from './components/pages/RatingThemePage';
+import MyRatingTopicsPage from './components/pages/MyRatingTopicsPage';
 import AdminDashboard from './components/pages/AdminDashboard';
 import AnnouncementsPage from './components/pages/AnnouncementsPage';
 import UnderConstruction from './components/common/UnderConstruction';
@@ -40,6 +46,7 @@ import useNotificationPolling from './hooks/useNotificationPolling';
 import * as postService from './services/postService';
 import * as reportService from './services/reportService';
 import useNotificationStore from './store/notificationStore';
+import useRatingStore from './store/ratingStore';
 
 // ─── Stable store selectors (prevents zustand getSnapshot churn) ───
 const selectInitialized = (s) => s.initialized;
@@ -286,6 +293,21 @@ function App() {
         if (existedBeforeRemoval) {
           usePostStore.getState().updateCommentCount(currentPostId, -1);
         }
+      }
+    });
+
+    es.addEventListener('rating-updated', (event) => {
+      try {
+        const data = JSON.parse(event.data || '{}');
+        if (activePage === 'rating-detail' && data.topicId && data.stats) {
+          const match = window.location.pathname.match(/^\/rating\/topics\/([^/]+)/);
+          if (match && match[1] === data.topicId) {
+            useRatingStore.getState().applyStatsUpdate(data.stats);
+            useRatingStore.getState().applyTopicStatsUpdate(data.topicId, data.stats);
+          }
+        }
+      } catch {
+        // Ignore malformed SSE payloads.
       }
     });
 
@@ -567,6 +589,12 @@ function App() {
           {activePage === 'myposts' && (
             <MyPostsPage onNavigate={navigate} />
           )}
+          {activePage === 'rating' && <RatingPage />}
+          {activePage === 'rating-theme-compose' && <RatingThemeComposePage />}
+          {activePage === 'rating-theme-detail' && <RatingThemePage />}
+          {activePage === 'rating-compose' && <RatingComposePage />}
+          {activePage === 'rating-mine' && <MyRatingTopicsPage />}
+          {activePage === 'rating-detail' && <RatingDetailPage />}
           {activePage === 'settings' && <SettingsPage />}
           {activePage === 'settings-password' && <PasswordChangePage />}
         </main>

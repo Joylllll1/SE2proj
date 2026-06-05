@@ -47,6 +47,35 @@ export async function deleteComment(req, res) {
   res.json({ message: '评论已删除' });
 }
 
+// ─── Rating ───
+
+export async function deleteRatingTheme(req, res) {
+  const { id: themeId } = req.params;
+  const { reason } = req.body;
+  const adminId = req.user._id;
+
+  await adminService.deleteRatingTheme(themeId, adminId, reason);
+  res.json({ message: '评分主题已删除' });
+}
+
+export async function deleteRatingTopic(req, res) {
+  const { id: topicId } = req.params;
+  const { reason } = req.body;
+  const adminId = req.user._id;
+
+  await adminService.deleteRatingTopic(topicId, adminId, reason);
+  res.json({ message: '评分帖已删除' });
+}
+
+export async function deleteRatingComment(req, res) {
+  const { id: commentId } = req.params;
+  const { reason } = req.body;
+  const adminId = req.user._id;
+
+  await adminService.deleteRatingComment(commentId, adminId, reason);
+  res.json({ message: '评论已删除' });
+}
+
 // ─── Users ───
 
 export async function banUser(req, res) {

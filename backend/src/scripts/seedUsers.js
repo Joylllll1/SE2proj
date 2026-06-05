@@ -1,7 +1,7 @@
 import User from '../models/User.js';
 
 const USERS = [
-  { email: 'admin@nju.edu.cn', password: '12345678', role: 'admin' },
+  { email: 'admin@nju.edu.cn', password: 'admin123456', role: 'admin' },
   { email: 'test@nju.edu.cn', password: '12345678', role: 'user' },
 ];
 

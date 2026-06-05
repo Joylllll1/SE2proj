@@ -20,6 +20,11 @@ router.delete('/posts/:id', adminController.deletePost);
 router.post('/comments/:id/trace', adminController.tracePost);
 router.delete('/comments/:id', adminController.deleteComment);
 
+// Rating moderation
+router.delete('/rating/themes/:id', adminController.deleteRatingTheme);
+router.delete('/rating/topics/:id', adminController.deleteRatingTopic);
+router.delete('/rating/comments/:id', adminController.deleteRatingComment);
+
 // Users banning
 router.post('/users/:id/ban', adminController.banUser);
 
