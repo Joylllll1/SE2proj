@@ -12,6 +12,7 @@ function buildPostStatsMap(posts = []) {
     acc[post.id] = {
       likes: normalizeCount(post.likes) ?? 0,
       saves: normalizeCount(post.saves) ?? 0,
+      comments: normalizeCount(post.comments) ?? 0,
     };
     return acc;
   }, {});
@@ -30,9 +31,11 @@ function mergePostStatsEntry(currentMap, postId, stats = {}) {
   const nextStats = {};
   const likes = normalizeCount(stats.likes);
   const saves = normalizeCount(stats.saves);
+  const comments = normalizeCount(stats.comments);
 
   if (likes !== undefined) nextStats.likes = likes;
   if (saves !== undefined) nextStats.saves = saves;
+  if (comments !== undefined) nextStats.comments = comments;
   if (Object.keys(nextStats).length === 0) return currentMap;
 
   return {
@@ -49,8 +52,9 @@ function applyStatsToPost(post, stats = {}) {
 
   const nextLikes = normalizeCount(stats.likes);
   const nextSaves = normalizeCount(stats.saves);
+  const nextComments = normalizeCount(stats.comments);
 
-  if (nextLikes === undefined && nextSaves === undefined) {
+  if (nextLikes === undefined && nextSaves === undefined && nextComments === undefined) {
     return post;
   }
 
@@ -58,6 +62,7 @@ function applyStatsToPost(post, stats = {}) {
     ...post,
     ...(nextLikes !== undefined ? { likes: nextLikes } : {}),
     ...(nextSaves !== undefined ? { saves: nextSaves } : {}),
+    ...(nextComments !== undefined ? { comments: nextComments } : {}),
   };
 }
 
@@ -221,11 +226,13 @@ const usePostStore = create((set, get) => ({
       : !!post.isLiked;
     const likes = normalizeCount(postStats.likes) ?? normalizeCount(post.likes) ?? 0;
     const saves = normalizeCount(postStats.saves) ?? normalizeCount(post.saves) ?? 0;
+    const comments = normalizeCount(postStats.comments) ?? normalizeCount(post.comments) ?? 0;
     return {
       ...post,
       isLiked: isPendingUnlike ? false : isLiked,
       likes: isPendingUnlike ? Math.max(0, likes - 1) : likes,
       saves,
+      comments,
     };
   },
 
@@ -442,20 +449,28 @@ const usePostStore = create((set, get) => ({
   },
 
   updateCommentCount: (postId, increment) => {
-    set((state) => ({
-      posts: state.posts.map((p) =>
-        p.id === postId
-          ? { ...p, comments: Math.max(0, p.comments + increment) }
-          : p,
-      ),
-      selectedPost:
-        state.selectedPost?.id === postId
-          ? {
-              ...state.selectedPost,
-              comments: Math.max(0, (state.selectedPost.comments || 0) + increment),
-            }
-          : state.selectedPost,
-    }));
+    set((state) => {
+      const targetPost = state.posts.find((post) => post.id === postId)
+        || (state.selectedPost?.id === postId ? state.selectedPost : null)
+        || state.myPosts.find((post) => post.id === postId);
+      const nextComments = Math.max(0, (targetPost?.comments || 0) + increment);
+      return {
+        postStatsById: mergePostStatsEntry(state.postStatsById, postId, { comments: nextComments }),
+        posts: state.posts.map((p) =>
+          p.id === postId ? { ...p, comments: Math.max(0, p.comments + increment) } : p
+        ),
+        selectedPost:
+          state.selectedPost?.id === postId
+            ? {
+                ...state.selectedPost,
+                comments: Math.max(0, (state.selectedPost.comments || 0) + increment),
+              }
+            : state.selectedPost,
+        myPosts: state.myPosts.map((p) =>
+          p.id === postId ? { ...p, comments: Math.max(0, (p.comments || 0) + increment) } : p
+        ),
+      };
+    });
   },
 
   setSelectedPost: (post) => {

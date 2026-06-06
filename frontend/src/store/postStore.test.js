@@ -60,6 +60,7 @@ describe('postStore fetchPosts', () => {
           isLiked: false,
           likes: 1,
           saves: 2,
+          comments: 3,
         },
       ],
       likedPosts: [],
@@ -69,6 +70,7 @@ describe('postStore fetchPosts', () => {
     usePostStore.getState().applyRealtimePostStats('post-1', {
       likes: 4,
       saves: 6,
+      comments: 8,
     });
 
     const postView = usePostStore.getState().getPostLikeView({
@@ -77,14 +79,17 @@ describe('postStore fetchPosts', () => {
       isLiked: false,
       likes: 1,
       saves: 2,
+      comments: 3,
     });
 
     expect(postView.likes).toBe(4);
     expect(postView.saves).toBe(6);
+    expect(postView.comments).toBe(8);
     expect(usePostStore.getState().posts[0].likes).toBe(4);
     expect(usePostStore.getState().postStatsById['post-1']).toEqual({
       likes: 4,
       saves: 6,
+      comments: 8,
     });
   });
 
@@ -127,6 +132,26 @@ describe('postStore fetchPosts', () => {
     expect(usePostStore.getState().selectedPost.saves).toBe(4);
     expect(usePostStore.getState().postStatsById['post-1']).toEqual({
       saves: 4,
+    });
+  });
+
+  it('updates comment counts across post views and realtime cache', () => {
+    usePostStore.setState({
+      posts: [{ id: 'post-1', title: 'First post', comments: 1 }],
+      myPosts: [{ id: 'post-1', title: 'First post', comments: 1 }],
+      selectedPost: { id: 'post-1', title: 'First post', comments: 1 },
+      postStatsById: { 'post-1': { likes: 0, saves: 0, comments: 1 } },
+    });
+
+    usePostStore.getState().updateCommentCount('post-1', 2);
+
+    expect(usePostStore.getState().posts[0].comments).toBe(3);
+    expect(usePostStore.getState().myPosts[0].comments).toBe(3);
+    expect(usePostStore.getState().selectedPost.comments).toBe(3);
+    expect(usePostStore.getState().postStatsById['post-1']).toEqual({
+      likes: 0,
+      saves: 0,
+      comments: 3,
     });
   });
 });

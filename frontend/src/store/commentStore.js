@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as commentService from '../services/commentService';
+import usePostStore from './postStore';
 
 function getPendingUnlikeKey(type, id) {
   return `${type}-${id}`;
@@ -284,6 +285,7 @@ const useCommentStore = create((set, get) => ({
   addComment: async (postId, content, image = '', official = false) => {
     const comment = await commentService.createComment(postId, content, image, official);
     get().upsertComment(postId, comment);
+    usePostStore.getState().updateCommentCount(postId, 1);
     return comment;
   },
 
@@ -364,20 +366,29 @@ const useCommentStore = create((set, get) => ({
 
   addReply: async (commentId, content, image = '', official = false, replyToId = null) => {
     const reply = await commentService.addReply(commentId, content, image, official, replyToId);
-    for (const postId of Object.keys(get().commentsMap)) {
+    const matchingPostIds = Object.keys(get().commentsMap).filter((postId) =>
+      (get().commentsMap[postId] || []).some((comment) => (comment.id || comment._id) === commentId),
+    );
+    for (const postId of matchingPostIds) {
       get().upsertReply(postId, commentId, reply);
+      usePostStore.getState().updateCommentCount(postId, 1);
     }
     return reply;
   },
 
   deleteComment: async (commentId) => {
     const result = await commentService.deleteComment(commentId);
+    usePostStore.getState().updateCommentCount(
+      result.postId,
+      -(1 + Math.max(0, Number(result.deletedReplyCount || 0))),
+    );
     get().removeComment(result.postId, result.commentId);
     return result;
   },
 
   deleteReply: async (commentId, replyId) => {
     const result = await commentService.deleteReply(commentId, replyId);
+    usePostStore.getState().updateCommentCount(result.postId, -1);
     get().removeReply(result.postId, result.commentId, result.replyId);
     return result;
   },

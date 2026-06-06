@@ -308,6 +308,10 @@ describe('App detail deletion flow', () => {
     render(<App />);
 
     const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 2,
+    });
     es.emit('comment-created', {
       postId: 'post-1',
       comment: {
@@ -316,6 +320,10 @@ describe('App detail deletion flow', () => {
         content: 'new comment',
         replies: [],
       },
+    });
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 2,
     });
     es.emit('comment-created', {
       postId: 'post-1',
@@ -377,10 +385,18 @@ describe('App detail deletion flow', () => {
     render(<App />);
 
     const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 1,
+    });
     es.emit('reply-deleted', {
       postId: 'post-1',
       commentId: 'comment-1',
       replyId: 'reply-1',
+    });
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 1,
     });
     es.emit('reply-deleted', {
       postId: 'post-1',
@@ -452,6 +468,7 @@ describe('App detail deletion flow', () => {
       postId: 'post-1',
       likes: 5,
       saves: 7,
+      comments: 4,
     });
 
     await waitFor(() => {
@@ -461,8 +478,10 @@ describe('App detail deletion flow', () => {
     expect(usePostStore.getState().posts[0].saves).toBe(7);
     expect(usePostStore.getState().myPosts[0].likes).toBe(5);
     expect(usePostStore.getState().myPosts[0].saves).toBe(7);
+    expect(usePostStore.getState().myPosts[0].comments).toBe(4);
     expect(usePostStore.getState().selectedPost.likes).toBe(5);
     expect(usePostStore.getState().selectedPost.saves).toBe(7);
+    expect(usePostStore.getState().selectedPost.comments).toBe(4);
   });
 
   it('removes deleted comment with its replies and decrements count by the whole subtree once', async () => {
@@ -512,10 +531,18 @@ describe('App detail deletion flow', () => {
     render(<App />);
 
     const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 0,
+    });
     es.emit('comment-deleted', {
       postId: 'post-1',
       commentId: 'comment-1',
       deletedReplyCount: 2,
+    });
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 0,
     });
     es.emit('comment-deleted', {
       postId: 'post-1',
