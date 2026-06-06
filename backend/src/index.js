@@ -28,7 +28,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ─── Middleware ───
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '15mb' }));
 
 // ─── Routes ───

@@ -93,6 +93,10 @@ export const login = async (email, password) => {
 };
 
 export const refreshToken = async (token) => {
+  if (!token) {
+    throw new AppError('登录已过期，请重新登录', 401, 'NO_REFRESH_TOKEN');
+  }
+
   let decoded;
   try {
     decoded = verifyRefreshToken(token);
@@ -123,8 +127,6 @@ export const getCurrentUser = async (userId) => {
 };
 
 export const logout = async () => {
-  // Stateless JWT — client clears tokens.
-  // Future: implement refresh token blacklist or Redis blocklist.
   return { message: '已退出登录' };
 };
 

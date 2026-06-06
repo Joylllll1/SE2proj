@@ -16,12 +16,12 @@
 ### 实现要点
 
 **后端**：
-- ~~Express 路由 `GET /api/events`~~ → 实际为 `GET /api/stream?token=<jwt>`（`/api/events` 已被校园活动占用）
+- ~~Express 路由 `GET /api/events`~~ → 实际为 `GET /api/stream`（`/api/events` 已被校园活动占用）
 - PostService/createPost 完成后通过 `broadcast('new-post')` 通知 SSE 客户端
 - 客户端断连自动清理，30s 心跳保活
 
 **前端**：
-- `HomePage.jsx` 中用 `new EventSource('/api/stream?token=...')` 替换轮询 `setInterval`
+- `HomePage.jsx` 中用 `new EventSource('/api/stream')` 替换轮询 `setInterval`
 - 收到 `new-post` 事件后调 `fetchPosts()` 增量更新
 - 未登录用户降级到 60s 轮询
 
@@ -84,21 +84,19 @@
 
 ## 登录态失效处理优化
 
-**背景**：当前 access token 默认 15 分钟过期，refresh token 默认 7 天有效。应用启动时会尝试 refresh，但用户正在使用时如果接口返回 401，前端会直接清空本地 token 并跳回首页，体验比较生硬。
+**背景**：当前 access token 默认 15 分钟过期，refresh token 默认 7 天有效。当前仓库已经完成 cookie 化与运行时静默刷新，但仍可以继续增强登出吊销、编辑态提示与更细的会话管理。
 
 ### 当前问题
 
-- 会话恢复和运行时请求的 token 失效处理不一致
-- 运行时命中 401 时，没有先尝试 refresh，而是直接掉登录
-- 用户可能在编辑、浏览或交互中被突然踢回未登录态
-- `logout` 目前只清本地 token，没有服务端 refresh token 吊销机制
+- `logout` 目前只清 cookie，没有服务端 refresh token 吊销机制
+- 编辑中的用户如果最终 refresh 失败，仍可能在会话失效时被打断
+- 会话模型已收口为 cookie + same-origin，跨域直连部署还没有作为正式支持路径维护
 
 ### 最低成本方案
 
-- 在前端通用请求层统一处理 401
-- 若 access token 失效且本地有 refresh token，先调用 `/api/auth/refresh`
-- refresh 成功后重放原请求，用户无感继续使用
-- refresh 失败时再清空本地登录态并跳转登录页
+- 为 refresh token 增加服务端可撤销能力
+- 对编辑态补“会话失效”提示与临时草稿保护
+- 如果未来要支持前后端分域直连，再补完整的跨域 cookie 配置与部署说明
 
 ### 推荐优化方案
 

@@ -45,7 +45,7 @@ No tests exist yet (`npm test` is a placeholder in both packages).
 - **Backend**: Node.js (ESM, `"type": "module"`), Express 4, Mongoose 8, dotenv, nodemon
 - **Styling**: Tailwind v4 with warm pink-purple custom palette (defined in `frontend/src/tailwind.css` via `@theme`)
 - **State management**: Zustand stores
-- **Auth**: JWT + HTTP-only cookies
+- **Auth**: JWT + HTTP-only cookies (`accessToken` default 15m, `refreshToken` default 7d), browser-side same-origin `/api` access via Vite proxy in dev and reverse proxy in prod
 
 ## Key Architecture
 
@@ -54,7 +54,8 @@ No tests exist yet (`npm test` is a placeholder in both packages).
 2. **Backend layered architecture** (documented in `docs/wiki/`):
    - Routes → Controllers → Services → Models
    - AnonymousService as isolated core module for ID generation/tracing
-   - JWT + HTTP-only Cookie auth
+   - JWT + HTTP-only Cookie auth with silent refresh on 401
+   - Frontend browser requests assume same-origin `/api`; do not reintroduce localStorage token auth unless explicitly intended
    - Logic delete for posts/comments, physical delete for drafts
    - Error handling via custom `AppError` with error codes
 
@@ -131,4 +132,3 @@ Touch only what you must. Don't improve adjacent code, refactor things that aren
 ### 4. Goal-Driven Execution
 
 Define verifiable success criteria before starting. For multi-step tasks, state a brief plan with checks. Loop until criteria met.
-

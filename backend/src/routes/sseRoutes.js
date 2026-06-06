@@ -3,11 +3,12 @@ import { verifyAccessToken } from '../utils/jwt.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import * as sseManager from '../services/sseManager.js';
+import { extractAccessToken } from '../utils/authCookies.js';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
-  const token = req.query.token;
+  const token = extractAccessToken(req);
   if (!token) {
     throw new AppError('未提供认证凭证', 401, 'NO_TOKEN');
   }

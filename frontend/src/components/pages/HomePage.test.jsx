@@ -145,7 +145,6 @@ describe('HomePage SSE updates', () => {
 
     useAuthStore.setState({
       user: null,
-      accessToken: null,
       isAuthenticated: false,
     });
     useUiStore.setState({

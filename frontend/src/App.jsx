@@ -37,6 +37,7 @@ import useUiStore, { ADMIN_ROUTE_PAGES } from './store/uiStore';
 import useLikeBookmark from './hooks/useLikeBookmark';
 import usePostActions from './hooks/usePostActions';
 import useNotificationPolling from './hooks/useNotificationPolling';
+import { refreshSession } from './services/apiClient';
 import * as postService from './services/postService';
 import * as reportService from './services/reportService';
 import useNotificationStore from './store/notificationStore';
@@ -148,7 +149,6 @@ function App() {
   const upsertReply = useCommentStore(selectUpsertReply);
   const removeReply = useCommentStore(selectRemoveReply);
   const detailPost = selectedPost ? getPostLikeView(selectedPost) : null;
-  const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
 
   // ── Hooks ──
@@ -166,6 +166,8 @@ function App() {
   // ── Global SSE connection ──
   React.useEffect(() => {
     let intervalId = null;
+    let isDisposed = false;
+    let eventSource = null;
 
     const startPolling = () => {
       if (intervalId) return;
@@ -176,7 +178,7 @@ function App() {
       }, 60000);
     };
 
-    if (!user || !accessToken) {
+    if (!user) {
       startPolling();
       return () => {
         if (intervalId) {
@@ -185,118 +187,138 @@ function App() {
       };
     }
 
-    const es = new EventSource(`/api/stream?token=${encodeURIComponent(accessToken)}`);
+    const connectStream = () => {
+      if (isDisposed) return;
 
-    es.addEventListener('new-post', () => {
-      if (activePage === 'home') {
-        usePostStore.getState().fetchPosts(1, '', { silent: true });
+      if (eventSource) {
+        eventSource.close();
       }
-    });
 
-    es.addEventListener('post-deleted', (event) => {
-      try {
-        const data = JSON.parse(event.data || '{}');
-        if (data.postId) {
-          if (activePage === 'detail' && selectedPost?.id === data.postId) {
-            skipNextDetailReloadRef.current = true;
+      eventSource = new EventSource('/api/stream');
+
+      eventSource.addEventListener('new-post', () => {
+        if (activePage === 'home') {
+          usePostStore.getState().fetchPosts(1, '', { silent: true });
+        }
+      });
+
+      eventSource.addEventListener('post-deleted', (event) => {
+        try {
+          const data = JSON.parse(event.data || '{}');
+          if (data.postId) {
+            if (activePage === 'detail' && selectedPost?.id === data.postId) {
+              skipNextDetailReloadRef.current = true;
+            }
+            usePostStore.getState().removePostById(data.postId);
           }
-          usePostStore.getState().removePostById(data.postId);
+        } catch {
+          // Ignore malformed SSE payloads from older clients or transient errors.
         }
-      } catch {
-        // Ignore malformed SSE payloads from older clients or transient errors.
-      }
-    });
+      });
 
-    es.onerror = () => {
-      es.close();
-      startPolling();
+      eventSource.onerror = async () => {
+        eventSource?.close();
+        eventSource = null;
+
+        try {
+          await refreshSession();
+          if (!isDisposed) {
+            connectStream();
+          }
+          return;
+        } catch {
+          startPolling();
+        }
+      };
+
+      const currentPostId = selectedPost?.id;
+      const parseCurrentPostEvent = (event) => {
+        if (activePage !== 'detail' || !currentPostId) return null;
+        try {
+          const data = JSON.parse(event.data || '{}');
+          return data.postId === currentPostId ? data : null;
+        } catch {
+          return null;
+        }
+      };
+
+      eventSource.addEventListener('comment-created', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.comment) {
+          const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+          const alreadyExists = existingComments.some(
+            (comment) => (comment.id || comment._id) === (data.comment.id || data.comment._id),
+          );
+          upsertComment(currentPostId, data.comment);
+          if (!alreadyExists) {
+            usePostStore.getState().updateCommentCount(currentPostId, 1);
+          }
+        }
+      });
+
+      eventSource.addEventListener('comment-deleted', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.commentId) {
+          const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+          const deletedComment = existingComments.find(
+            (comment) => (comment.id || comment._id) === data.commentId,
+          );
+          const existedBeforeRemoval = Boolean(deletedComment);
+          const removedItemCount = existedBeforeRemoval
+            ? 1 + ((deletedComment?.replies || []).filter((reply) => !reply.isDeleted).length)
+            : 0;
+          removeComment(currentPostId, data.commentId);
+          if (removedItemCount > 0) {
+            usePostStore.getState().updateCommentCount(currentPostId, -removedItemCount);
+          }
+        }
+      });
+
+      eventSource.addEventListener('reply-created', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.commentId && data?.reply) {
+          const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+          const parentComment = existingComments.find(
+            (comment) => (comment.id || comment._id) === data.commentId,
+          );
+          const alreadyExists = (parentComment?.replies || []).some(
+            (reply) => (reply.id || reply._id) === (data.reply.id || data.reply._id),
+          );
+          upsertReply(currentPostId, data.commentId, data.reply);
+          if (!alreadyExists) {
+            usePostStore.getState().updateCommentCount(currentPostId, 1);
+          }
+        }
+      });
+
+      eventSource.addEventListener('reply-deleted', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.commentId && data?.replyId) {
+          const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
+          const parentComment = existingComments.find(
+            (comment) => (comment.id || comment._id) === data.commentId,
+          );
+          const existedBeforeRemoval = (parentComment?.replies || []).some(
+            (reply) => (reply.id || reply._id) === data.replyId,
+          );
+          removeReply(currentPostId, data.commentId, data.replyId);
+          if (existedBeforeRemoval) {
+            usePostStore.getState().updateCommentCount(currentPostId, -1);
+          }
+        }
+      });
     };
 
-    const currentPostId = selectedPost?.id;
-    const parseCurrentPostEvent = (event) => {
-      if (activePage !== 'detail' || !currentPostId) return null;
-      try {
-        const data = JSON.parse(event.data || '{}');
-        return data.postId === currentPostId ? data : null;
-      } catch {
-        return null;
-      }
-    };
-
-    es.addEventListener('comment-created', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.comment) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const alreadyExists = existingComments.some(
-          (comment) => (comment.id || comment._id) === (data.comment.id || data.comment._id),
-        );
-        upsertComment(currentPostId, data.comment);
-        if (!alreadyExists) {
-          usePostStore.getState().updateCommentCount(currentPostId, 1);
-        }
-      }
-    });
-
-    es.addEventListener('comment-deleted', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.commentId) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const deletedComment = existingComments.find(
-          (comment) => (comment.id || comment._id) === data.commentId,
-        );
-        const existedBeforeRemoval = Boolean(deletedComment);
-        const removedItemCount = existedBeforeRemoval
-          ? 1 + ((deletedComment?.replies || []).filter((reply) => !reply.isDeleted).length)
-          : 0;
-        removeComment(currentPostId, data.commentId);
-        if (removedItemCount > 0) {
-          usePostStore.getState().updateCommentCount(currentPostId, -removedItemCount);
-        }
-      }
-    });
-
-    es.addEventListener('reply-created', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.commentId && data?.reply) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const parentComment = existingComments.find(
-          (comment) => (comment.id || comment._id) === data.commentId,
-        );
-        const alreadyExists = (parentComment?.replies || []).some(
-          (reply) => (reply.id || reply._id) === (data.reply.id || data.reply._id),
-        );
-        upsertReply(currentPostId, data.commentId, data.reply);
-        if (!alreadyExists) {
-          usePostStore.getState().updateCommentCount(currentPostId, 1);
-        }
-      }
-    });
-
-    es.addEventListener('reply-deleted', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.commentId && data?.replyId) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const parentComment = existingComments.find(
-          (comment) => (comment.id || comment._id) === data.commentId,
-        );
-        const existedBeforeRemoval = (parentComment?.replies || []).some(
-          (reply) => (reply.id || reply._id) === data.replyId,
-        );
-        removeReply(currentPostId, data.commentId, data.replyId);
-        if (existedBeforeRemoval) {
-          usePostStore.getState().updateCommentCount(currentPostId, -1);
-        }
-      }
-    });
+    connectStream();
 
     return () => {
+      isDisposed = true;
       if (intervalId) {
         window.clearInterval(intervalId);
       }
-      es.close();
+      eventSource?.close();
     };
   }, [
-    accessToken,
     activePage,
     removeComment,
     removeReply,

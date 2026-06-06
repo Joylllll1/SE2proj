@@ -8,7 +8,7 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.get('/me', auth, authController.getMe);
 router.post('/refresh', authController.refresh);
-router.post('/logout', auth, authController.logout);
+router.post('/logout', authController.logout);
 router.put('/profile', auth, authController.updateProfile);
 router.post('/change-password', auth, authController.changePassword);
 

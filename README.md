@@ -6,11 +6,13 @@
 
 NJU树洞是一个校园匿名社区系统，目标是在“低压力表达”和“可治理、可追责”之间取得平衡。项目支持匿名发帖、评论互动、收藏管理、活动公告、管理员审核、通知中心，以及带工具调用能力的 AI 助手。
 
-当前仓库是一个前后端分离项目：
+当前仓库代码按前后端分层组织，但浏览器侧部署口径已经收敛为“同源访问 + cookie 会话”：
 
 - 前端：React 18 + Vite 5 + Tailwind CSS v4 + Zustand
 - 后端：Express 4 + MongoDB / Mongoose + JWT + SSE
 - AI：兼容 OpenAI Chat Completions 风格接口，支持会话、人格设置和联网搜索工具
+
+开发时前端通过 Vite 代理把 `/api` 转发到后端；生产建议由 Nginx 或同类反向代理把前端静态资源与 `/api` 挂到同一 origin。
 
 ## 主要功能
 
@@ -326,6 +328,12 @@ npm run dev
 
 默认地址：`http://localhost:5173`
 
+说明：
+
+- 前端所有业务请求默认走相对路径 `/api/...`
+- 开发环境依赖 `frontend/vite.config.js` 中的 `/api -> http://localhost:3001` 代理
+- 当前登录态是 `HTTP-only cookie`，不是 `localStorage + Bearer token`
+
 ## 常用命令
 
 ### 前端
@@ -365,6 +373,9 @@ MONGODB_URI=mongodb://127.0.0.1:27017/treehole
 
 JWT_SECRET=
 JWT_REFRESH_SECRET=
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+COOKIE_SAME_SITE=lax
 
 SMTP_HOST=
 SMTP_PORT=
@@ -388,6 +399,16 @@ AI_STREAM_IDLE_TIMEOUT_MS=30000
 
 - `LLM_API_URL` / `LLM_MODEL` 使用兼容 OpenAI Chat Completions 的提供方即可
 - 不配置联网搜索 key 时，AI 仍能聊天，但无法回答强时效问题
+- 当前默认会话策略：
+  - `accessToken` 15 分钟
+  - `refreshToken` 7 天
+  - 受保护接口 `401` 时前端会先尝试静默刷新
+
+## 登录态与部署说明
+
+- 登录态基于 `HTTP-only cookie`，前端 JS 不直接读取 token
+- 浏览器请求默认使用相对路径和同源 cookie，`SSE` 也走 `/api/stream`
+- 如果生产环境不是同源反代，而是前后端分域直连，需要额外处理跨域 cookie；当前仓库默认没有把这条部署线路作为主路径维护
 
 ## API 模块概览
 

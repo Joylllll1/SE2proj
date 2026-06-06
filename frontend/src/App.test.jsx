@@ -12,6 +12,9 @@ const { restoreSession, fetchPostById } = vi.hoisted(() => ({
   restoreSession: vi.fn(),
   fetchPostById: vi.fn(),
 }));
+const { refreshSession } = vi.hoisted(() => ({
+  refreshSession: vi.fn(),
+}));
 
 class MockEventSource {
   static instances = [];
@@ -64,6 +67,14 @@ vi.mock('./services/postService', async () => {
   return {
     ...actual,
     fetchPostById,
+  };
+});
+
+vi.mock('./services/apiClient', async () => {
+  const actual = await vi.importActual('./services/apiClient');
+  return {
+    ...actual,
+    refreshSession,
   };
 });
 
@@ -172,6 +183,7 @@ describe('App detail deletion flow', () => {
     vi.clearAllMocks();
     MockEventSource.instances = [];
     globalThis.EventSource = MockEventSource;
+    refreshSession.mockResolvedValue({});
 
     useAuthStore.setState(useAuthStore.getInitialState(), true);
     useBookmarkStore.setState(useBookmarkStore.getInitialState(), true);
@@ -186,7 +198,6 @@ describe('App detail deletion flow', () => {
       initialized: true,
       user: { _id: 'user-1', role: 'user' },
       isAuthenticated: true,
-      accessToken: 'token-1',
     });
     useBookmarkStore.setState({
       folderSelectorOpen: false,
@@ -380,6 +391,22 @@ describe('App detail deletion flow', () => {
 
     expect(usePostStore.getState().posts[0].comments).toBe(1);
     expect(screen.getByTestId('detail-comment-count')).toHaveTextContent('1');
+  });
+
+  it('reconnects SSE after refreshing the session on stream auth failure', async () => {
+    render(<App />);
+
+    expect(MockEventSource.instances).toHaveLength(1);
+
+    await MockEventSource.instances[0].onerror?.();
+
+    await waitFor(() => {
+      expect(refreshSession).toHaveBeenCalledTimes(1);
+      expect(MockEventSource.instances).toHaveLength(2);
+    });
+
+    expect(MockEventSource.instances[0].close).toHaveBeenCalled();
+    expect(MockEventSource.instances[1].url).toBe('/api/stream');
   });
 
   it('removes deleted comment with its replies and decrements count by the whole subtree once', async () => {

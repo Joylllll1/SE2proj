@@ -1,14 +1,13 @@
 import { verifyAccessToken } from '../utils/jwt.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
+import { extractAccessToken } from '../utils/authCookies.js';
 
 const auth = async (req, _res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractAccessToken(req);
+  if (!token) {
     throw new AppError('未提供认证凭证', 401, 'NO_TOKEN');
   }
-
-  const token = authHeader.split(' ')[1];
 
   let decoded;
   try {

@@ -2,7 +2,11 @@
 
 ## 整体架构
 
-渐进式分层架构（ADR-001），前后端分离部署。
+渐进式分层架构（ADR-001）。代码仍按前后端分层组织，但当前鉴权实现要求浏览器侧同源访问：
+
+- 开发环境：前端通过 Vite 代理把 `/api` 转发到后端
+- 生产环境：建议由 Nginx 或同类反向代理把前端静态资源与 `/api` 挂到同一 origin
+- 当前浏览器请求默认走相对路径 + cookie，会话模型不再支持“前端页面直接跨域调用后端并靠 Bearer token 鉴权”
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -91,8 +95,8 @@
 ### 实时同步流程（SSE）
 
 ```
-客户端建立 EventSource('/api/stream?token=<jwt>')
-  → SSE Route 校验 JWT
+客户端建立 EventSource('/api/stream')
+  → SSE Route 通过 HTTP-only cookie 校验 JWT
   → sseManager 将连接登记到 Map<userId, Set<client>>
 
 业务事件发生（发帖 / 删帖 / 评论 / 回复）
@@ -155,10 +159,15 @@
 - 已具备完整 `routes / controllers / services / models / middlewares / utils` 分层
 - 已接入 MongoDB 与 Mongoose，正式内容使用逻辑删除
 - 已实现认证、帖子、评论、草稿、通知、活动、管理后台、AI、SSE 等模块
-- SSE 入口为 `GET /api/stream?token=<jwt>`，由 `sseManager` 维护在线连接
+- SSE 入口为 `GET /api/stream`，由 `sseManager` 通过 cookie 鉴权并维护在线连接
+- 登录态采用 `HTTP-only cookie`：
+  - `accessToken` 默认 15 分钟
+  - `refreshToken` 默认 7 天
+  - 受保护接口命中 `401` 时，前端会尝试静默刷新并重放一次原请求
 
 ### 当前仍保留的历史/现实约束
 
 1. 前端尚未迁移到 React Router，页面切换与部分数据加载仍集中在 `App.jsx`
 2. 通知暂未接入 SSE，仍使用轮询策略
 3. 图片仍以内联 base64 Data URL 为主，列表接口存在传输偏重问题
+4. 若未来需要恢复浏览器侧跨域直连后端，需重新补齐 `credentials: 'include'`、精确 `cors(origin, credentials)`、cookie `sameSite/secure` 策略，以及对应部署文档

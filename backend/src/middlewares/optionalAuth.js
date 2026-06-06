@@ -1,13 +1,12 @@
 import { verifyAccessToken } from '../utils/jwt.js';
 import User from '../models/User.js';
+import { extractAccessToken } from '../utils/authCookies.js';
 
 const optionalAuth = async (req, _res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractAccessToken(req);
+  if (!token) {
     return next();
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = verifyAccessToken(token);

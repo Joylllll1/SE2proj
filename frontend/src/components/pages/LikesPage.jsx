@@ -79,8 +79,6 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
   // 刷新/关闭页面时同步提交
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const token = localStorage.getItem('accessToken');
-
       // 提交帖子取消点赞
       const postUnlikes = usePostStore.getState().pendingUnlikePostIds;
       if (postUnlikes.length > 0) {
@@ -89,9 +87,9 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
             },
-            keepalive: true
+            credentials: 'same-origin',
+            keepalive: true,
           }).catch(() => {});
         }
       }
@@ -107,9 +105,9 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
             },
-            keepalive: true
+            credentials: 'same-origin',
+            keepalive: true,
           }).catch(() => {});
         }
       }
