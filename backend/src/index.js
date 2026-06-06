@@ -18,6 +18,7 @@ import eventRoutes from './routes/eventRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import sseRoutes from './routes/sseRoutes.js';
+import bookmarkRoutes from './routes/bookmarkRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,6 +46,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/stream', sseRoutes);
+app.use('/api/bookmarks', bookmarkRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

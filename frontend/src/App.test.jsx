@@ -204,9 +204,12 @@ describe('App detail deletion flow', () => {
       closeFolderSelector: vi.fn(),
       collectionFolders: [],
       bookmarks: [],
-      bookmarkFolders: [],
-      updateFolders: vi.fn(),
-      updateBookmarkFolders: vi.fn(),
+      bookmarkFolders: {},
+      createFolder: vi.fn(),
+      renameFolder: vi.fn(),
+      deleteFolder: vi.fn(),
+      loadBookmarks: vi.fn().mockResolvedValue(undefined),
+      reset: vi.fn(),
     });
     useCommentStore.setState({
       commentsMap: {},
@@ -407,6 +410,59 @@ describe('App detail deletion flow', () => {
 
     expect(MockEventSource.instances[0].close).toHaveBeenCalled();
     expect(MockEventSource.instances[1].url).toBe('/api/stream');
+  });
+
+  it('applies post stats updates from SSE without refetching', async () => {
+    usePostStore.setState({
+      selectedPost: {
+        id: 'post-1',
+        ownerUserId: 'user-1',
+        title: 'Detail post',
+        tags: ['树洞'],
+        likes: 1,
+        saves: 2,
+      },
+      posts: [
+        {
+          id: 'post-1',
+          ownerUserId: 'user-1',
+          title: 'Detail post',
+          tags: ['树洞'],
+          likes: 1,
+          saves: 2,
+        },
+      ],
+      myPosts: [
+        {
+          id: 'post-1',
+          ownerUserId: 'user-1',
+          title: 'Detail post',
+          tags: ['树洞'],
+          likes: 1,
+          saves: 2,
+        },
+      ],
+      getPostLikeView: usePostStore.getState().getPostLikeView,
+    });
+
+    render(<App />);
+
+    const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      likes: 5,
+      saves: 7,
+    });
+
+    await waitFor(() => {
+      expect(usePostStore.getState().posts[0].likes).toBe(5);
+    });
+
+    expect(usePostStore.getState().posts[0].saves).toBe(7);
+    expect(usePostStore.getState().myPosts[0].likes).toBe(5);
+    expect(usePostStore.getState().myPosts[0].saves).toBe(7);
+    expect(usePostStore.getState().selectedPost.likes).toBe(5);
+    expect(usePostStore.getState().selectedPost.saves).toBe(7);
   });
 
   it('removes deleted comment with its replies and decrements count by the whole subtree once', async () => {

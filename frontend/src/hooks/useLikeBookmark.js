@@ -5,14 +5,14 @@ import useUiStore from '../store/uiStore';
 
 // ─── Stable store selectors ───
 const selectToggleLike = (s) => s.toggleLike;
-const selectToggleSave = (s) => s.toggleSave;
 const selectToggleBookmark = (s) => s.toggleBookmark;
 const selectSelectFolder = (s) => s.selectFolder;
+const selectSyncSaveState = (s) => s.syncSaveState;
 const selectShowToast = (s) => s.showToast;
 
 export default function useLikeBookmark() {
   const toggleLike = usePostStore(selectToggleLike);
-  const toggleSave = usePostStore(selectToggleSave);
+  const syncSaveState = usePostStore(selectSyncSaveState);
   const toggleBookmark = useBookmarkStore(selectToggleBookmark);
   const selectFolder = useBookmarkStore(selectSelectFolder);
   const showToast = useUiStore(selectShowToast);
@@ -22,27 +22,35 @@ export default function useLikeBookmark() {
   }, [toggleLike]);
 
   const handleToggleBookmark = useCallback((itemId) => {
-    const result = toggleBookmark(itemId);
-    if (result === 'removed') {
-      toggleSave(itemId);
-      showToast('已取消收藏');
-    } else if (result === 'selecting_folder') {
-      // folder selector will handle the rest
-    }
-  }, [toggleBookmark, toggleSave, showToast]);
+    Promise.resolve(toggleBookmark(itemId))
+      .then((result) => {
+        if (result?.status === 'removed') {
+          syncSaveState(itemId, result.data);
+          showToast('已取消收藏');
+        }
+      })
+      .catch((error) => {
+        showToast(error.message || '收藏操作失败');
+      });
+  }, [syncSaveState, toggleBookmark, showToast]);
 
   const handleSelectFolder = useCallback((folderId) => {
-    // Capture itemId BEFORE selectFolder clears pendingBookmarkItem
     const store = useBookmarkStore.getState();
     const itemId = store.pendingBookmarkItem?.id;
-    const result = selectFolder(folderId);
-    if (result === 'added') {
-      if (itemId) {
-        toggleSave(itemId);
-      }
-      showToast('已收藏');
-    }
-  }, [selectFolder, toggleSave, showToast]);
+
+    Promise.resolve(selectFolder(folderId))
+      .then((result) => {
+        if (result?.status === 'added') {
+          if (itemId) {
+            syncSaveState(itemId, result.data);
+          }
+          showToast('已收藏');
+        }
+      })
+      .catch((error) => {
+        showToast(error.message || '收藏操作失败');
+      });
+  }, [selectFolder, showToast, syncSaveState]);
 
   return {
     toggleLike: handleToggleLike,

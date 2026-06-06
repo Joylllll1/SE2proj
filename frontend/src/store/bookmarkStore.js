@@ -1,80 +1,149 @@
 import { create } from 'zustand';
-import { loadJSON, saveJSON } from '../utils';
+import * as bookmarkService from '../services/bookmarkService';
+import { loadJSON } from '../utils';
+
+const DEFAULT_FOLDERS = [{ id: 'all', name: '全部', isDefault: true }];
+const LEGACY_MIGRATION_KEY = 'nju_bookmarks_server_migrated_v1';
+
+function sanitizeBookmarkPayload(data = {}) {
+  return {
+    bookmarks: Array.isArray(data.bookmarks) ? data.bookmarks : [],
+    collectionFolders: Array.isArray(data.collectionFolders) && data.collectionFolders.length > 0
+      ? data.collectionFolders
+      : DEFAULT_FOLDERS,
+    bookmarkFolders: data.bookmarkFolders && typeof data.bookmarkFolders === 'object'
+      ? data.bookmarkFolders
+      : {},
+  };
+}
+
+function getLegacyPayload() {
+  return {
+    bookmarks: loadJSON('nju_bookmarks', []),
+    collectionFolders: loadJSON('nju_collection_folders', DEFAULT_FOLDERS),
+    bookmarkFolders: loadJSON('nju_bookmark_folders', {}),
+  };
+}
+
+function hasLegacyBookmarkData(payload) {
+  return (
+    (Array.isArray(payload.bookmarks) && payload.bookmarks.length > 0) ||
+    (Array.isArray(payload.collectionFolders) && payload.collectionFolders.some((folder) => folder?.id !== 'all')) ||
+    (payload.bookmarkFolders && Object.keys(payload.bookmarkFolders).length > 0)
+  );
+}
+
+function markLegacyMigrated() {
+  try {
+    localStorage.setItem(LEGACY_MIGRATION_KEY, 'true');
+  } catch {
+    // ignore
+  }
+}
+
+function hasMigratedLegacyBookmarks() {
+  try {
+    return localStorage.getItem(LEGACY_MIGRATION_KEY) === 'true';
+  } catch {
+    return true;
+  }
+}
+
+function buildInitialState() {
+  return {
+    bookmarks: [],
+    collectionFolders: DEFAULT_FOLDERS,
+    bookmarkFolders: {},
+    folderSelectorOpen: false,
+    pendingBookmarkItem: null,
+    loading: false,
+    initialized: false,
+  };
+}
 
 const useBookmarkStore = create((set, get) => ({
-  bookmarks: loadJSON('nju_bookmarks', []),
-  collectionFolders: (() => {
-    const saved = loadJSON('nju_collection_folders', null);
-    if (saved) return saved;
-    return [{ id: 'all', name: '全部', isDefault: true }];
-  })(),
-  bookmarkFolders: loadJSON('nju_bookmark_folders', {}),
-  folderSelectorOpen: false,
-  pendingBookmarkItem: null,
+  ...buildInitialState(),
 
-  migrateBookmarks: () => {
-    const hasMigrated = localStorage.getItem('nju_bookmarks_migrated');
-    if (!hasMigrated) {
-      localStorage.setItem('nju_bookmarks_migrated', 'true');
+  applyBookmarkState: (data) => {
+    const next = sanitizeBookmarkPayload(data);
+    set({
+      ...next,
+      loading: false,
+      initialized: true,
+    });
+    return next;
+  },
+
+  loadBookmarks: async () => {
+    set({ loading: true });
+    try {
+      const data = await bookmarkService.fetchBookmarks();
+      let next = get().applyBookmarkState(data);
+
+      if (!hasMigratedLegacyBookmarks()) {
+        const legacyPayload = getLegacyPayload();
+        if (hasLegacyBookmarkData(legacyPayload)) {
+          const migrated = await bookmarkService.migrateLegacyBookmarks(legacyPayload);
+          next = get().applyBookmarkState(migrated);
+        }
+        markLegacyMigrated();
+      }
+
+      return next;
+    } catch (error) {
+      set({ loading: false, initialized: true });
+      throw error;
     }
   },
 
-  toggleBookmark: (itemId) => {
-    const { bookmarks } = get();
-    if (bookmarks.includes(itemId)) {
-      // Remove bookmark
-      const newBookmarks = bookmarks.filter((id) => id !== itemId);
-      const folders = { ...get().bookmarkFolders };
-      Object.keys(folders).forEach((folderId) => {
-        folders[folderId] = folders[folderId].filter((id) => id !== itemId);
-      });
-      set({ bookmarks: newBookmarks, bookmarkFolders: folders });
-      saveJSON('nju_bookmarks', newBookmarks);
-      saveJSON('nju_bookmark_folders', folders);
-      return 'removed';
-    } else {
-      // Open folder selector
-      set({ pendingBookmarkItem: { id: itemId, type: 'post' }, folderSelectorOpen: true });
-      return 'selecting_folder';
-    }
-  },
-
-  selectFolder: (folderId) => {
-    const { pendingBookmarkItem, bookmarks, bookmarkFolders } = get();
-    if (!pendingBookmarkItem) return;
-
-    const { id: itemId } = pendingBookmarkItem;
-    const newBookmarks = [...bookmarks, itemId];
-    const newFolders = { ...bookmarkFolders };
-
-    if (folderId !== 'all') {
-      newFolders[folderId] = [...(newFolders[folderId] || []), itemId];
+  toggleBookmark: async (itemId) => {
+    if (get().bookmarks.includes(itemId)) {
+      const data = await bookmarkService.removeBookmark(itemId);
+      get().applyBookmarkState(data);
+      return { status: 'removed', data };
     }
 
     set({
-      bookmarks: newBookmarks,
-      bookmarkFolders: newFolders,
+      pendingBookmarkItem: { id: itemId, type: 'post' },
+      folderSelectorOpen: true,
+    });
+    return { status: 'selecting_folder' };
+  },
+
+  selectFolder: async (folderId) => {
+    const pendingItem = get().pendingBookmarkItem;
+    if (!pendingItem?.id) return null;
+
+    const data = await bookmarkService.saveBookmark(pendingItem.id, folderId);
+    get().applyBookmarkState(data);
+    set({
       folderSelectorOpen: false,
       pendingBookmarkItem: null,
     });
-    saveJSON('nju_bookmarks', newBookmarks);
-    saveJSON('nju_bookmark_folders', newFolders);
-
-    return 'added';
+    return { status: 'added', data };
   },
 
   closeFolderSelector: () => {
     set({ folderSelectorOpen: false, pendingBookmarkItem: null });
   },
 
-  updateFolders: (newFolders) => {
-    set({ collectionFolders: newFolders });
-    saveJSON('nju_collection_folders', newFolders);
+  createFolder: async (name) => {
+    const data = await bookmarkService.createBookmarkFolder(name);
+    return get().applyBookmarkState(data);
   },
 
-  updateBookmarkFolders: (newBookmarkFolders) => {
-    set({ bookmarkFolders: newBookmarkFolders });
-    saveJSON('nju_bookmark_folders', newBookmarkFolders);
+  renameFolder: async (folderId, name) => {
+    const data = await bookmarkService.renameBookmarkFolder(folderId, name);
+    return get().applyBookmarkState(data);
+  },
+
+  deleteFolder: async (folderId) => {
+    const data = await bookmarkService.deleteBookmarkFolder(folderId);
+    return get().applyBookmarkState(data);
+  },
+
+  reset: () => {
+    set(buildInitialState());
   },
 }));
 

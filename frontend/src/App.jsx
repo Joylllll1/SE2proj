@@ -77,8 +77,12 @@ const selectRemoveReply = (s) => s.removeReply;
 const selectPosts = (s) => s.posts;
 const selectClearSelectedPost = (s) => s.clearSelectedPost;
 const selectBookmarkFolders = (s) => s.bookmarkFolders;
-const selectUpdateFolders = (s) => s.updateFolders;
-const selectUpdateBookmarkFolders = (s) => s.updateBookmarkFolders;
+const selectCreateFolder = (s) => s.createFolder;
+const selectRenameFolder = (s) => s.renameFolder;
+const selectDeleteFolder = (s) => s.deleteFolder;
+const selectLoadBookmarks = (s) => s.loadBookmarks;
+const selectResetBookmarks = (s) => s.reset;
+const selectApplyRealtimePostStats = (s) => s.applyRealtimePostStats;
 const selectResetNotifications = (s) => s.reset;
 const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
 
@@ -159,8 +163,12 @@ function App() {
   const posts = usePostStore(selectPosts);
   const clearSelectedPost = usePostStore(selectClearSelectedPost);
   const bookmarkFolders = useBookmarkStore(selectBookmarkFolders);
-  const updateFolders = useBookmarkStore(selectUpdateFolders);
-  const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
+  const createBookmarkFolder = useBookmarkStore(selectCreateFolder);
+  const renameBookmarkFolder = useBookmarkStore(selectRenameFolder);
+  const deleteBookmarkFolder = useBookmarkStore(selectDeleteFolder);
+  const loadBookmarks = useBookmarkStore(selectLoadBookmarks);
+  const resetBookmarks = useBookmarkStore(selectResetBookmarks);
+  const applyRealtimePostStats = usePostStore(selectApplyRealtimePostStats);
   const resetNotifications = useNotificationStore(selectResetNotifications);
 
   // ── Global SSE connection ──
@@ -211,6 +219,19 @@ function App() {
             }
             usePostStore.getState().removePostById(data.postId);
           }
+        } catch {
+          // Ignore malformed SSE payloads from older clients or transient errors.
+        }
+      });
+
+      eventSource.addEventListener('post-stats-updated', (event) => {
+        try {
+          const data = JSON.parse(event.data || '{}');
+          if (!data?.postId) return;
+          applyRealtimePostStats(data.postId, {
+            likes: data.likes,
+            saves: data.saves,
+          });
         } catch {
           // Ignore malformed SSE payloads from older clients or transient errors.
         }
@@ -320,6 +341,7 @@ function App() {
     };
   }, [
     activePage,
+    applyRealtimePostStats,
     removeComment,
     removeReply,
     selectedPost?.id,
@@ -378,6 +400,17 @@ function App() {
       resetNotifications();
     }
   }, [isAuthenticated, isAdmin, resetNotifications]);
+
+  React.useEffect(() => {
+    if (!initialized) return;
+
+    if (!isAuthenticated || isAdmin) {
+      resetBookmarks();
+      return;
+    }
+
+    loadBookmarks().catch(() => {});
+  }, [initialized, isAuthenticated, isAdmin, loadBookmarks, resetBookmarks]);
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
@@ -551,8 +584,9 @@ function App() {
               onReport={handleReport}
               collectionFolders={collectionFolders}
               bookmarkFolders={bookmarkFolders}
-              onUpdateFolders={updateFolders}
-              onUpdateBookmarkFolders={updateBookmarkFolders}
+              onCreateFolder={createBookmarkFolder}
+              onRenameFolder={renameBookmarkFolder}
+              onDeleteFolder={deleteBookmarkFolder}
               onNavigate={navigate}
             />
           )}
@@ -567,8 +601,9 @@ function App() {
               onReport={handleReport}
               collectionFolders={collectionFolders}
               bookmarkFolders={bookmarkFolders}
-              onUpdateFolders={updateFolders}
-              onUpdateBookmarkFolders={updateBookmarkFolders}
+              onCreateFolder={createBookmarkFolder}
+              onRenameFolder={renameBookmarkFolder}
+              onDeleteFolder={deleteBookmarkFolder}
             />
           )}
           {activePage === 'likes' && (

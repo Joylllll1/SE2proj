@@ -13,7 +13,7 @@ function MyPage({
   posts, bookmarks, likedPosts,
   onOpenPost, onLike, onBookmark, onReport,
   collectionFolders, bookmarkFolders,
-  onUpdateFolders, onUpdateBookmarkFolders,
+  onCreateFolder, onRenameFolder, onDeleteFolder,
   onNavigate,
 }) {
   const [activeTab, setActiveTab] = useState('posts');
@@ -47,8 +47,9 @@ function MyPage({
             onReport={onReport}
             collectionFolders={collectionFolders}
             bookmarkFolders={bookmarkFolders}
-            onUpdateFolders={onUpdateFolders}
-            onUpdateBookmarkFolders={onUpdateBookmarkFolders}
+            onCreateFolder={onCreateFolder}
+            onRenameFolder={onRenameFolder}
+            onDeleteFolder={onDeleteFolder}
           />
         )}
         {activeTab === 'likes' && (

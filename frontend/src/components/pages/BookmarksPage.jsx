@@ -10,7 +10,20 @@ import { hasSearchQuery, matchPostQuery } from '../../utils/search';
 const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectQuery = (s) => s.query;
 
-function BookmarksPage({ compact, posts, bookmarks, onOpenPost, onLike, onBookmark, onReport, collectionFolders = [], bookmarkFolders = {}, onUpdateFolders, onUpdateBookmarkFolders }) {
+function BookmarksPage({
+  compact,
+  posts,
+  bookmarks,
+  onOpenPost,
+  onLike,
+  onBookmark,
+  onReport,
+  collectionFolders = [],
+  bookmarkFolders = {},
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+}) {
   const [activeFolder, setActiveFolder] = useState('all');
   const [showFolderMenu, setShowFolderMenu] = useState(null);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
@@ -18,10 +31,10 @@ function BookmarksPage({ compact, posts, bookmarks, onOpenPost, onLike, onBookma
   const [editingFolder, setEditingFolder] = useState(null);
   const [editFolderName, setEditFolderName] = useState('');
   const [savedPosts, setSavedPosts] = useState([]);
-  const [loadingSaved, setLoadingSaved] = useState(false);
   const menuRefs = useRef({});
   const getPostLikeView = usePostStore(selectGetPostLikeView);
   const query = useUiStore(selectQuery);
+  const showToast = useUiStore((s) => s.showToast);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -40,53 +53,64 @@ function BookmarksPage({ compact, posts, bookmarks, onOpenPost, onLike, onBookma
     };
   }, [showFolderMenu]);
 
-  // ── Fetch saved posts from API when page loads without post data ──
+  // ── Fetch the authoritative saved post list for this user ──
   useEffect(() => {
-    if (bookmarks.length > 0 && posts.length === 0 && !loadingSaved) {
-      setLoadingSaved(true);
-      postService.fetchSavedPosts()
-        .then(setSavedPosts)
-        .catch(() => {})
-        .finally(() => setLoadingSaved(false));
+    if (bookmarks.length === 0) {
+      setSavedPosts([]);
+      return;
     }
-  // Only run on mount when props haven't changed yet
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  const handleCreateFolder = () => {
-    if (newFolderName.trim()) {
-      const newFolder = {
-        id: 'folder-' + Date.now(),
-        name: newFolderName.trim(),
-        isDefault: false,
-      };
-      onUpdateFolders([...collectionFolders, newFolder]);
+    let cancelled = false;
+    postService.fetchSavedPosts()
+      .then((data) => {
+        if (!cancelled) {
+          setSavedPosts(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSavedPosts([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookmarks.length]);
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    try {
+      await onCreateFolder(newFolderName.trim());
       setNewFolderName('');
       setShowNewFolderModal(false);
+    } catch (error) {
+      showToast(error.message || '创建文件夹失败');
     }
   };
 
-  const handleRenameFolder = () => {
+  const handleRenameFolder = async () => {
     if (editingFolder && editFolderName.trim()) {
-      onUpdateFolders(collectionFolders.map((f) =>
-        f.id === editingFolder ? { ...f, name: editFolderName.trim() } : f
-      ));
+      try {
+        await onRenameFolder(editingFolder, editFolderName.trim());
+      } catch (error) {
+        showToast(error.message || '重命名失败');
+        return;
+      }
       setEditingFolder(null);
       setEditFolderName('');
     }
   };
 
-  const handleDeleteFolder = (folderId) => {
+  const handleDeleteFolder = async (folderId) => {
     if (window.confirm('确定要删除这个文件夹吗？文件夹中的内容将被移至"全部"。')) {
-      // Move bookmarks from deleted folder to 'all'
-      const updatedBookmarkFolders = { ...bookmarkFolders };
-      delete updatedBookmarkFolders[folderId];
-      onUpdateBookmarkFolders(updatedBookmarkFolders);
-
-      // Remove the folder
-      onUpdateFolders(collectionFolders.filter((f) => f.id !== folderId));
-      if (activeFolder === folderId) {
-        setActiveFolder('all');
+      try {
+        await onDeleteFolder(folderId);
+        if (activeFolder === folderId) {
+          setActiveFolder('all');
+        }
+      } catch (error) {
+        showToast(error.message || '删除文件夹失败');
       }
     }
     setShowFolderMenu(null);
@@ -94,7 +118,7 @@ function BookmarksPage({ compact, posts, bookmarks, onOpenPost, onLike, onBookma
 
   // Get bookmarked posts for the active folder
   const getBookmarksForFolder = (folderId) => {
-    const source = posts.length > 0 ? posts : savedPosts;
+    const source = savedPosts.length > 0 ? savedPosts : posts;
     if (folderId === 'all') {
       // Return all bookmarked posts
       return source.filter((p) => bookmarks.includes(p.id));
