@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ClickableImage from './ClickableImage';
 import Icon from './Icon';
+import PlainTextContent from './PlainTextContent';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import ConfirmLeaveDialog from './ConfirmLeaveDialog';
@@ -70,7 +71,9 @@ function Comment({ comment, postId, currentUserId, onReply, onDelete, onReport }
               </button>
             )}
           </div>
-          {comment.content && <p className="my-[9px]">{comment.content}</p>}
+          {comment.content && (
+            <PlainTextContent className="my-[9px]" content={comment.content} />
+          )}
           {comment.image && (
             <div className="comment-image-preview mt-2">
               <ClickableImage

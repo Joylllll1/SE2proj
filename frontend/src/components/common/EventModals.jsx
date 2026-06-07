@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
+import PlainTextContent from './PlainTextContent';
 
 const REJECTION_REASONS = [
   '内容不符合社区规范',
@@ -45,7 +46,7 @@ export function EventDetailModal({ event, onClose }) {
           </div>
           {event.description && (
             <div className="my-4 p-4 bg-surface-soft rounded-md">
-              <p className="m-0 text-text-2 text-sm leading-relaxed">{event.description}</p>
+              <PlainTextContent className="m-0 text-text-2 text-sm leading-relaxed" content={event.description} />
             </div>
           )}
           {hasApplicantInfo && (

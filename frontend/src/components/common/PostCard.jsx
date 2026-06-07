@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
 import ClickableImage from './ClickableImage';
+import PlainTextContent from './PlainTextContent';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import { getDisplayName, formatCount } from '../../utils';
@@ -51,7 +52,9 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
             </div>
           </div>
           <h3 className={`m-0 mb-2 leading-snug tracking-tight ${compact ? 'text-[19px]' : 'text-xl max-sm:text-base'}`}>{post.title}</h3>
-          {post.content && <p className="m-0 text-[15px] max-sm:text-[13px] leading-relaxed text-[#344054]">{post.content}</p>}
+          {post.content && (
+            <PlainTextContent className="m-0 text-[15px] max-sm:text-[13px] leading-relaxed text-[#344054]" content={post.content} />
+          )}
           {images.length > 0 && (
             <div className={`post-images mt-3.5 grid gap-1.5 max-sm:grid-cols-1 ${imageLayout.gridClass}`}>
               {images.map((src, index) => (
