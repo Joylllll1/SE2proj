@@ -137,6 +137,7 @@ vi.mock('./components/pages/BookmarksPage', () => ({
 vi.mock('./components/pages/DetailPage', () => ({
   default: ({ post, onDelete, comments = [] }) => (
     <div>
+      <div data-testid="detail-post-id">{post.id}</div>
       <button type="button" onClick={() => onDelete(post.id)}>
         delete-post
       </button>
@@ -184,6 +185,7 @@ describe('App detail deletion flow', () => {
     MockEventSource.instances = [];
     globalThis.EventSource = MockEventSource;
     refreshSession.mockResolvedValue({});
+    window.history.pushState({}, '', '/detail/post-1');
 
     useAuthStore.setState(useAuthStore.getInitialState(), true);
     useBookmarkStore.setState(useBookmarkStore.getInitialState(), true);
@@ -270,6 +272,33 @@ describe('App detail deletion flow', () => {
     expect(fetchPostById).not.toHaveBeenCalled();
     expect(useUiStore.getState().showToast).toHaveBeenCalledWith('帖子已删除');
     expect(useUiStore.getState().showToast).not.toHaveBeenCalledWith('加载帖子失败');
+  });
+
+  it('shows a loading state and fetches the post when detail page opens with only a route id', async () => {
+    window.history.pushState({}, '', '/detail/post-2');
+    fetchPostById.mockResolvedValueOnce({
+      id: 'post-2',
+      ownerUserId: 'user-2',
+      title: 'Fetched detail post',
+      tags: ['树洞'],
+      comments: 0,
+    });
+    usePostStore.setState({
+      selectedPost: null,
+      posts: [],
+      likedPosts: [],
+      getPostLikeView: (post) => post,
+      deletePost: vi.fn().mockResolvedValue(undefined),
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('正在加载帖子详情...')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fetchPostById).toHaveBeenCalledWith('post-2');
+      expect(screen.getByTestId('detail-post-id')).toHaveTextContent('post-2');
+    });
   });
 
   it('deduplicates comment-created SSE updates and increments count once', async () => {

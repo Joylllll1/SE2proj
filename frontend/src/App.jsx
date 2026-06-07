@@ -21,7 +21,6 @@ import LikesPage from './components/pages/LikesPage';
 import MyPostsPage from './components/pages/MyPostsPage';
 import AdminDashboard from './components/pages/AdminDashboard';
 import AnnouncementsPage from './components/pages/AnnouncementsPage';
-import UnderConstruction from './components/common/UnderConstruction';
 import EmptyState from './components/common/EmptyState';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
@@ -90,6 +89,11 @@ const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
 
 function App() {
   const skipNextDetailReloadRef = React.useRef(false);
+  const [detailLoadState, setDetailLoadState] = React.useState({
+    status: 'idle',
+    message: '',
+  });
+  const [detailReloadToken, setDetailReloadToken] = React.useState(0);
 
   // ── Auth ──
   const { isAuthenticated, restoreSession } = useAuth();
@@ -152,7 +156,14 @@ function App() {
   const removeComment = useCommentStore(selectRemoveComment);
   const upsertReply = useCommentStore(selectUpsertReply);
   const removeReply = useCommentStore(selectRemoveReply);
+  const detailRoutePostId = React.useMemo(() => {
+    if (activePage !== 'detail' || typeof window === 'undefined') return null;
+    return window.location.pathname.match(/^\/detail\/(.+)/)?.[1] || null;
+  }, [activePage]);
   const detailPost = selectedPost ? getPostLikeView(selectedPost) : null;
+  const isResolvedDetailPost = Boolean(
+    detailPost && (!detailRoutePostId || detailPost.id === detailRoutePostId),
+  );
   const user = useAuthStore((s) => s.user);
 
   // ── Hooks ──
@@ -322,20 +333,47 @@ function App() {
 
   // ── Load post from URL when refreshing on detail page ──
   React.useEffect(() => {
-    if (activePage === 'detail' && !selectedPost) {
-      if (skipNextDetailReloadRef.current) {
-        skipNextDetailReloadRef.current = false;
-        return;
-      }
-      const match = window.location.pathname.match(/^\/detail\/(.+)/);
-      if (match) {
-        const postId = match[1];
-        postService.fetchPostById(postId)
-          .then((post) => { usePostStore.getState().setSelectedPost(post); })
-          .catch(() => showToast('加载帖子失败'));
-      }
+    if (activePage !== 'detail') {
+      setDetailLoadState({ status: 'idle', message: '' });
+      return;
     }
-  }, [activePage, selectedPost, showToast]);
+
+    if (selectedPost?.id === detailRoutePostId) {
+      setDetailLoadState({ status: 'ready', message: '' });
+      return;
+    }
+
+    if (skipNextDetailReloadRef.current) {
+      skipNextDetailReloadRef.current = false;
+      setDetailLoadState({ status: 'idle', message: '' });
+      return;
+    }
+
+    if (!detailRoutePostId) {
+      setDetailLoadState({ status: 'invalid', message: '未找到要打开的帖子。' });
+      return;
+    }
+
+    let isCancelled = false;
+    setDetailLoadState({ status: 'loading', message: '' });
+
+    postService.fetchPostById(detailRoutePostId)
+      .then((post) => {
+        if (isCancelled) return;
+        usePostStore.getState().setSelectedPost(post);
+        setDetailLoadState({ status: 'ready', message: '' });
+      })
+      .catch((error) => {
+        if (isCancelled) return;
+        const message = error?.message || '加载帖子失败，请稍后重试';
+        setDetailLoadState({ status: 'error', message });
+        showToast(message);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activePage, detailRoutePostId, detailReloadToken, selectedPost?.id, showToast]);
 
   // ── Get draftId from URL for compose page ──
   const [composeDraftId, setComposeDraftId] = React.useState(null);
@@ -498,6 +536,10 @@ function App() {
     }
   };
 
+  const handleRetryDetailLoad = () => {
+    setDetailReloadToken((token) => token + 1);
+  };
+
   // ── Render ──
   return (
     <div className="flex min-h-screen">
@@ -512,7 +554,7 @@ function App() {
         <main className="min-w-0 overflow-x-hidden p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
           {activePage === 'home' && <HomePage />}
           {activePage === 'detail' && (
-            selectedPost ? (
+            isResolvedDetailPost ? (
               <DetailPage
                 post={detailPost}
                 comments={comments}
@@ -530,8 +572,33 @@ function App() {
                 onNavigate={navigate}
                 onReport={handleReport}
               />
+            ) : detailLoadState.status === 'loading' ? (
+              <section className="grid place-items-center rounded-md border border-line bg-surface p-12 text-center text-text-2">
+                正在加载帖子详情...
+              </section>
+            ) : detailLoadState.status === 'error' ? (
+              <section className="grid gap-4 place-items-center rounded-md border border-line bg-surface p-12 text-center">
+                <EmptyState
+                  title="帖子加载失败"
+                  description={detailLoadState.message || '请稍后重试。'}
+                />
+                <button
+                  type="button"
+                  onClick={handleRetryDetailLoad}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-text-2 transition-colors duration-150 hover:text-text hover:border-blue/40"
+                >
+                  重试
+                </button>
+              </section>
+            ) : detailLoadState.status === 'invalid' ? (
+              <EmptyState
+                title="帖子详情不可用"
+                description={detailLoadState.message}
+              />
             ) : (
-              <UnderConstruction feature="帖子详情" />
+              <section className="grid place-items-center rounded-md border border-line bg-surface p-12 text-center text-text-2">
+                正在准备帖子详情...
+              </section>
             )
           )}
           {activePage === 'compose' && <ComposePage onPublish={handlePublish} draftId={composeDraftId} />}
