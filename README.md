@@ -2,22 +2,33 @@
 
 > 面向南京大学校园场景的半匿名表达、互助交流与内容治理平台，围绕“前台匿名展示、后台可治理追责”的原则构建。
 
-## 一、功能特性
+## 一、项目概览
 
-| 模块 | 能力 |
-|------|------|
-| `🔐 认证 / 用户` | 邮箱注册登录、验证码校验、忘记密码、修改密码、个人资料编辑 |
-| `📝 内容社区` | 匿名发帖、帖子详情、评论、回复、删除、举报 |
+NJU树洞是一套前后端分离的校园社区系统，核心目标是在“低压力表达”与“可治理、可追责”之间取得平衡。当前仓库已经具备可运行的主链路，包括注册登录、匿名发帖、评论回复、点赞收藏、通知中心、校园公告、管理后台，以及带工具调用能力的 AI 助手。
+
+当前浏览器侧部署口径已经收口为：
+
+- 开发环境：前端通过 Vite 代理把 `/api` 转发到后端
+- 生产环境：建议由 Nginx 或同类反向代理把前端静态资源与 `/api` 挂到同一 origin
+- 登录态：`HTTP-only cookie`，不再依赖 `localStorage token`
+
+## 二、功能特性
+
+| 模块 | 当前能力 |
+|------|-----------|
+| `🔐 认证 / 用户` | 邮箱注册、邮箱密码登录、邮箱验证码、忘记密码、修改密码、个人资料与通知偏好 |
+| `📝 内容社区` | 匿名发帖、帖子详情、评论、回复、删帖删评、举报 |
 | `❤️ 点赞 / 收藏` | 帖子点赞、评论点赞、回复点赞、收藏夹管理、收藏关系落库 |
 | `📂 个人内容` | 草稿箱、我的帖子、我的喜欢、我的收藏 |
-| `📣 校园公告` | 公告流展示、活动申请提交、我的申请记录、管理员审核活动 |
-| `🔔 通知中心` | 站内通知列表、未读数、单条已读、全部已读、点击跳转 |
-| `🤖 AI 助手` | 多会话聊天、流式回复、停止生成、重新生成、人格设置；可结合当前帖子详情页上下文总结帖子与评论区、查看站内热点、联网搜索实时信息，并抓取网页正文做二次核实 |
+| `📣 校园公告 / 活动` | 公告流展示、活动申请、我的申请记录、管理员审核活动 |
+| `🔔 通知中心` | 通知列表、未读数、单条已读、全部已读、点击跳转 |
+| `🤖 AI 助手` | 多会话聊天、SSE 流式回复、停止生成、重新生成、人格设置；可结合帖子详情页上下文总结帖子与评论区、查看站内热点、联网搜索实时信息，并抓取网页正文做二次核实 |
 | `🛡️ 管理后台` | 举报处理、删帖删评、封禁 / 解禁、审计日志、活动审核 |
 | `⚡ 实时能力` | 基于 SSE 的新帖、删帖、帖子统计、评论 / 回复变更同步 |
-| `🎨 体验细节` | 桌面 / 移动端布局、图片灯箱、离开确认、Toast、首页搜索与后端分页排序 |
+| `🎨 体验细节` | 桌面 / 移动端布局、图片灯箱、确认离开弹窗、Toast、首页搜索与后端分页排序 |
+| `🍀 轻量扩展` | 每日签到 / 运势状态查询 |
 
-## 二、技术栈
+## 三、技术栈
 
 | 层次 | 选型 |
 |------|------|
@@ -28,21 +39,19 @@
 | 邮件能力 | Nodemailer |
 | AI | OpenAI 兼容 Chat Completions 接口 · DeepSeek 等可替换模型 · 后端 tool call + SSE 流式输出 |
 | 测试 | Vitest · Testing Library · Node `--test` |
-| 工程化 | ESLint · GitHub Actions（当前为结构检查） |
+| 工程化 | ESLint · GitHub Actions |
 
-## 三、系统架构
+## 四、系统架构
 
-### 3.1 整体形态
-
-当前仓库采用前后端分层架构：
+### 4.1 整体形态
 
 - `frontend/`：React 单页应用
 - `backend/`：Express + MongoDB API 服务
-- 浏览器侧登录态已经收口为 `same-origin + cookie` 模式
-- 开发环境通过 Vite 代理把 `/api` 转发到 `http://localhost:3001`
-- 生产环境建议由 Nginx 或同类反向代理把前端静态资源与 `/api` 挂在同一 origin
+- 会话模型：同源请求 + cookie
+- 开发环境：Vite 代理 `/api -> http://localhost:3001`
+- 生产环境：建议前后端同源反代部署
 
-### 3.2 后端模块
+### 4.2 后端目录
 
 ```text
 backend/src
@@ -53,10 +62,12 @@ backend/src
 ├── routes/         API 路由注册
 ├── scripts/        种子数据与初始化脚本
 ├── services/       核心业务逻辑、AI 子模块、SSE 管理
+│   ├── llm/        LLM 客户端、tool loop、SSE 事件转换
+│   └── tools/      AI 可调用工具
 └── utils/          JWT、cookie、图片校验、错误封装等通用工具
 ```
 
-### 3.3 前端模块
+### 4.3 前端目录
 
 ```text
 frontend/src
@@ -72,33 +83,52 @@ frontend/src
 └── utils/          搜索、图片等工具函数
 ```
 
-### 3.4 当前关键约束
+### 4.4 当前关键实现约束
 
-- 登录态不再依赖 `localStorage token`，而是使用 HTTP-only cookie
+- 登录态不再依赖 `localStorage token`
 - `accessToken` 默认 `15m`，`refreshToken` 默认 `7d`
 - 受保护请求命中 `401` 时，前端会尝试静默刷新并重放一次原请求
 - 首页已经切为后端分页、后端搜索、后端排序，并支持“加载更多”
-- 首页和帖子详情页的部分状态依赖 SSE 实时同步
+- 首页和帖子详情页的部分状态通过 SSE 同步
 - 通知中心当前仍是轮询，不是 SSE
-- 图片当前仍以 base64 Data URL 形式随 JSON 传输，体积控制已做，但资源治理仍有后续优化空间
+- 图片仍以内联 base64 Data URL 传输，已有限制，但传输瘦身和存储治理仍是后续项
+- 前端路由仍以 `activePage + history API` 为主，尚未迁移到 React Router
 
-## 四、快速上手
+## 五、快速上手
 
-### 4.1 前置依赖
+### 5.1 前置依赖
 
 - Node.js `>= 18`
 - npm
 - MongoDB
 
-### 4.2 配置后端环境变量
+### 5.2 安装依赖
 
-先根据模板创建配置文件：
+后端：
+
+```bash
+cd backend
+npm install
+```
+
+前端：
+
+```bash
+cd frontend
+npm install
+```
+
+### 5.3 配置后端环境变量
+
+根据模板创建配置文件：
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-至少需要确认这些字段：
+#### 必填
+
+这些字段属于最小可运行配置：
 
 ```env
 PORT=3001
@@ -109,40 +139,66 @@ JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
-可选能力：
+#### 条件必填
 
-- SMTP：邮箱验证码与邮件通知
-- `LLM_API_KEY` / `LLM_API_URL` / `LLM_MODEL`：AI 助手
-- `ADMIN_CONTACT_QQ`：管理端对外联系信息
+这些字段是否必填，取决于你是否需要对应能力：
 
-### 4.3 启动后端
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS`
+  - 本地开发：可不配
+  - 真实注册 / 找回密码 / 修改密码流程：部署环境中应视为必配
+  - 不配置时，验证码不会发到邮箱，而是打印在后端控制台日志里，仅适合本地调试
+
+- `LLM_API_KEY`
+  - 需要 AI 助手时必配
+  - 不配置时，AI 接口会返回“AI 服务未配置”，不影响其他模块
+
+#### 可选
+
+- `LLM_API_URL` / `LLM_MODEL`
+  - 需要切换 AI 提供方或模型时配置
+  - 默认使用 DeepSeek OpenAI 兼容接口
+
+- `AI_WEB_SEARCH_BAIDU_API_KEY` / `AI_WEB_SEARCH_BAIDU_URL`
+  - 需要 AI 联网搜索时配置
+  - 不配置时，AI 仍可聊天，但无法稳定获取实时外部信息
+
+- `ADMIN_CONTACT_QQ`
+  - 用于禁言 / 解禁等通知文案中的联系信息
+
+- `VERIFY_CODE_EXPIRES_MIN`
+  - 控制验证码有效期，默认 5 分钟
+
+- `ACCESS_COOKIE_MAX_AGE_MS` / `REFRESH_COOKIE_MAX_AGE_MS` / `COOKIE_SAME_SITE`
+  - 用于微调 cookie 策略
+
+### 5.4 启动后端
 
 ```bash
 cd backend
-npm install
 npm run dev
 ```
 
 默认地址：
 
-- API: `http://localhost:3001`
-- 健康检查: `http://localhost:3001/api/health`
+- API：`http://localhost:3001`
+- 健康检查：`http://localhost:3001/api/health`
 
-### 4.4 启动前端
+### 5.5 启动前端
 
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
 
 默认地址：
 
-- Web: `http://localhost:5173`
+- Web：`http://localhost:5173`
 
 开发环境下，前端会自动把 `/api/*` 请求代理到 `http://localhost:3001`。
 
-### 4.5 可选种子数据
+## 六、演示数据与本地调试
+
+### 6.1 可选种子数据
 
 创建演示用户：
 
@@ -163,13 +219,127 @@ cd backend
 npm run seed:fortune
 ```
 
-### 4.6 本地调试说明
+### 6.2 本地开发注意事项
 
-- 若未配置 SMTP，验证码会打印在后端控制台日志中
-- 若前端打开了但接口全是 `401` 或无数据，先检查后端、MongoDB 和 `backend/.env`
-- 若把前端页面和后端 API 分到不同 origin，又没有额外补 cookie 跨域配置，登录态会失效
+- 如果未配置 SMTP，验证码会打印在后端控制台日志里
+- 如果前端接口全部 `401` 或无数据，优先检查：
+  - 后端是否已启动
+  - MongoDB 是否可连
+  - `backend/.env` 是否存在且配置正确
+- 如果把前端页面和后端 API 放到不同 origin，而没有额外补 cookie 跨域配置，登录态会失效
 
-## 五、配置文件与运行约定
+## 七、常用命令
+
+### 7.1 前端
+
+```bash
+cd frontend
+npm run dev
+npm run build
+npm run preview
+npm run lint
+npm run test
+```
+
+### 7.2 后端
+
+```bash
+cd backend
+npm run dev
+npm run start
+npm run lint
+npm run test
+npm run seed:fortune
+```
+
+## 八、API 模块概览
+
+当前后端主要路由模块如下：
+
+| 路由前缀 | 作用 |
+|----------|------|
+| `/api/auth` | 注册、登录、刷新会话、登出、获取当前用户、改资料、改密码 |
+| `/api/verify` | 发送验证码、校验验证码 |
+| `/api/password` | 忘记密码、重置密码 |
+| `/api/posts` | 帖子列表、详情、发帖、删帖、点赞、举报 |
+| `/api/comments` | 评论、回复、删除、评论点赞、回复点赞 |
+| `/api/likes` | 我的喜欢列表 |
+| `/api/bookmarks` | 收藏夹、收藏迁移、收藏增删改 |
+| `/api/drafts` | 草稿创建、查询、更新、删除、发布 |
+| `/api/events` | 活动 / 公告流、申请、审核 |
+| `/api/notifications` | 通知列表、未读数、已读 |
+| `/api/admin` | 举报处理、删帖删评、封禁管理、审计日志 |
+| `/api/fortune` | 每日签到 / 运势状态 |
+| `/api/ai` | AI 会话、聊天、重生成、人格设置 |
+| `/api/stream` | SSE 实时推送 |
+
+## 九、AI 工具调用说明
+
+AI 助手当前采用后端 tool call + 前端 SSE 流式展示的方式工作。
+
+当前已接入的能力包括：
+
+- 结合当前帖子详情页上下文总结帖子内容
+- 在评论已加载的前提下，总结评论区或分析争论点
+- 获取站内热点话题
+- 联网搜索实时信息
+- 抓取具体网页正文，对搜索结果做二次核实
+
+当前不应在 README 中夸大为“找任务 / 找组队 / 搜二手”等能力，因为仓库里并没有这些业务工具。
+
+## 十、测试与 CI
+
+### 10.1 本地测试
+
+前端：
+
+```bash
+cd frontend
+npm run test
+npm run lint
+npm run build
+```
+
+后端：
+
+```bash
+cd backend
+npm run test
+npm run lint
+```
+
+### 10.2 当前测试覆盖现状
+
+- 前端已经有 Vitest + Testing Library 测试
+  - 覆盖 `App`、部分页面、`store`、`apiClient` 等关键逻辑
+- 后端已经有 Node 原生测试
+  - 主要覆盖 JWT / cookie / 鉴权响应等工具层
+- 当前也没有完整的端到端 E2E 测试链路
+
+### 10.3 CI 现状
+
+当前仓库的 GitHub Actions 仍较基础：
+
+- 触发条件：`push / PR` 到 `main` 或 `dev`
+- 当前内容：检查基础目录结构是否存在
+
+这意味着本地测试仍然是当前质量保障主力。后续如果继续补工程化，最值的是把前后端测试和 lint 正式接入 CI。
+
+## 十一、已知限制与后续方向
+
+当前明确存在的约束或待优化项：
+
+- 通知中心尚未改为 SSE
+- 图片仍以内联 base64 形式传输，列表接口偏重
+- 安全防滥用措施还需继续补强
+  - 验证码限流 / 爆破防护
+  - 上传额度与资源清理
+  - 更严格的 CORS / 安全头 / CSRF 方案
+- 前端尚未迁移到 React Router
+
+更细的后续项见 [docs/wiki/todo.md](docs/wiki/todo.md)。
+
+## 十二、配置文件与运行约定
 
 | 文件 | 用途 | 是否入库 |
 |------|------|----------|
@@ -179,7 +349,7 @@ npm run seed:fortune
 | `docs/wiki/setup.md` | 更详细的环境搭建说明 | `是` |
 | `docs/wiki/architecture.md` | 架构与设计约束说明 | `是` |
 
-## 六、项目结构
+## 十三、项目结构
 
 ```text
 SE2proj/
@@ -213,46 +383,7 @@ SE2proj/
 └── README.md
 ```
 
-## 七、测试与 CI
-
-### 7.1 本地测试命令
-
-前端：
-
-```bash
-cd frontend
-npm run test
-npm run lint
-npm run build
-```
-
-后端：
-
-```bash
-cd backend
-npm run test
-npm run lint
-```
-
-### 7.2 当前测试现状
-
-- 前端已经有 Vitest + Testing Library 测试，覆盖 `App`、部分页面、`store`、`apiClient` 等关键逻辑
-- 后端已经有 Node 原生测试，主要覆盖 JWT / cookie / 鉴权响应等工具层
-- 当前还没有完整的后端接口集成测试和端到端 E2E 测试
-
-### 7.3 CI 现状
-
-当前仓库的 GitHub Actions 还比较基础：
-
-- 触发条件：`push / PR` 到 `main` 或 `dev`
-- 当前内容：检查基础目录结构是否存在
-
-这意味着：
-
-- 本地测试仍然是质量保障主力
-- 后续如果继续完善工程化，最值的是把前后端测试和 lint 正式接入 CI
-
-## 八、文档索引
+## 十四、相关文档
 
 | 文档 | 说明 |
 |------|------|
@@ -264,20 +395,12 @@ npm run lint
 | `docs/wiki/todo.md` | 已确认但未排期的后续事项 |
 | `docs/wiki/decisions/` | 架构决策记录 |
 
-## 九、当前状态说明
+## 十五、当前状态总结
 
-这个仓库当前不是“纯静态页面展示”，而是一套已经可以跑通核心链路的校园社区系统，现状大致如下：
+这个仓库当前不是静态展示稿，而是一套已经能跑通核心链路的校园社区系统。现阶段最重要的现实判断是：
 
-- 已完成 cookie 化登录态与静默刷新
-- 已完成收藏后端落库
-- 已完成首页后端分页 / 搜索 / 排序
-- 已完成帖子统计、评论 / 回复的 SSE 实时同步
-- 已补齐一批前端与后端工具层测试
+- 主流程可跑
+- README 现在按真实实现收口
+- 仍有工程化和安全面待继续补
 
-同时也保留了一些明确的后续项：
-
-- 通知尚未改为 SSE
-- 图片仍以内联 base64 传输
-- 安全防滥用措施还需要继续补强，例如验证码限流、上传配额、CORS / 安全头收口
-
-如果你要继续看实现细节，优先从 [docs/wiki/architecture.md](docs/wiki/architecture.md) 和 [docs/wiki/setup.md](docs/wiki/setup.md) 开始。
+如果 README 与代码出现冲突，以实际代码行为为准；进一步阅读建议从 [docs/wiki/setup.md](docs/wiki/setup.md) 和 [docs/wiki/architecture.md](docs/wiki/architecture.md) 开始。
