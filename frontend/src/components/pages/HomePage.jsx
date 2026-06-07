@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { matchPostQuery } from '../../utils/search';
+import React, { useDeferredValue, useEffect, useRef, useState } from 'react';
 import Icon from '../common/Icon';
 import HeroCarousel from '../features/HeroCarousel';
 import PostCard from '../common/PostCard';
@@ -17,14 +16,14 @@ const selectLoading = (s) => s.loading;
 const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectPosts = (s) => s.posts;
 const selectFetchPosts = (s) => s.fetchPosts;
+const selectLoadMorePosts = (s) => s.loadMorePosts;
+const selectLoadingMore = (s) => s.loadingMore;
+const selectCurrentPage = (s) => s.currentPage;
+const selectTotalPages = (s) => s.totalPages;
+const selectTotalPosts = (s) => s.totalPosts;
 const selectQuery = (s) => s.query;
 const selectNavigate = (s) => s.navigate;
 const selectShowToast = (s) => s.showToast;
-
-function getPostTimeValue(post) {
-  const timeValue = Date.parse(post?.createdAt || '');
-  return Number.isNaN(timeValue) ? 0 : timeValue;
-}
 
 const selectFeedScrollToken = (s) => s.feedScrollToken;
 
@@ -34,9 +33,14 @@ export default function HomePage() {
 
   // ── Stores ──
   const loading = usePostStore(selectLoading);
+  const loadingMore = usePostStore(selectLoadingMore);
   const getPostLikeView = usePostStore(selectGetPostLikeView);
   const posts = usePostStore(selectPosts);
   const fetchPosts = usePostStore(selectFetchPosts);
+  const loadMorePosts = usePostStore(selectLoadMorePosts);
+  const currentPage = usePostStore(selectCurrentPage);
+  const totalPages = usePostStore(selectTotalPages);
+  const totalPosts = usePostStore(selectTotalPosts);
   const query = useUiStore(selectQuery);
   const navigate = useUiStore(selectNavigate);
   const showToast = useUiStore(selectShowToast);
@@ -48,10 +52,11 @@ export default function HomePage() {
   const { toggleLike, toggleBookmark } = useLikeBookmark();
 
   const userId = user?._id || null;
+  const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    fetchPosts(1, deferredQuery, { sort });
+  }, [deferredQuery, fetchPosts, sort]);
 
   // Scroll to feed section when search confirms from TopBar (mobile only)
   useEffect(() => {
@@ -75,17 +80,6 @@ export default function HomePage() {
       useUiStore.setState({ feedScrollToken: 0 });
     }
   }, [feedScrollToken]);
-
-  const visiblePosts = posts.filter((post) => matchPostQuery(post, query));
-
-  const sorted = [...visiblePosts].sort((a, b) => {
-    if (sort === 'likes') {
-      const likeDiff = (b.likes || 0) - (a.likes || 0);
-      if (likeDiff !== 0) return likeDiff;
-    }
-
-    return getPostTimeValue(b) - getPostTimeValue(a);
-  });
 
   const handleReport = async (postId, reason, targetType = 'post') => {
     try {
@@ -125,7 +119,7 @@ export default function HomePage() {
           <div ref={feedHeadRef} className="tabs flex flex-wrap gap-2 max-sm:w-full" aria-label="动态排序">
             {[
               ['latest', '最新发布'],
-              ['likes', '高赞共鸣'],
+              ['hot', '高赞共鸣'],
             ].map(([key, label]) => (
               <button
                 className={`rounded-full px-[14px] py-2 text-[13px] font-semibold transition-all duration-150 ${
@@ -144,7 +138,7 @@ export default function HomePage() {
         </div>
         {query && (
           <p className="result-hint mb-[14px] text-text-2 text-sm">
-            搜索 &quot;{query}&quot; 找到 {sorted.length} 条相关树洞。
+            搜索 &quot;{query}&quot; 找到 {totalPosts} 条相关树洞。
           </p>
         )}
         <div className="post-list grid gap-4">
@@ -153,24 +147,41 @@ export default function HomePage() {
               <Icon name="hourglass_empty" className="mr-2" />
               加载中...
             </div>
-          ) : sorted.length > 0 ? (
-            sorted.map((post) => {
-              const postView = getPostLikeView(post);
-              return (
-                <PostCard
-                  key={postView.id}
-                  post={postView}
-                  onOpen={() => openPost(post)}
-                  liked={postView.isLiked}
-                  bookmarked={postView.isSaved}
-                  onLike={() => toggleLike(post.id)}
-                  onBookmark={() => toggleBookmark(post.id)}
-                  onReport={handleReport}
-                />
-              );
-            })
+          ) : posts.length > 0 ? (
+            <>
+              {posts.map((post) => {
+                const postView = getPostLikeView(post);
+                return (
+                  <PostCard
+                    key={postView.id}
+                    post={postView}
+                    onOpen={() => openPost(post)}
+                    liked={postView.isLiked}
+                    bookmarked={postView.isSaved}
+                    onLike={() => toggleLike(post.id)}
+                    onBookmark={() => toggleBookmark(post.id)}
+                    onReport={handleReport}
+                  />
+                );
+              })}
+              {currentPage < totalPages && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => loadMorePosts()}
+                    disabled={loadingMore}
+                    className="secondary-button w-full disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {loadingMore ? '加载中...' : '加载更多'}
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
-            <EmptyState title="树洞里暂时没有相关话题" description="发布第一条树洞吧！" />
+            <EmptyState
+              title={query ? '没有找到相关树洞' : '树洞里暂时没有相关话题'}
+              description={query ? '试试换个关键词。' : '发布第一条树洞吧！'}
+            />
           )}
         </div>
       </section>

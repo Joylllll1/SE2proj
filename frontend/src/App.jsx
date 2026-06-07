@@ -82,6 +82,7 @@ const selectDeleteFolder = (s) => s.deleteFolder;
 const selectLoadBookmarks = (s) => s.loadBookmarks;
 const selectResetBookmarks = (s) => s.reset;
 const selectApplyRealtimePostStats = (s) => s.applyRealtimePostStats;
+const selectRefreshFeed = (s) => s.refreshFeed;
 const selectResetNotifications = (s) => s.reset;
 const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
 
@@ -180,6 +181,7 @@ function App() {
   const loadBookmarks = useBookmarkStore(selectLoadBookmarks);
   const resetBookmarks = useBookmarkStore(selectResetBookmarks);
   const applyRealtimePostStats = usePostStore(selectApplyRealtimePostStats);
+  const refreshFeed = usePostStore(selectRefreshFeed);
   const resetNotifications = useNotificationStore(selectResetNotifications);
 
   // ── Global SSE connection ──
@@ -191,8 +193,8 @@ function App() {
     const startPolling = () => {
       if (intervalId) return;
       intervalId = window.setInterval(() => {
-        if (activePage === 'home' && !document.hidden) {
-          usePostStore.getState().fetchPosts(1, '', { silent: true });
+        if (useUiStore.getState().activePage === 'home' && !document.hidden) {
+          usePostStore.getState().refreshFeed({ silent: true });
         }
       }, 60000);
     };
@@ -216,8 +218,8 @@ function App() {
       eventSource = new EventSource('/api/stream');
 
       eventSource.addEventListener('new-post', () => {
-        if (activePage === 'home') {
-          usePostStore.getState().fetchPosts(1, '', { silent: true });
+        if (useUiStore.getState().activePage === 'home') {
+          usePostStore.getState().refreshFeed({ silent: true });
         }
       });
 
@@ -318,6 +320,7 @@ function App() {
     applyRealtimePostStats,
     removeComment,
     removeReply,
+    refreshFeed,
     selectedPost?.id,
     upsertComment,
     upsertReply,

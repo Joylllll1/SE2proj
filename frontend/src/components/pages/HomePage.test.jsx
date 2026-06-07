@@ -96,45 +96,6 @@ const existingPosts = [
   },
 ];
 
-const sortablePosts = [
-  {
-    id: 'post-1',
-    title: 'Older high-like post',
-    content: 'content',
-    createdAt: '2026-05-24T00:00:00.000Z',
-    tags: ['树洞'],
-    likes: 10,
-    comments: 0,
-    saves: 0,
-    isLiked: false,
-    isSaved: false,
-  },
-  {
-    id: 'post-2',
-    title: 'Newest low-like post',
-    content: 'content',
-    createdAt: '2026-05-26T00:00:00.000Z',
-    tags: ['树洞'],
-    likes: 1,
-    comments: 0,
-    saves: 0,
-    isLiked: false,
-    isSaved: false,
-  },
-  {
-    id: 'post-3',
-    title: 'Newest tie-break winner',
-    content: 'content',
-    createdAt: '2026-05-27T00:00:00.000Z',
-    tags: ['树洞'],
-    likes: 10,
-    comments: 0,
-    saves: 0,
-    isLiked: false,
-    isSaved: false,
-  },
-];
-
 describe('HomePage SSE updates', () => {
   beforeEach(() => {
     useAuthStore.setState(useAuthStore.getInitialState(), true);
@@ -154,11 +115,16 @@ describe('HomePage SSE updates', () => {
     });
     usePostStore.setState({
       fetchPosts: vi.fn().mockResolvedValue(undefined),
+      loadMorePosts: vi.fn().mockResolvedValue(undefined),
     });
     usePostStore.setState({
       posts: existingPosts,
       likedPosts: [],
       loading: false,
+      loadingMore: false,
+      currentPage: 1,
+      totalPages: 1,
+      totalPosts: existingPosts.length,
     });
   });
 
@@ -184,6 +150,62 @@ describe('HomePage SSE updates', () => {
     render(<HomePage />);
 
     expect(fetchPosts).toHaveBeenCalledTimes(1);
+    expect(fetchPosts).toHaveBeenCalledWith(1, '', { sort: 'latest' });
+  });
+
+  it('re-fetches from the backend when the search query changes', async () => {
+    const fetchPosts = vi.fn().mockResolvedValue(undefined);
+    usePostStore.setState({
+      fetchPosts,
+      posts: [],
+      loading: false,
+      totalPosts: 0,
+    });
+
+    const { rerender } = render(<HomePage />);
+
+    useUiStore.setState({ query: '宿舍' });
+    rerender(<HomePage />);
+
+    await waitFor(() => {
+      expect(fetchPosts).toHaveBeenCalledWith(1, '宿舍', { sort: 'latest' });
+    });
+  });
+
+  it('shows load more and requests the next page from the store', () => {
+    const loadMorePosts = vi.fn().mockResolvedValue(undefined);
+    usePostStore.setState({
+      posts: existingPosts,
+      loading: false,
+      loadingMore: false,
+      currentPage: 1,
+      totalPages: 3,
+      totalPosts: 42,
+      loadMorePosts,
+    });
+
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '加载更多' }));
+
+    expect(loadMorePosts).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-fetches from the backend with hot sort when switching tabs', async () => {
+    const fetchPosts = vi.fn().mockResolvedValue(undefined);
+    usePostStore.setState({
+      fetchPosts,
+      posts: existingPosts,
+      loading: false,
+    });
+
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '高赞共鸣' }));
+
+    await waitFor(() => {
+      expect(fetchPosts).toHaveBeenCalledWith(1, '', { sort: 'hot' });
+    });
   });
 
   it('removes a deleted post when store removes it', async () => {
@@ -200,29 +222,4 @@ describe('HomePage SSE updates', () => {
     expect(screen.getByText('Second post')).toBeInTheDocument();
   });
 
-  it('sorts by newest by default and reorders by likes when switching tabs', () => {
-    usePostStore.setState({
-      posts: sortablePosts,
-      likedPosts: [],
-      loading: false,
-    });
-
-    render(<HomePage />);
-
-    let renderedTitles = screen.getAllByText(/post|winner/i).map((node) => node.textContent);
-    expect(renderedTitles).toEqual([
-      'Newest tie-break winner',
-      'Newest low-like post',
-      'Older high-like post',
-    ]);
-
-    fireEvent.click(screen.getByRole('button', { name: '高赞共鸣' }));
-
-    renderedTitles = screen.getAllByText(/post|winner/i).map((node) => node.textContent);
-    expect(renderedTitles).toEqual([
-      'Newest tie-break winner',
-      'Older high-like post',
-      'Newest low-like post',
-    ]);
-  });
 });

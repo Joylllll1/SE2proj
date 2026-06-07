@@ -42,13 +42,66 @@ describe('postStore fetchPosts', () => {
 
     deferred.resolve({
       posts: [{ id: 'post-1', title: 'First post', isLiked: false }],
+      total: 1,
     });
     await request;
 
     expect(usePostStore.getState().loading).toBe(false);
+    expect(postService.fetchPosts).toHaveBeenCalledWith(1, '', { limit: 20, sort: 'latest' });
+    expect(usePostStore.getState().currentPage).toBe(1);
+    expect(usePostStore.getState().totalPosts).toBe(1);
     expect(usePostStore.getState().posts).toEqual([
       { id: 'post-1', title: 'First post', isLiked: false },
     ]);
+  });
+
+  it('appends the next page when loading more posts', async () => {
+    postService.fetchPosts.mockResolvedValueOnce({
+      posts: [{ id: 'post-2', title: 'Second post', isLiked: false }],
+      total: 40,
+    });
+
+    usePostStore.setState({
+      posts: [{ id: 'post-1', title: 'First post', isLiked: false }],
+      currentPage: 1,
+      totalPages: 2,
+      totalPosts: 40,
+      currentQuery: 'tree',
+      currentSort: 'hot',
+      loadingMore: false,
+    });
+
+    await usePostStore.getState().loadMorePosts();
+
+    expect(postService.fetchPosts).toHaveBeenCalledWith(2, 'tree', { limit: 20, sort: 'hot' });
+    expect(usePostStore.getState().currentPage).toBe(2);
+    expect(usePostStore.getState().posts).toEqual([
+      { id: 'post-1', title: 'First post', isLiked: false },
+      { id: 'post-2', title: 'Second post', isLiked: false },
+    ]);
+  });
+
+  it('refreshes the current feed with enough items to preserve loaded pages', async () => {
+    postService.fetchPosts.mockResolvedValueOnce({
+      posts: [
+        { id: 'post-1', title: 'First post', isLiked: false },
+        { id: 'post-2', title: 'Second post', isLiked: false },
+      ],
+      total: 55,
+    });
+
+    usePostStore.setState({
+      currentPage: 2,
+      currentQuery: 'nju',
+      currentSort: 'hot',
+      pageSize: 20,
+    });
+
+    await usePostStore.getState().refreshFeed({ silent: true });
+
+    expect(postService.fetchPosts).toHaveBeenCalledWith(1, 'nju', { limit: 40, sort: 'hot' });
+    expect(usePostStore.getState().currentPage).toBe(2);
+    expect(usePostStore.getState().totalPages).toBe(3);
   });
 
   it('overlays realtime stats onto external post snapshots', () => {

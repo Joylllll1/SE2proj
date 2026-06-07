@@ -5,6 +5,20 @@ import { broadcast } from './sseManager.js';
 import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountService.js';
 import { normalizeInlineImages } from '../utils/image.js';
 
+function escapeRegex(value = '') {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeFeedSort(sort) {
+  return sort === 'hot' ? 'hot' : 'latest';
+}
+
+function resolveFeedSort(sort) {
+  return normalizeFeedSort(sort) === 'hot'
+    ? { likes: -1, createdAt: -1 }
+    : { createdAt: -1 };
+}
+
 function broadcastPostStats(post) {
   try {
     broadcast('post-stats-updated', {
@@ -73,15 +87,21 @@ export const createPost = async (userId, data) => {
   return toPostDto(post.toObject(), userId);
 };
 
-export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => {
+export const getPosts = async ({ page = 1, limit = 20, query, sort = 'latest', userId } = {}) => {
   const filter = { isDeleted: false };
   if (query && query.trim()) {
-    filter.$text = { $search: query.trim() };
+    const pattern = new RegExp(escapeRegex(query.trim()), 'i');
+    filter.$or = [
+      { title: pattern },
+      { content: pattern },
+      { tags: pattern },
+    ];
   }
 
   const skip = (page - 1) * limit;
+  const sortSpec = resolveFeedSort(sort);
   const [posts, total] = await Promise.all([
-    Post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Post.find(filter).sort(sortSpec).skip(skip).limit(limit).lean(),
     Post.countDocuments(filter),
   ]);
 

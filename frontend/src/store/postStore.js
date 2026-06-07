@@ -2,8 +2,35 @@ import { create } from 'zustand';
 import * as postService from '../services/postService';
 import { matchPostQuery } from '../utils/search';
 
+const FEED_PAGE_SIZE = 20;
+let latestFeedRequestId = 0;
+
+function normalizeFeedSort(sort) {
+  return sort === 'hot' ? 'hot' : 'latest';
+}
+
 function normalizeCount(value) {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : undefined;
+}
+
+function normalizeFeedQuery(query) {
+  return typeof query === 'string' ? query.trim() : '';
+}
+
+function appendUniquePosts(existingPosts = [], nextPosts = []) {
+  const seenIds = new Set(existingPosts.map((post) => post.id));
+  const appendedPosts = nextPosts.filter((post) => !seenIds.has(post.id));
+  return [...existingPosts, ...appendedPosts];
+}
+
+function mergeLikedPostIds(currentLikedPosts = [], posts = []) {
+  const loadedPostIds = new Set(posts.map((post) => post.id));
+  const nextLikedPosts = posts.filter((post) => post.isLiked).map((post) => post.id);
+
+  return [
+    ...currentLikedPosts.filter((postId) => !loadedPostIds.has(postId)),
+    ...nextLikedPosts,
+  ];
 }
 
 function buildPostStatsMap(posts = []) {
@@ -139,27 +166,104 @@ const usePostStore = create((set, get) => ({
   likedPosts: [],
   selectedPost: null,
   loading: false,
+  loadingMore: false,
   myPosts: [],
   postStatsById: {},
+  currentPage: 1,
+  totalPages: 1,
+  totalPosts: 0,
+  currentQuery: '',
+  currentSort: 'latest',
+  pageSize: FEED_PAGE_SIZE,
   pendingUnlikePostIds: [],
   submittingUnlikePostIds: [],
 
   fetchPosts: async (page = 1, query = '', options = {}) => {
-    const shouldShowLoading = !options.silent && get().posts.length === 0;
+    const state = get();
+    const normalizedQuery = normalizeFeedQuery(query);
+    const normalizedSort = normalizeFeedSort(options.sort ?? state.currentSort);
+    const append = options.append === true && page > 1;
+    const limit = Number.isFinite(options.limit) ? options.limit : state.pageSize;
+    const requestId = ++latestFeedRequestId;
+    const shouldShowLoading = !append
+      && !options.silent
+      && (
+        state.posts.length === 0
+        || normalizedQuery !== state.currentQuery
+        || normalizedSort !== state.currentSort
+      );
+
     if (shouldShowLoading) {
       set({ loading: true });
     }
-    try {
-      const data = await postService.fetchPosts(page, query);
-      set((state) => ({
-        posts: data.posts,
-        likedPosts: data.posts.filter((p) => p.isLiked).map((p) => p.id),
-        postStatsById: mergePostStatsMap(state.postStatsById, data.posts),
-        loading: false,
-      }));
-    } catch {
-      set({ loading: false });
+    if (append) {
+      set({ loadingMore: true });
     }
+
+    try {
+      const data = await postService.fetchPosts(page, normalizedQuery, {
+        limit,
+        sort: normalizedSort,
+      });
+      if (requestId !== latestFeedRequestId) {
+        return data;
+      }
+
+      set((state) => ({
+        posts: append ? appendUniquePosts(state.posts, data.posts) : data.posts,
+        likedPosts: append
+          ? mergeLikedPostIds(
+            state.likedPosts,
+            appendUniquePosts(state.posts, data.posts),
+          )
+          : data.posts.filter((post) => post.isLiked).map((post) => post.id),
+        postStatsById: mergePostStatsMap(state.postStatsById, data.posts),
+        currentPage: options.currentPageOverride ?? (append ? page : 1),
+        totalPages: Math.max(1, Math.ceil((data.total || 0) / state.pageSize)),
+        totalPosts: data.total || 0,
+        currentQuery: normalizedQuery,
+        currentSort: normalizedSort,
+        loading: false,
+        loadingMore: false,
+      }));
+      return data;
+    } catch {
+      if (requestId === latestFeedRequestId) {
+        set({ loading: false, loadingMore: false });
+      }
+      return null;
+    }
+  },
+
+  loadMorePosts: async () => {
+    const { loadingMore, currentPage, totalPages, currentQuery, currentSort } = get();
+    if (loadingMore || currentPage >= totalPages) {
+      return null;
+    }
+    return get().fetchPosts(currentPage + 1, currentQuery, {
+      append: true,
+      sort: currentSort,
+    });
+  },
+
+  refreshFeed: async (options = {}) => {
+    const { currentPage, currentQuery, currentSort, pageSize } = get();
+    const normalizedQuery = normalizeFeedQuery(
+      options.query !== undefined ? options.query : currentQuery,
+    );
+    const normalizedSort = normalizeFeedSort(
+      options.sort !== undefined ? options.sort : currentSort,
+    );
+    const sameQuery = normalizedQuery === currentQuery;
+    const sameSort = normalizedSort === currentSort;
+    const targetPage = sameQuery && sameSort ? Math.max(1, currentPage) : 1;
+
+    return get().fetchPosts(1, normalizedQuery, {
+      silent: options.silent,
+      limit: targetPage * pageSize,
+      currentPageOverride: targetPage,
+      sort: normalizedSort,
+    });
   },
 
   fetchMyPosts: async () => {
@@ -482,8 +586,10 @@ const usePostStore = create((set, get) => ({
   },
 
   getFilteredPosts: (query) => {
-    const { posts } = get();
-    return posts.filter((post) => matchPostQuery(post, query));
+    const { posts, currentQuery } = get();
+    return normalizeFeedQuery(query) === currentQuery
+      ? posts
+      : posts.filter((post) => matchPostQuery(post, query));
   },
 }));
 

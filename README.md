@@ -26,6 +26,7 @@ NJU树洞是一个校园匿名社区系统，目标是在“低压力表达”�
 
 - 支持匿名发帖、浏览帖子和查看详情
 - 支持评论、回复、点赞、收藏、举报
+- 收藏夹与收藏关系已落库，状态不再只保存在浏览器本地
 - 支持草稿箱、我的帖子、我的收藏、我的喜欢等个人内容管理
 - 支持搜索帖子、话题和部分站内内容
 
@@ -51,6 +52,7 @@ NJU树洞是一个校园匿名社区系统，目标是在“低压力表达”�
 
 - 适配桌面端和移动端导航
 - 支持通知弹窗、图片灯箱、确认离开弹窗等常用交互
+- 帖子统计和评论区支持基于 SSE 的实时更新
 - 已处理主要浮层内部滚动区域的 scroll chaining，滚动到边界时不会继续带动背景页面
 
 ## 技术栈
@@ -148,6 +150,7 @@ SE2proj/
 │   │   │   ├── aiPromptBuilder.js
 │   │   │   ├── aiService.js
 │   │   │   ├── authService.js
+│   │   │   ├── bookmarkService.js
 │   │   │   ├── commentCountService.js
 │   │   │   ├── commentService.js
 │   │   │   ├── draftService.js
@@ -160,6 +163,8 @@ SE2proj/
 │   │   │   └── sseManager.js
 │   │   ├── utils/                 # 通用工具
 │   │   │   ├── AppError.js
+│   │   │   ├── authCookies.js
+│   │   │   ├── authResponse.js
 │   │   │   ├── image.js
 │   │   │   └── jwt.js
 │   │   └── index.js               # 后端入口
@@ -176,6 +181,7 @@ SE2proj/
 │   │   │   │   ├── Icon.jsx
 │   │   │   │   ├── ImageLightbox.jsx
 │   │   │   │   ├── Modal.jsx
+│   │   │   │   ├── PlainTextContent.jsx
 │   │   │   │   ├── PostCard.jsx
 │   │   │   │   ├── Progress.jsx
 │   │   │   │   ├── ReplyCard.jsx
@@ -290,14 +296,16 @@ SE2proj/
 - 分层结构：`routes -> controllers -> services -> models`
 - MongoDB 保存正式数据
 - 正式内容以逻辑删除为主，草稿允许物理删除
-- SSE 用于首页/详情页的部分实时同步
+- 登录态基于 `HTTP-only cookie`，并通过 `/api/auth/refresh` 做静默续期
+- SSE 用于首页/详情页的帖子统计、评论和回复同步
 - AI 相关逻辑集中在 `aiService`、人格配置和工具子模块
 
 ### 实时能力现状
 
 - 已接入 SSE 的代码入口位于 `/api/stream` 与 `sseManager`
 - 首页和详情页存在对 SSE 事件的消费逻辑
-- 通知中心前端包含轮询逻辑 `useNotificationPolling`
+- 当前实时同步覆盖帖子点赞数、收藏数、评论数，以及评论/回复增删
+- 通知中心当前不是 SSE，而是前端 `useNotificationPolling` 轮询刷新
 
 ## 快速开始
 
@@ -333,6 +341,8 @@ npm run dev
 - 前端所有业务请求默认走相对路径 `/api/...`
 - 开发环境依赖 `frontend/vite.config.js` 中的 `/api -> http://localhost:3001` 代理
 - 当前登录态是 `HTTP-only cookie`，不是 `localStorage + Bearer token`
+- `accessToken` 默认 15 分钟，过期后前端会自动调用 `/api/auth/refresh`
+- `refreshToken` 默认 7 天，并在刷新时轮换，属于滑动续期而不是“打开页面就强制重登”
 
 ## 常用命令
 
@@ -360,8 +370,9 @@ cd backend && npm run seed:fortune
 
 说明：
 
-- 后端 `npm test` 目前仍是占位脚本，没有正式测试集
-- 前端已有 Vitest 测试和少量页面 / store 测试
+- 前端 `npm run test` 使用 Vitest
+- 后端 `npm run test` 使用 Node 内置 test runner，当前覆盖认证 cookie / auth response / JWT 工具层
+- 当前仓库没有完整 E2E 自动化链路，跨前后端联调仍以手工回归为主
 
 ## 关键环境变量
 
@@ -402,13 +413,16 @@ AI_STREAM_IDLE_TIMEOUT_MS=30000
 - 当前默认会话策略：
   - `accessToken` 15 分钟
   - `refreshToken` 7 天
-  - 受保护接口 `401` 时前端会先尝试静默刷新
+  - 受保护接口 `401` 时前端会先尝试静默刷新并重试原请求
+  - 刷新成功时后端会重新下发新的 `accessToken` 和 `refreshToken`
 
 ## 登录态与部署说明
 
 - 登录态基于 `HTTP-only cookie`，前端 JS 不直接读取 token
+- 后端会同时写入 `accessToken`、`refreshToken` 和一个非敏感的 `sessionHint` cookie；后者只用于前端判断是否值得尝试恢复会话
 - 浏览器请求默认使用相对路径和同源 cookie，`SSE` 也走 `/api/stream`
 - 如果生产环境不是同源反代，而是前后端分域直连，需要额外处理跨域 cookie；当前仓库默认没有把这条部署线路作为主路径维护
+- 默认建议的 cookie 策略是 `httpOnly + sameSite=lax`，生产环境下 `secure=true`
 
 ## API 模块概览
 
