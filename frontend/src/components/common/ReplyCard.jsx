@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ClickableImage from './ClickableImage';
 import Icon from './Icon';
+import PlainTextContent from './PlainTextContent';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import ConfirmLeaveDialog from './ConfirmLeaveDialog';
@@ -70,7 +71,11 @@ function ReplyCard({ reply, postId, currentUserId, onReply, onDelete, onReport }
               <TimeAgo timeString={reply.parentTime} className="block mt-0.5 text-text-3 text-xs" />
             </div>
             <div className="mt-2">
-              <span className={isLongContent && !expanded ? 'line-clamp-2' : ''}>{displayContent}</span>
+              <PlainTextContent
+                as="span"
+                className={isLongContent && !expanded ? 'line-clamp-2' : ''}
+                content={displayContent}
+              />
               {isLongContent && (
                 <button
                   type="button"
@@ -103,7 +108,9 @@ function ReplyCard({ reply, postId, currentUserId, onReply, onDelete, onReport }
               </button>
             )}
           </div>
-          {reply.content && <p className="my-[9px]">回复 {parentAuthorName}: {reply.content}</p>}
+          {reply.content && (
+            <PlainTextContent className="my-[9px]" content={`回复 ${parentAuthorName}: ${reply.content}`} />
+          )}
           {reply.image && (
             <div className="comment-image-preview mt-2">
               <ClickableImage

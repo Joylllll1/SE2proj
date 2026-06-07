@@ -6,6 +6,17 @@ import { syncPostCommentCount } from './commentCountService.js';
 import { normalizeInlineImage } from '../utils/image.js';
 import { broadcast } from './sseManager.js';
 
+function broadcastPostCommentStats(postId, comments) {
+  try {
+    broadcast('post-stats-updated', {
+      postId: postId.toString(),
+      comments: Math.max(0, comments || 0),
+    });
+  } catch (error) {
+    console.error('SSE broadcast failed after comment stats update:', error);
+  }
+}
+
 export const createComment = async (userId, postId, content, image = '', official = false) => {
   const post = await Post.findById(postId);
   if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
@@ -24,7 +35,7 @@ export const createComment = async (userId, postId, content, image = '', officia
     official,
   });
 
-  await syncPostCommentCount(postId);
+  const visibleCommentCount = await syncPostCommentCount(postId);
 
   // 触发评论通知（不等待完成）
   if (post.ownerUserId.toString() !== userId) {
@@ -43,6 +54,7 @@ export const createComment = async (userId, postId, content, image = '', officia
   };
 
   try {
+    broadcastPostCommentStats(postId, visibleCommentCount);
     broadcast('comment-created', {
       postId: postId.toString(),
       comment: commentDto,
@@ -82,7 +94,7 @@ export const addReply = async (userId, commentId, content, image = '', official 
   comment.replies.push(reply);
   await comment.save();
 
-  await syncPostCommentCount(comment.postId);
+  const visibleCommentCount = await syncPostCommentCount(comment.postId);
 
   const savedReply = comment.replies[comment.replies.length - 1];
   const replyDto = {
@@ -100,6 +112,7 @@ export const addReply = async (userId, commentId, content, image = '', official 
   };
 
   try {
+    broadcastPostCommentStats(comment.postId, visibleCommentCount);
     broadcast('reply-created', {
       postId: comment.postId.toString(),
       commentId: comment._id.toString(),
@@ -146,7 +159,7 @@ export const deleteComment = async (userId, commentId) => {
   comment.isDeleted = true;
   await comment.save();
 
-  await syncPostCommentCount(comment.postId);
+  const visibleCommentCount = await syncPostCommentCount(comment.postId);
 
   const result = {
     postId: comment.postId.toString(),
@@ -155,6 +168,7 @@ export const deleteComment = async (userId, commentId) => {
   };
 
   try {
+    broadcastPostCommentStats(comment.postId, visibleCommentCount);
     broadcast('comment-deleted', result);
   } catch (error) {
     console.error('SSE broadcast failed after comment deletion:', error);
@@ -176,7 +190,7 @@ export const deleteReply = async (userId, commentId, replyId) => {
   reply.isDeleted = true;
   await comment.save();
 
-  await syncPostCommentCount(comment.postId);
+  const visibleCommentCount = await syncPostCommentCount(comment.postId);
 
   const result = {
     postId: comment.postId.toString(),
@@ -185,6 +199,7 @@ export const deleteReply = async (userId, commentId, replyId) => {
   };
 
   try {
+    broadcastPostCommentStats(comment.postId, visibleCommentCount);
     broadcast('reply-deleted', result);
   } catch (error) {
     console.error('SSE broadcast failed after reply deletion:', error);

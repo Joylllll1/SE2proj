@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import * as authService from '../services/authService';
+import { hasSessionHintCookie } from '../services/apiClient';
 
 const useAuthStore = create((set, get) => ({
   user: null,
-  accessToken: null,
   isAuthenticated: false,
   loading: false,
   initialized: false,
@@ -15,13 +15,11 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const data = await authService.login(email, password);
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
       set({
         user: data.user,
-        accessToken: data.accessToken,
         isAuthenticated: true,
         loading: false,
+        initialized: true,
       });
       return data;
     } catch (err) {
@@ -34,13 +32,11 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const data = await authService.register(email, password);
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
       set({
         user: data.user,
-        accessToken: data.accessToken,
         isAuthenticated: true,
         loading: false,
+        initialized: true,
       });
       return data;
     } catch (err) {
@@ -50,69 +46,44 @@ const useAuthStore = create((set, get) => ({
   },
 
   logout: async () => {
-    try {
-      await authService.logout();
-    } catch {
-      // Even if the API call fails, clear local state
-    }
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    await authService.logout();
     set({
       user: null,
-      accessToken: null,
       isAuthenticated: false,
       loading: false,
+      initialized: true,
       error: null,
     });
   },
 
   restoreSession: async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      set({ loading: false, isAuthenticated: false, initialized: true });
+    if (!hasSessionHintCookie()) {
+      set({
+        user: null,
+        isAuthenticated: false,
+        loading: false,
+        initialized: true,
+        error: null,
+      });
       return;
     }
 
     set({ loading: true });
     try {
-      const data = await authService.getMe();
+      const data = await authService.getMe({ authFailureMode: 'silent' });
       set({
         user: data.user,
-        accessToken: token,
         isAuthenticated: true,
         loading: false,
         initialized: true,
       });
     } catch (err) {
-      if (err.status === 401) {
-        try {
-          const refreshData = await authService.refreshToken();
-          localStorage.setItem('accessToken', refreshData.accessToken);
-          localStorage.setItem('refreshToken', refreshData.refreshToken);
-
-          const data = await authService.getMe();
-          set({
-            user: data.user,
-            accessToken: refreshData.accessToken,
-            isAuthenticated: true,
-            loading: false,
-            initialized: true,
-          });
-          return;
-        } catch {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-        }
-      } else {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-      }
       set({
         user: null,
-        accessToken: null,
         isAuthenticated: false,
         loading: false,
         initialized: true,
+        error: err.status === 401 ? null : err.message,
       });
     }
   },

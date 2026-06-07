@@ -1,15 +1,17 @@
 import * as authService from '../services/authService.js';
+import { extractRefreshToken } from '../utils/authCookies.js';
+import { sendAuthSuccess, sendLoggedOut } from '../utils/authResponse.js';
 
 export const register = async (req, res) => {
   const { email, password } = req.body;
   const result = await authService.register(email, password);
-  res.status(201).json(result);
+  sendAuthSuccess(res, 201, result);
 };
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
   const result = await authService.login(email, password);
-  res.json(result);
+  sendAuthSuccess(res, 200, result);
 };
 
 export const getMe = async (req, res) => {
@@ -18,14 +20,14 @@ export const getMe = async (req, res) => {
 };
 
 export const refresh = async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = extractRefreshToken(req);
   const result = await authService.refreshToken(refreshToken);
-  res.json(result);
+  sendAuthSuccess(res, 200, result);
 };
 
 export const logout = async (_req, res) => {
-  const result = await authService.logout();
-  res.json(result);
+  await authService.logout();
+  sendLoggedOut(res);
 };
 
 export const updateProfile = async (req, res) => {

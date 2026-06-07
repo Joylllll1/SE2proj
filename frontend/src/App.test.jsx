@@ -12,6 +12,9 @@ const { restoreSession, fetchPostById } = vi.hoisted(() => ({
   restoreSession: vi.fn(),
   fetchPostById: vi.fn(),
 }));
+const { refreshSession } = vi.hoisted(() => ({
+  refreshSession: vi.fn(),
+}));
 
 class MockEventSource {
   static instances = [];
@@ -64,6 +67,14 @@ vi.mock('./services/postService', async () => {
   return {
     ...actual,
     fetchPostById,
+  };
+});
+
+vi.mock('./services/apiClient', async () => {
+  const actual = await vi.importActual('./services/apiClient');
+  return {
+    ...actual,
+    refreshSession,
   };
 });
 
@@ -126,6 +137,7 @@ vi.mock('./components/pages/BookmarksPage', () => ({
 vi.mock('./components/pages/DetailPage', () => ({
   default: ({ post, onDelete, comments = [] }) => (
     <div>
+      <div data-testid="detail-post-id">{post.id}</div>
       <button type="button" onClick={() => onDelete(post.id)}>
         delete-post
       </button>
@@ -172,6 +184,8 @@ describe('App detail deletion flow', () => {
     vi.clearAllMocks();
     MockEventSource.instances = [];
     globalThis.EventSource = MockEventSource;
+    refreshSession.mockResolvedValue({});
+    window.history.pushState({}, '', '/detail/post-1');
 
     useAuthStore.setState(useAuthStore.getInitialState(), true);
     useBookmarkStore.setState(useBookmarkStore.getInitialState(), true);
@@ -186,16 +200,18 @@ describe('App detail deletion flow', () => {
       initialized: true,
       user: { _id: 'user-1', role: 'user' },
       isAuthenticated: true,
-      accessToken: 'token-1',
     });
     useBookmarkStore.setState({
       folderSelectorOpen: false,
       closeFolderSelector: vi.fn(),
       collectionFolders: [],
       bookmarks: [],
-      bookmarkFolders: [],
-      updateFolders: vi.fn(),
-      updateBookmarkFolders: vi.fn(),
+      bookmarkFolders: {},
+      createFolder: vi.fn(),
+      renameFolder: vi.fn(),
+      deleteFolder: vi.fn(),
+      loadBookmarks: vi.fn().mockResolvedValue(undefined),
+      reset: vi.fn(),
     });
     useCommentStore.setState({
       commentsMap: {},
@@ -258,6 +274,33 @@ describe('App detail deletion flow', () => {
     expect(useUiStore.getState().showToast).not.toHaveBeenCalledWith('加载帖子失败');
   });
 
+  it('shows a loading state and fetches the post when detail page opens with only a route id', async () => {
+    window.history.pushState({}, '', '/detail/post-2');
+    fetchPostById.mockResolvedValueOnce({
+      id: 'post-2',
+      ownerUserId: 'user-2',
+      title: 'Fetched detail post',
+      tags: ['树洞'],
+      comments: 0,
+    });
+    usePostStore.setState({
+      selectedPost: null,
+      posts: [],
+      likedPosts: [],
+      getPostLikeView: (post) => post,
+      deletePost: vi.fn().mockResolvedValue(undefined),
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('正在加载帖子详情...')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fetchPostById).toHaveBeenCalledWith('post-2');
+      expect(screen.getByTestId('detail-post-id')).toHaveTextContent('post-2');
+    });
+  });
+
   it('deduplicates comment-created SSE updates and increments count once', async () => {
     useCommentStore.setState({
       commentsMap: {
@@ -294,6 +337,10 @@ describe('App detail deletion flow', () => {
     render(<App />);
 
     const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 2,
+    });
     es.emit('comment-created', {
       postId: 'post-1',
       comment: {
@@ -302,6 +349,10 @@ describe('App detail deletion flow', () => {
         content: 'new comment',
         replies: [],
       },
+    });
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 2,
     });
     es.emit('comment-created', {
       postId: 'post-1',
@@ -363,10 +414,18 @@ describe('App detail deletion flow', () => {
     render(<App />);
 
     const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 1,
+    });
     es.emit('reply-deleted', {
       postId: 'post-1',
       commentId: 'comment-1',
       replyId: 'reply-1',
+    });
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 1,
     });
     es.emit('reply-deleted', {
       postId: 'post-1',
@@ -380,6 +439,78 @@ describe('App detail deletion flow', () => {
 
     expect(usePostStore.getState().posts[0].comments).toBe(1);
     expect(screen.getByTestId('detail-comment-count')).toHaveTextContent('1');
+  });
+
+  it('reconnects SSE after refreshing the session on stream auth failure', async () => {
+    render(<App />);
+
+    expect(MockEventSource.instances).toHaveLength(1);
+
+    await MockEventSource.instances[0].onerror?.();
+
+    await waitFor(() => {
+      expect(refreshSession).toHaveBeenCalledTimes(1);
+      expect(MockEventSource.instances).toHaveLength(2);
+    });
+
+    expect(MockEventSource.instances[0].close).toHaveBeenCalled();
+    expect(MockEventSource.instances[1].url).toBe('/api/stream');
+  });
+
+  it('applies post stats updates from SSE without refetching', async () => {
+    usePostStore.setState({
+      selectedPost: {
+        id: 'post-1',
+        ownerUserId: 'user-1',
+        title: 'Detail post',
+        tags: ['树洞'],
+        likes: 1,
+        saves: 2,
+      },
+      posts: [
+        {
+          id: 'post-1',
+          ownerUserId: 'user-1',
+          title: 'Detail post',
+          tags: ['树洞'],
+          likes: 1,
+          saves: 2,
+        },
+      ],
+      myPosts: [
+        {
+          id: 'post-1',
+          ownerUserId: 'user-1',
+          title: 'Detail post',
+          tags: ['树洞'],
+          likes: 1,
+          saves: 2,
+        },
+      ],
+      getPostLikeView: usePostStore.getState().getPostLikeView,
+    });
+
+    render(<App />);
+
+    const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      likes: 5,
+      saves: 7,
+      comments: 4,
+    });
+
+    await waitFor(() => {
+      expect(usePostStore.getState().posts[0].likes).toBe(5);
+    });
+
+    expect(usePostStore.getState().posts[0].saves).toBe(7);
+    expect(usePostStore.getState().myPosts[0].likes).toBe(5);
+    expect(usePostStore.getState().myPosts[0].saves).toBe(7);
+    expect(usePostStore.getState().myPosts[0].comments).toBe(4);
+    expect(usePostStore.getState().selectedPost.likes).toBe(5);
+    expect(usePostStore.getState().selectedPost.saves).toBe(7);
+    expect(usePostStore.getState().selectedPost.comments).toBe(4);
   });
 
   it('removes deleted comment with its replies and decrements count by the whole subtree once', async () => {
@@ -429,10 +560,18 @@ describe('App detail deletion flow', () => {
     render(<App />);
 
     const es = MockEventSource.instances[0];
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 0,
+    });
     es.emit('comment-deleted', {
       postId: 'post-1',
       commentId: 'comment-1',
       deletedReplyCount: 2,
+    });
+    es.emit('post-stats-updated', {
+      postId: 'post-1',
+      comments: 0,
     });
     es.emit('comment-deleted', {
       postId: 'post-1',

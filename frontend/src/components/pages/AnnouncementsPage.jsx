@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Icon from '../common/Icon';
+import PlainTextContent from '../common/PlainTextContent';
 import useEventStore from '../../store/eventStore';
 import useAuthStore from '../../store/authStore';
 import { formatEventTime } from '../../utils';
@@ -705,9 +706,10 @@ function AnnouncementsPage({ showToast }) {
                         {event.place}
                       </p>
                       {event.status === 'rejected' && event.rejectionReason && (
-                        <p className="text-red-600 text-xs mt-2 bg-red-50 p-2 rounded">
-                          拒绝原因：{event.rejectionReason}
-                        </p>
+                        <PlainTextContent
+                          className="text-red-600 text-xs mt-2 bg-red-50 p-2 rounded"
+                          content={`拒绝原因：${event.rejectionReason}`}
+                        />
                       )}
                     </div>
                     <button
@@ -761,9 +763,10 @@ function AnnouncementsPage({ showToast }) {
                 <Icon name="location_on" /> {selectedAnnouncement.place}
               </p>
               {selectedAnnouncement.description ? (
-                <p className="modal-desc block !mt-4 pt-4 border-t border-line-soft leading-relaxed">
-                  {selectedAnnouncement.description}
-                </p>
+                <PlainTextContent
+                  className="modal-desc block !mt-4 pt-4 border-t border-line-soft leading-relaxed"
+                  content={selectedAnnouncement.description}
+                />
               ) : (
                 <p className="modal-desc block !mt-4 pt-4 border-t border-line-soft leading-relaxed">
                   欢迎全校师生参加！详情请关注校内通知，或扫描活动现场二维码报名。名额有限，先到先得。
@@ -772,7 +775,7 @@ function AnnouncementsPage({ showToast }) {
               {selectedAnnouncement.status === 'rejected' && selectedAnnouncement.rejectionReason && (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
                   <p className="text-red-700 text-sm font-semibold">拒绝原因</p>
-                  <p className="text-red-600 text-sm mt-1">{selectedAnnouncement.rejectionReason}</p>
+                  <PlainTextContent className="text-red-600 text-sm mt-1" content={selectedAnnouncement.rejectionReason} />
                 </div>
               )}
               <div className="modal-actions flex justify-end items-center mt-5">

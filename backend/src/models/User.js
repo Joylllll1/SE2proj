@@ -34,6 +34,19 @@ const userSchema = new mongoose.Schema(
       announcement: { type: Boolean, default: true },
       reportResult: { type: Boolean, default: true },
     },
+    bookmarkFolders: {
+      type: [{
+        id: { type: String, required: true },
+        name: { type: String, required: true, trim: true },
+        isDefault: { type: Boolean, default: false },
+      }],
+      default: [{ id: 'all', name: '全部', isDefault: true }],
+    },
+    bookmarkFolderMap: {
+      type: Map,
+      of: [String],
+      default: {},
+    },
   },
   {
     timestamps: true,

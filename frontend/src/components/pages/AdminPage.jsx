@@ -3,6 +3,7 @@ import Icon from '../common/Icon';
 import StatCard from '../common/StatCard';
 import Progress from '../common/Progress';
 import EmptyState from '../common/EmptyState';
+import PlainTextContent from '../common/PlainTextContent';
 import { getImageGridLayout } from '../../utils/image';
 
 const SEED_REPORTS = [
@@ -41,7 +42,7 @@ function EventDetailModal({ event, onClose }) {
           </div>
           {event.description && (
             <div className="my-4 p-4 bg-surface-soft rounded-md">
-              <p className="m-0 text-text-2 text-sm leading-relaxed">{event.description}</p>
+              <PlainTextContent className="m-0 text-text-2 text-sm leading-relaxed" content={event.description} />
             </div>
           )}
           <div className="flex items-center justify-between gap-4 pt-4 border-t border-line-soft">
@@ -156,7 +157,7 @@ function PostDetailModal({ post, onClose }) {
 
           {/* Content */}
           <div className="mb-4 p-4 bg-surface-soft rounded-xl">
-            <p className="m-0 text-[15px] leading-relaxed text-text">{post.content}</p>
+            <PlainTextContent className="m-0 text-[15px] leading-relaxed text-text" content={post.content} />
           </div>
 
           {/* Image */}
@@ -316,7 +317,7 @@ function AdminPage({ reports, onDismiss, pendingEvents, onApproveEvent, onReject
                         </div>
                         <span className="text-text-3 text-xs">{report.time}</span>
                       </div>
-                      <p className="m-0 mb-4 p-3 bg-surface-soft rounded text-text leading-relaxed">{report.content}</p>
+                      <PlainTextContent className="m-0 mb-4 p-3 bg-surface-soft rounded text-text leading-relaxed" content={report.content} />
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-text-3 text-xs">{report.source}</span>
                         <div className="flex gap-2">

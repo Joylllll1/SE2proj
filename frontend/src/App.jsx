@@ -21,7 +21,6 @@ import LikesPage from './components/pages/LikesPage';
 import MyPostsPage from './components/pages/MyPostsPage';
 import AdminDashboard from './components/pages/AdminDashboard';
 import AnnouncementsPage from './components/pages/AnnouncementsPage';
-import UnderConstruction from './components/common/UnderConstruction';
 import EmptyState from './components/common/EmptyState';
 import useAuth from './hooks/useAuth';
 import useAuthStore from './store/authStore';
@@ -37,6 +36,7 @@ import useUiStore, { ADMIN_ROUTE_PAGES } from './store/uiStore';
 import useLikeBookmark from './hooks/useLikeBookmark';
 import usePostActions from './hooks/usePostActions';
 import useNotificationPolling from './hooks/useNotificationPolling';
+import { refreshSession } from './services/apiClient';
 import * as postService from './services/postService';
 import * as reportService from './services/reportService';
 import useNotificationStore from './store/notificationStore';
@@ -76,8 +76,13 @@ const selectRemoveReply = (s) => s.removeReply;
 const selectPosts = (s) => s.posts;
 const selectClearSelectedPost = (s) => s.clearSelectedPost;
 const selectBookmarkFolders = (s) => s.bookmarkFolders;
-const selectUpdateFolders = (s) => s.updateFolders;
-const selectUpdateBookmarkFolders = (s) => s.updateBookmarkFolders;
+const selectCreateFolder = (s) => s.createFolder;
+const selectRenameFolder = (s) => s.renameFolder;
+const selectDeleteFolder = (s) => s.deleteFolder;
+const selectLoadBookmarks = (s) => s.loadBookmarks;
+const selectResetBookmarks = (s) => s.reset;
+const selectApplyRealtimePostStats = (s) => s.applyRealtimePostStats;
+const selectRefreshFeed = (s) => s.refreshFeed;
 const selectResetNotifications = (s) => s.reset;
 const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
 
@@ -85,6 +90,11 @@ const AUTH_PAGES = ['login', 'register', 'forgot-password', 'reset-password'];
 
 function App() {
   const skipNextDetailReloadRef = React.useRef(false);
+  const [detailLoadState, setDetailLoadState] = React.useState({
+    status: 'idle',
+    message: '',
+  });
+  const [detailReloadToken, setDetailReloadToken] = React.useState(0);
 
   // ── Auth ──
   const { isAuthenticated, restoreSession } = useAuth();
@@ -147,8 +157,14 @@ function App() {
   const removeComment = useCommentStore(selectRemoveComment);
   const upsertReply = useCommentStore(selectUpsertReply);
   const removeReply = useCommentStore(selectRemoveReply);
+  const detailRoutePostId = React.useMemo(() => {
+    if (activePage !== 'detail' || typeof window === 'undefined') return null;
+    return window.location.pathname.match(/^\/detail\/(.+)/)?.[1] || null;
+  }, [activePage]);
   const detailPost = selectedPost ? getPostLikeView(selectedPost) : null;
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const isResolvedDetailPost = Boolean(
+    detailPost && (!detailRoutePostId || detailPost.id === detailRoutePostId),
+  );
   const user = useAuthStore((s) => s.user);
 
   // ── Hooks ──
@@ -159,24 +175,31 @@ function App() {
   const posts = usePostStore(selectPosts);
   const clearSelectedPost = usePostStore(selectClearSelectedPost);
   const bookmarkFolders = useBookmarkStore(selectBookmarkFolders);
-  const updateFolders = useBookmarkStore(selectUpdateFolders);
-  const updateBookmarkFolders = useBookmarkStore(selectUpdateBookmarkFolders);
+  const createBookmarkFolder = useBookmarkStore(selectCreateFolder);
+  const renameBookmarkFolder = useBookmarkStore(selectRenameFolder);
+  const deleteBookmarkFolder = useBookmarkStore(selectDeleteFolder);
+  const loadBookmarks = useBookmarkStore(selectLoadBookmarks);
+  const resetBookmarks = useBookmarkStore(selectResetBookmarks);
+  const applyRealtimePostStats = usePostStore(selectApplyRealtimePostStats);
+  const refreshFeed = usePostStore(selectRefreshFeed);
   const resetNotifications = useNotificationStore(selectResetNotifications);
 
   // ── Global SSE connection ──
   React.useEffect(() => {
     let intervalId = null;
+    let isDisposed = false;
+    let eventSource = null;
 
     const startPolling = () => {
       if (intervalId) return;
       intervalId = window.setInterval(() => {
-        if (activePage === 'home' && !document.hidden) {
-          usePostStore.getState().fetchPosts(1, '', { silent: true });
+        if (useUiStore.getState().activePage === 'home' && !document.hidden) {
+          usePostStore.getState().refreshFeed({ silent: true });
         }
       }, 60000);
     };
 
-    if (!user || !accessToken) {
+    if (!user) {
       startPolling();
       return () => {
         if (intervalId) {
@@ -185,121 +208,119 @@ function App() {
       };
     }
 
-    const es = new EventSource(`/api/stream?token=${encodeURIComponent(accessToken)}`);
+    const connectStream = () => {
+      if (isDisposed) return;
 
-    es.addEventListener('new-post', () => {
-      if (activePage === 'home') {
-        usePostStore.getState().fetchPosts(1, '', { silent: true });
+      if (eventSource) {
+        eventSource.close();
       }
-    });
 
-    es.addEventListener('post-deleted', (event) => {
-      try {
-        const data = JSON.parse(event.data || '{}');
-        if (data.postId) {
-          if (activePage === 'detail' && selectedPost?.id === data.postId) {
-            skipNextDetailReloadRef.current = true;
+      eventSource = new EventSource('/api/stream');
+
+      eventSource.addEventListener('new-post', () => {
+        if (useUiStore.getState().activePage === 'home') {
+          usePostStore.getState().refreshFeed({ silent: true });
+        }
+      });
+
+      eventSource.addEventListener('post-deleted', (event) => {
+        try {
+          const data = JSON.parse(event.data || '{}');
+          if (data.postId) {
+            if (activePage === 'detail' && selectedPost?.id === data.postId) {
+              skipNextDetailReloadRef.current = true;
+            }
+            usePostStore.getState().removePostById(data.postId);
           }
-          usePostStore.getState().removePostById(data.postId);
+        } catch {
+          // Ignore malformed SSE payloads from older clients or transient errors.
         }
-      } catch {
-        // Ignore malformed SSE payloads from older clients or transient errors.
-      }
-    });
+      });
 
-    es.onerror = () => {
-      es.close();
-      startPolling();
+      eventSource.addEventListener('post-stats-updated', (event) => {
+        try {
+          const data = JSON.parse(event.data || '{}');
+          if (!data?.postId) return;
+          applyRealtimePostStats(data.postId, {
+            likes: data.likes,
+            saves: data.saves,
+            comments: data.comments,
+          });
+        } catch {
+          // Ignore malformed SSE payloads from older clients or transient errors.
+        }
+      });
+
+      eventSource.onerror = async () => {
+        eventSource?.close();
+        eventSource = null;
+
+        try {
+          await refreshSession();
+          if (!isDisposed) {
+            connectStream();
+          }
+          return;
+        } catch {
+          startPolling();
+        }
+      };
+
+      const currentPostId = selectedPost?.id;
+      const parseCurrentPostEvent = (event) => {
+        if (activePage !== 'detail' || !currentPostId) return null;
+        try {
+          const data = JSON.parse(event.data || '{}');
+          return data.postId === currentPostId ? data : null;
+        } catch {
+          return null;
+        }
+      };
+
+      eventSource.addEventListener('comment-created', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.comment) {
+          upsertComment(currentPostId, data.comment);
+        }
+      });
+
+      eventSource.addEventListener('comment-deleted', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.commentId) {
+          removeComment(currentPostId, data.commentId);
+        }
+      });
+
+      eventSource.addEventListener('reply-created', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.commentId && data?.reply) {
+          upsertReply(currentPostId, data.commentId, data.reply);
+        }
+      });
+
+      eventSource.addEventListener('reply-deleted', (event) => {
+        const data = parseCurrentPostEvent(event);
+        if (data?.commentId && data?.replyId) {
+          removeReply(currentPostId, data.commentId, data.replyId);
+        }
+      });
     };
 
-    const currentPostId = selectedPost?.id;
-    const parseCurrentPostEvent = (event) => {
-      if (activePage !== 'detail' || !currentPostId) return null;
-      try {
-        const data = JSON.parse(event.data || '{}');
-        return data.postId === currentPostId ? data : null;
-      } catch {
-        return null;
-      }
-    };
-
-    es.addEventListener('comment-created', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.comment) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const alreadyExists = existingComments.some(
-          (comment) => (comment.id || comment._id) === (data.comment.id || data.comment._id),
-        );
-        upsertComment(currentPostId, data.comment);
-        if (!alreadyExists) {
-          usePostStore.getState().updateCommentCount(currentPostId, 1);
-        }
-      }
-    });
-
-    es.addEventListener('comment-deleted', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.commentId) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const deletedComment = existingComments.find(
-          (comment) => (comment.id || comment._id) === data.commentId,
-        );
-        const existedBeforeRemoval = Boolean(deletedComment);
-        const removedItemCount = existedBeforeRemoval
-          ? 1 + ((deletedComment?.replies || []).filter((reply) => !reply.isDeleted).length)
-          : 0;
-        removeComment(currentPostId, data.commentId);
-        if (removedItemCount > 0) {
-          usePostStore.getState().updateCommentCount(currentPostId, -removedItemCount);
-        }
-      }
-    });
-
-    es.addEventListener('reply-created', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.commentId && data?.reply) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const parentComment = existingComments.find(
-          (comment) => (comment.id || comment._id) === data.commentId,
-        );
-        const alreadyExists = (parentComment?.replies || []).some(
-          (reply) => (reply.id || reply._id) === (data.reply.id || data.reply._id),
-        );
-        upsertReply(currentPostId, data.commentId, data.reply);
-        if (!alreadyExists) {
-          usePostStore.getState().updateCommentCount(currentPostId, 1);
-        }
-      }
-    });
-
-    es.addEventListener('reply-deleted', (event) => {
-      const data = parseCurrentPostEvent(event);
-      if (data?.commentId && data?.replyId) {
-        const existingComments = useCommentStore.getState().commentsMap[currentPostId] || [];
-        const parentComment = existingComments.find(
-          (comment) => (comment.id || comment._id) === data.commentId,
-        );
-        const existedBeforeRemoval = (parentComment?.replies || []).some(
-          (reply) => (reply.id || reply._id) === data.replyId,
-        );
-        removeReply(currentPostId, data.commentId, data.replyId);
-        if (existedBeforeRemoval) {
-          usePostStore.getState().updateCommentCount(currentPostId, -1);
-        }
-      }
-    });
+    connectStream();
 
     return () => {
+      isDisposed = true;
       if (intervalId) {
         window.clearInterval(intervalId);
       }
-      es.close();
+      eventSource?.close();
     };
   }, [
-    accessToken,
     activePage,
+    applyRealtimePostStats,
     removeComment,
     removeReply,
+    refreshFeed,
     selectedPost?.id,
     upsertComment,
     upsertReply,
@@ -315,20 +336,47 @@ function App() {
 
   // ── Load post from URL when refreshing on detail page ──
   React.useEffect(() => {
-    if (activePage === 'detail' && !selectedPost) {
-      if (skipNextDetailReloadRef.current) {
-        skipNextDetailReloadRef.current = false;
-        return;
-      }
-      const match = window.location.pathname.match(/^\/detail\/(.+)/);
-      if (match) {
-        const postId = match[1];
-        postService.fetchPostById(postId)
-          .then((post) => { usePostStore.getState().setSelectedPost(post); })
-          .catch(() => showToast('加载帖子失败'));
-      }
+    if (activePage !== 'detail') {
+      setDetailLoadState({ status: 'idle', message: '' });
+      return;
     }
-  }, [activePage, selectedPost, showToast]);
+
+    if (selectedPost?.id === detailRoutePostId) {
+      setDetailLoadState({ status: 'ready', message: '' });
+      return;
+    }
+
+    if (skipNextDetailReloadRef.current) {
+      skipNextDetailReloadRef.current = false;
+      setDetailLoadState({ status: 'idle', message: '' });
+      return;
+    }
+
+    if (!detailRoutePostId) {
+      setDetailLoadState({ status: 'invalid', message: '未找到要打开的帖子。' });
+      return;
+    }
+
+    let isCancelled = false;
+    setDetailLoadState({ status: 'loading', message: '' });
+
+    postService.fetchPostById(detailRoutePostId)
+      .then((post) => {
+        if (isCancelled) return;
+        usePostStore.getState().setSelectedPost(post);
+        setDetailLoadState({ status: 'ready', message: '' });
+      })
+      .catch((error) => {
+        if (isCancelled) return;
+        const message = error?.message || '加载帖子失败，请稍后重试';
+        setDetailLoadState({ status: 'error', message });
+        showToast(message);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activePage, detailRoutePostId, detailReloadToken, selectedPost?.id, showToast]);
 
   // ── Get draftId from URL for compose page ──
   const [composeDraftId, setComposeDraftId] = React.useState(null);
@@ -356,6 +404,17 @@ function App() {
       resetNotifications();
     }
   }, [isAuthenticated, isAdmin, resetNotifications]);
+
+  React.useEffect(() => {
+    if (!initialized) return;
+
+    if (!isAuthenticated || isAdmin) {
+      resetBookmarks();
+      return;
+    }
+
+    loadBookmarks().catch(() => {});
+  }, [initialized, isAuthenticated, isAdmin, loadBookmarks, resetBookmarks]);
 
   // ── Landing page / Auth gate ──
   if (!initialized) return null;
@@ -480,6 +539,10 @@ function App() {
     }
   };
 
+  const handleRetryDetailLoad = () => {
+    setDetailReloadToken((token) => token + 1);
+  };
+
   // ── Render ──
   return (
     <div className="flex min-h-screen">
@@ -494,7 +557,7 @@ function App() {
         <main className="min-w-0 overflow-x-hidden p-6 pb-12 max-md:px-4 max-md:pt-5 max-md:pb-24">
           {activePage === 'home' && <HomePage />}
           {activePage === 'detail' && (
-            selectedPost ? (
+            isResolvedDetailPost ? (
               <DetailPage
                 post={detailPost}
                 comments={comments}
@@ -512,8 +575,33 @@ function App() {
                 onNavigate={navigate}
                 onReport={handleReport}
               />
+            ) : detailLoadState.status === 'loading' ? (
+              <section className="grid place-items-center rounded-md border border-line bg-surface p-12 text-center text-text-2">
+                正在加载帖子详情...
+              </section>
+            ) : detailLoadState.status === 'error' ? (
+              <section className="grid gap-4 place-items-center rounded-md border border-line bg-surface p-12 text-center">
+                <EmptyState
+                  title="帖子加载失败"
+                  description={detailLoadState.message || '请稍后重试。'}
+                />
+                <button
+                  type="button"
+                  onClick={handleRetryDetailLoad}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-text-2 transition-colors duration-150 hover:text-text hover:border-blue/40"
+                >
+                  重试
+                </button>
+              </section>
+            ) : detailLoadState.status === 'invalid' ? (
+              <EmptyState
+                title="帖子详情不可用"
+                description={detailLoadState.message}
+              />
             ) : (
-              <UnderConstruction feature="帖子详情" />
+              <section className="grid place-items-center rounded-md border border-line bg-surface p-12 text-center text-text-2">
+                正在准备帖子详情...
+              </section>
             )
           )}
           {activePage === 'compose' && <ComposePage onPublish={handlePublish} draftId={composeDraftId} />}
@@ -529,8 +617,9 @@ function App() {
               onReport={handleReport}
               collectionFolders={collectionFolders}
               bookmarkFolders={bookmarkFolders}
-              onUpdateFolders={updateFolders}
-              onUpdateBookmarkFolders={updateBookmarkFolders}
+              onCreateFolder={createBookmarkFolder}
+              onRenameFolder={renameBookmarkFolder}
+              onDeleteFolder={deleteBookmarkFolder}
               onNavigate={navigate}
             />
           )}
@@ -545,8 +634,9 @@ function App() {
               onReport={handleReport}
               collectionFolders={collectionFolders}
               bookmarkFolders={bookmarkFolders}
-              onUpdateFolders={updateFolders}
-              onUpdateBookmarkFolders={updateBookmarkFolders}
+              onCreateFolder={createBookmarkFolder}
+              onRenameFolder={renameBookmarkFolder}
+              onDeleteFolder={deleteBookmarkFolder}
             />
           )}
           {activePage === 'likes' && (

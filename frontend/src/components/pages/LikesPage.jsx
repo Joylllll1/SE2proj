@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
+import PlainTextContent from '../common/PlainTextContent';
 import useUiStore from '../../store/uiStore';
 import usePostStore from '../../store/postStore';
 import useCommentStore from '../../store/commentStore';
@@ -79,8 +80,6 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
   // 刷新/关闭页面时同步提交
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const token = localStorage.getItem('accessToken');
-
       // 提交帖子取消点赞
       const postUnlikes = usePostStore.getState().pendingUnlikePostIds;
       if (postUnlikes.length > 0) {
@@ -89,9 +88,9 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
             },
-            keepalive: true
+            credentials: 'same-origin',
+            keepalive: true,
           }).catch(() => {});
         }
       }
@@ -107,9 +106,9 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
             },
-            keepalive: true
+            credentials: 'same-origin',
+            keepalive: true,
           }).catch(() => {});
         }
       }
@@ -315,10 +314,10 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
                       来自：{postIsDeleted ? '[已删除]' : (post?.title || comment.postTitle || '无标题')}
                     </span>
                   </div>
-                  <p className="text-sm text-text-2 mb-2">
-                    {comment.type === 'reply' ? '↳ ' : '💬 '}
-                    {comment.item?.content || ''}
-                  </p>
+                  <PlainTextContent
+                    className="mb-2 text-sm text-text-2"
+                    content={`${comment.type === 'reply' ? '↳ ' : '💬 '}${comment.item?.content || ''}`}
+                  />
                   <div className="flex items-center gap-3 text-xs text-text-3">
                     <button
                       type="button"

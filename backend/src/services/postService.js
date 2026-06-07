@@ -5,6 +5,32 @@ import { broadcast } from './sseManager.js';
 import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountService.js';
 import { normalizeInlineImages } from '../utils/image.js';
 
+function escapeRegex(value = '') {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeFeedSort(sort) {
+  return sort === 'hot' ? 'hot' : 'latest';
+}
+
+function resolveFeedSort(sort) {
+  return normalizeFeedSort(sort) === 'hot'
+    ? { likes: -1, createdAt: -1 }
+    : { createdAt: -1 };
+}
+
+function broadcastPostStats(post) {
+  try {
+    broadcast('post-stats-updated', {
+      postId: post._id.toString(),
+      likes: Math.max(0, post.likes || 0),
+      saves: Math.max(0, post.saves || 0),
+    });
+  } catch (error) {
+    console.error('SSE broadcast failed after post stats update:', error);
+  }
+}
+
 function toPostDto(post, userId) {
   const images = Array.isArray(post.images) && post.images.length > 0
     ? post.images
@@ -61,15 +87,21 @@ export const createPost = async (userId, data) => {
   return toPostDto(post.toObject(), userId);
 };
 
-export const getPosts = async ({ page = 1, limit = 20, query, userId } = {}) => {
+export const getPosts = async ({ page = 1, limit = 20, query, sort = 'latest', userId } = {}) => {
   const filter = { isDeleted: false };
   if (query && query.trim()) {
-    filter.$text = { $search: query.trim() };
+    const pattern = new RegExp(escapeRegex(query.trim()), 'i');
+    filter.$or = [
+      { title: pattern },
+      { content: pattern },
+      { tags: pattern },
+    ];
   }
 
   const skip = (page - 1) * limit;
+  const sortSpec = resolveFeedSort(sort);
   const [posts, total] = await Promise.all([
-    Post.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Post.find(filter).sort(sortSpec).skip(skip).limit(limit).lean(),
     Post.countDocuments(filter),
   ]);
 
@@ -118,6 +150,7 @@ export const toggleLike = async (userId, postId) => {
   ).lean();
 
   if (unlikedPost) {
+    broadcastPostStats(unlikedPost);
     return { liked: false, likes: Math.max(0, unlikedPost.likes || 0) };
   }
 
@@ -131,6 +164,7 @@ export const toggleLike = async (userId, postId) => {
     if (likedPost.ownerUserId.toString() !== userId) {
       notifyLike(likedPost.ownerUserId, likedPost.title, postId).catch(() => {});
     }
+    broadcastPostStats(likedPost);
     return { liked: true, likes: likedPost.likes || 0 };
   }
 
@@ -151,6 +185,7 @@ export const toggleSave = async (userId, postId) => {
   ).lean();
 
   if (unsavedPost) {
+    broadcastPostStats(unsavedPost);
     return { saved: false, saves: Math.max(0, unsavedPost.saves || 0) };
   }
 
@@ -161,6 +196,7 @@ export const toggleSave = async (userId, postId) => {
   ).lean();
 
   if (savedPost) {
+    broadcastPostStats(savedPost);
     return { saved: true, saves: savedPost.saves || 0 };
   }
 

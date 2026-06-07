@@ -1,5 +1,4 @@
-import { request } from './apiClient.js';
-import useAuthStore from '../store/authStore';
+import { fetchWithAuthRetry, request } from './apiClient.js';
 
 export const sendMessage = async (sessionId, message, options = {}) => {
   const data = await request('/api/ai/chat', {
@@ -80,35 +79,6 @@ export const updateSessionPersona = async (sessionId, persona) => {
   return data.data;
 };
 
-function buildAuthHeaders() {
-  const token = localStorage.getItem('accessToken');
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-}
-
-async function handleUnauthorizedResponse(response) {
-  const data = await response.json().catch(() => null);
-  const token = localStorage.getItem('accessToken');
-
-  if (response.status === 401 && token) {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    useAuthStore.setState({
-      user: null,
-      accessToken: null,
-      isAuthenticated: false,
-      loading: false,
-      error: null,
-    });
-    window.location.assign('/');
-  }
-
-  return data;
-}
-
 function parseSSEBuffer(buffer) {
   const normalized = buffer.replace(/\r\n/g, '\n');
   const frames = normalized.split('\n\n');
@@ -182,15 +152,15 @@ async function consumeSSE(response, { onStart, onToken, onToolCall, onToolResult
 }
 
 export async function sendMessageStream(sessionId, message, { signal, context, requestId, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
-  const response = await fetch('/api/ai/chat', {
+  const response = await fetchWithAuthRetry('/api/ai/chat', {
     method: 'POST',
-    headers: buildAuthHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId, message, context, requestId }),
     signal,
   });
 
   if (!response.ok) {
-    const err = await handleUnauthorizedResponse(response);
+    const err = await response.json().catch(() => null);
     onError?.(err?.error || err?.message || '请求失败');
     return;
   }
@@ -199,15 +169,15 @@ export async function sendMessageStream(sessionId, message, { signal, context, r
 }
 
 export async function regenerateMessageStream(sessionId, { signal, requestId, onStart, onToken, onToolCall, onToolResult, onDone, onError } = {}) {
-  const response = await fetch(`/api/ai/sessions/${sessionId}/regenerate`, {
+  const response = await fetchWithAuthRetry(`/api/ai/sessions/${sessionId}/regenerate`, {
     method: 'POST',
-    headers: buildAuthHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestId }),
     signal,
   });
 
   if (!response.ok) {
-    const err = await handleUnauthorizedResponse(response);
+    const err = await response.json().catch(() => null);
     onError?.(err?.error || err?.message || '请求失败');
     return;
   }

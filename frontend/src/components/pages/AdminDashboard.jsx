@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Icon from '../common/Icon';
 import EmptyState from '../common/EmptyState';
+import PlainTextContent from '../common/PlainTextContent';
 import AdminSidebar from '../layout/AdminSidebar';
 import AdminMobileNav from '../layout/AdminMobileNav';
 import AdminTopBar from '../layout/AdminTopBar';
@@ -197,7 +198,7 @@ function PostDetailModal({ post, onClose }) {
             </div>
           </div>
           <div className="p-4 bg-gray-50 rounded-xl mb-4">
-            <p className="text-gray-700 leading-relaxed">{post.content || '[内容已删除]'}</p>
+            <PlainTextContent className="text-gray-700 leading-relaxed" content={post.content || '[内容已删除]'} />
           </div>
           {post.postId && (
             <div className="p-3 bg-gray-100 rounded-lg text-sm">
@@ -228,7 +229,7 @@ function PostDetailModal({ post, onClose }) {
           </div>
         </div>
         <div className="p-4 bg-gray-50 rounded-xl mb-4">
-          <p className="text-gray-700 leading-relaxed">{post.content}</p>
+          <PlainTextContent className="text-gray-700 leading-relaxed" content={post.content} />
         </div>
         {post.images?.[0] && (
           <img className="w-full max-h-80 rounded-xl object-cover mb-4" alt={post.title} src={post.images[0]} />
@@ -450,14 +451,14 @@ function AdminDashboard() {
                     {report.targetType === 'post' && report.postId && (
                       <div className="p-3 bg-surface-soft rounded-md mb-4">
                         <h3 className="font-semibold text-text mb-1">{report.postId.title}</h3>
-                        <p className="text-sm text-text-2 line-clamp-2">{report.postId.content}</p>
+                        <PlainTextContent className="text-sm text-text-2 line-clamp-2" content={report.postId.content} />
                       </div>
                     )}
 
                     {/* 评论/回复举报只显示内容本身 */}
                     {(report.targetType === 'comment' || report.targetType === 'reply') && (
                       <div className="p-3 bg-surface-soft rounded-md mb-4">
-                        <p className="text-sm text-text-2">{report.targetContent || '[内容已删除]'}</p>
+                        <PlainTextContent className="text-sm text-text-2" content={report.targetContent || '[内容已删除]'} />
                         {report.postId && (
                           <p className="text-xs text-text-3 mt-2">
                             所属帖子：{report.postId.title || '[已删除]'}
@@ -529,7 +530,7 @@ function AdminDashboard() {
                     <div className="flex items-start justify-between mb-3 max-sm:flex-col max-sm:gap-2">
                       <div>
                         <p className="font-semibold text-text">{ban.userId?.email || '未知用户'}</p>
-                        <p className="text-sm text-text-2 mt-1">原因：{ban.reason}</p>
+                        <PlainTextContent className="text-sm text-text-2 mt-1" content={`原因：${ban.reason}`} />
                       </div>
                       <div className="text-right">
                         {ban.isActive && !ban.isExpired ? (
@@ -816,7 +817,7 @@ function AdminDashboard() {
                       {event.rejectionReason && (
                         <div className="p-3 bg-red-soft rounded-md text-sm">
                           <span className="text-text-3">拒绝原因：</span>
-                          <span className="text-red">{event.rejectionReason}</span>
+                          <PlainTextContent as="span" className="text-red" content={event.rejectionReason} />
                         </div>
                       )}
                     </div>
