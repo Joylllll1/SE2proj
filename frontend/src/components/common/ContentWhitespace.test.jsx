@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PostCard from './PostCard';
 import Comment from './Comment';
 import { EventDetailModal } from './EventModals';
@@ -34,7 +34,26 @@ vi.mock('../../store/commentStore', () => ({
   }),
 }));
 
+let scrollHeightSpy;
+let clientHeightSpy;
+let scrollWidthSpy;
+let clientWidthSpy;
+
 describe('content whitespace rendering', () => {
+  beforeEach(() => {
+    scrollHeightSpy = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(100);
+    clientHeightSpy = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(100);
+    scrollWidthSpy = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(100);
+    clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+  });
+
+  afterEach(() => {
+    cleanup();
+    scrollHeightSpy.mockRestore();
+    clientHeightSpy.mockRestore();
+    scrollWidthSpy.mockRestore();
+    clientWidthSpy.mockRestore();
+  });
   it('preserves line breaks in PlainTextContent by default', () => {
     const { container } = render(
       <PlainTextContent content={'first line\nsecond line'} />,
@@ -141,6 +160,8 @@ describe('content whitespace rendering', () => {
 
   it('shows 查看全文 for long preview posts and opens detail on click', () => {
     const onOpen = vi.fn();
+    scrollHeightSpy.mockReturnValue(220);
+    clientHeightSpy.mockReturnValue(120);
 
     render(
       <PostCard
@@ -166,6 +187,9 @@ describe('content whitespace rendering', () => {
   });
 
   it('expands and collapses long comments only when needed', () => {
+    scrollHeightSpy.mockReturnValue(220);
+    clientHeightSpy.mockReturnValue(120);
+
     render(
       <Comment
         comment={{
@@ -214,6 +238,9 @@ describe('content whitespace rendering', () => {
   });
 
   it('shows expand control for long plain text blocks', () => {
+    scrollHeightSpy.mockReturnValue(180);
+    clientHeightSpy.mockReturnValue(60);
+
     render(
       <ExpandableText
         content={'第一行\n第二行\n第三行\n第四行\n第五行\n第六行'}
@@ -224,5 +251,18 @@ describe('content whitespace rendering', () => {
     );
 
     expect(screen.getByRole('button', { name: '展开' })).toBeInTheDocument();
+  });
+
+  it('does not show expand control when long text does not actually overflow', () => {
+    render(
+      <ExpandableText
+        content={'第一行\n第二行\n第三行\n第四行\n第五行\n第六行'}
+        lineThreshold={3}
+        charThreshold={10}
+        collapsedLinesClass="line-clamp-3"
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
   });
 });

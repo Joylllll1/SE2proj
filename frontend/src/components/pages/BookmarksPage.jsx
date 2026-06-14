@@ -249,6 +249,7 @@ function BookmarksPage({
                     compact
                     post={postView}
                     onOpen={() => onOpenPost(post)}
+                    previewMode
                     liked={postView.isLiked}
                     bookmarked
                     onLike={() => onLike(post.id)}

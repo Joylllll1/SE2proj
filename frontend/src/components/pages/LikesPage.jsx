@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
-import PlainTextContent from '../common/PlainTextContent';
+import ExpandableText from '../common/ExpandableText';
 import useUiStore from '../../store/uiStore';
 import usePostStore from '../../store/postStore';
 import useCommentStore from '../../store/commentStore';
@@ -281,6 +281,7 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
                       await flushAllPendingUnlikes();
                       onOpenPost(post);
                     }}
+                    previewMode
                     liked={post.isLiked}
                     onLike={() => handlePostUnlike(post.id)}
                     onReport={onReport}
@@ -314,9 +315,12 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
                       来自：{postIsDeleted ? '[已删除]' : (post?.title || comment.postTitle || '无标题')}
                     </span>
                   </div>
-                  <PlainTextContent
+                  <ExpandableText
                     className="mb-2 text-sm text-text-2"
                     content={`${comment.type === 'reply' ? '↳ ' : '💬 '}${comment.item?.content || ''}`}
+                    collapsedLinesClass={comment.type === 'reply' ? 'line-clamp-5' : 'line-clamp-8'}
+                    charThreshold={comment.type === 'reply' ? 140 : 220}
+                    lineThreshold={comment.type === 'reply' ? 5 : 8}
                   />
                   <div className="flex items-center gap-3 text-xs text-text-3">
                     <button

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 import ClickableImage from './ClickableImage';
 import PlainTextContent from './PlainTextContent';
@@ -19,6 +19,8 @@ function PostCard({
   previewMode = false,
 }) {
   const [showReportModal, setShowReportModal] = useState(false);
+  const [shouldShowPreviewLink, setShouldShowPreviewLink] = useState(false);
+  const contentRef = useRef(null);
   const authorName = getDisplayName(post.ownerUserId, post.id);
   const tags = Array.isArray(post.tags) ? post.tags : [];
   const images = Array.isArray(post.images) && post.images.length > 0
@@ -29,7 +31,34 @@ function PostCard({
   const imageLayout = getImageGridLayout(images.length);
   const hasImages = images.length > 0;
   const previewClampClass = hasImages ? 'line-clamp-4' : 'line-clamp-6';
-  const shouldShowPreviewLink = previewMode && typeof post.content === 'string' && post.content.trim().length > (hasImages ? 90 : 140);
+
+  useEffect(() => {
+    if (!previewMode || !post.content) {
+      setShouldShowPreviewLink(false);
+      return;
+    }
+
+    const element = contentRef.current;
+    if (!element) {
+      setShouldShowPreviewLink(false);
+      return;
+    }
+
+    const measureOverflow = () => {
+      const overflowY = element.scrollHeight - element.clientHeight > 1;
+      const overflowX = element.scrollWidth - element.clientWidth > 1;
+      setShouldShowPreviewLink(overflowY || overflowX);
+    };
+
+    measureOverflow();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', measureOverflow);
+      return () => window.removeEventListener('resize', measureOverflow);
+    }
+
+    return undefined;
+  }, [previewMode, post.content, previewClampClass]);
 
   const handleReport = (targetId, reason) => {
     onReport(targetId, reason, 'post');
@@ -68,6 +97,7 @@ function PostCard({
           {post.content && (
             <div>
               <PlainTextContent
+                ref={contentRef}
                 className={`m-0 text-[15px] max-sm:text-[13px] leading-relaxed text-[#344054] ${previewMode ? previewClampClass : ''}`}
                 content={post.content}
               />
