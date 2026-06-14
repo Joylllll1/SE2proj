@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import PlainTextContent from './PlainTextContent';
 
 function shouldEnableCollapse(content, charThreshold, lineThreshold) {
@@ -26,44 +26,65 @@ function ExpandableText({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
-  const [hasMeasuredOverflow, setHasMeasuredOverflow] = useState(false);
-  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [collapsedHeight, setCollapsedHeight] = useState(null);
+  const [wasCollapsible, setWasCollapsible] = useState(false);
   const contentRef = useRef(null);
   const heuristicCollapsible = shouldEnableCollapse(content, charThreshold, lineThreshold);
+  const collapsedLines = Number.parseInt((collapsedLinesClass.match(/line-clamp-(\d+)/) || [])[1] || '0', 10);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setExpanded(false);
     setHasOverflow(false);
-    setHasMeasuredOverflow(false);
-    setIsMeasuring(Boolean(heuristicCollapsible));
-  }, [content, heuristicCollapsible]);
+    setCollapsedHeight(null);
+    setWasCollapsible(false);
+  }, [content]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!heuristicCollapsible) {
       setHasOverflow(false);
-      setIsMeasuring(false);
+      setCollapsedHeight(null);
+      setWasCollapsible(false);
       return;
     }
 
     const element = contentRef.current;
-    if (!element) {
+    if (!element || !collapsedLines) {
       setHasOverflow(false);
-      setIsMeasuring(false);
+      setCollapsedHeight(null);
       return;
     }
 
+    const resolveLineHeight = () => {
+      const computedStyles = window.getComputedStyle(element);
+      const lineHeight = Number.parseFloat(computedStyles.lineHeight);
+      if (Number.isFinite(lineHeight) && lineHeight > 0) {
+        return lineHeight;
+      }
+
+      const fontSize = Number.parseFloat(computedStyles.fontSize);
+      return Number.isFinite(fontSize) && fontSize > 0 ? fontSize * 1.5 : 24;
+    };
+
     const measureOverflow = () => {
-      const overflowY = element.scrollHeight - element.clientHeight > 1;
-      const overflowX = element.scrollWidth - element.clientWidth > 1;
-      const nextOverflow = overflowY || overflowX;
+      const nextCollapsedHeight = resolveLineHeight() * collapsedLines;
+      const nextOverflow = element.scrollHeight - nextCollapsedHeight > 1;
+
+      setCollapsedHeight(nextCollapsedHeight);
       setHasOverflow(nextOverflow);
       if (nextOverflow) {
-        setHasMeasuredOverflow(true);
+        setWasCollapsible(true);
       }
-      setIsMeasuring(false);
     };
 
     measureOverflow();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        measureOverflow();
+      });
+      observer.observe(element);
+      return () => observer.disconnect();
+    }
 
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', measureOverflow);
@@ -71,23 +92,21 @@ function ExpandableText({
     }
 
     return undefined;
-  }, [heuristicCollapsible, content, collapsedLinesClass]);
+  }, [heuristicCollapsible, content, collapsedLines]);
 
-  const isCollapsible = forceShowToggle ?? (heuristicCollapsible && (hasOverflow || (expanded && hasMeasuredOverflow)));
-  const shouldClamp = !expanded && heuristicCollapsible && (isMeasuring || hasOverflow);
-  const textClassName = [className, shouldClamp ? collapsedLinesClass : '']
-    .filter(Boolean)
-    .join(' ');
-  const whitespaceClassName = shouldClamp ? 'whitespace-pre-line' : 'whitespace-pre-wrap';
+  const isCollapsible = forceShowToggle ?? (heuristicCollapsible && (hasOverflow || (expanded && wasCollapsible)));
+  const collapsedStyle = !expanded && isCollapsible && collapsedHeight
+    ? { maxHeight: `${collapsedHeight}px`, overflow: 'hidden' }
+    : undefined;
 
   return (
     <div>
       <PlainTextContent
         ref={contentRef}
         as={as}
-        className={textClassName}
-        whitespaceClassName={whitespaceClassName}
+        className={className}
         content={content}
+        style={collapsedStyle}
       />
       {isCollapsible && (
         <button

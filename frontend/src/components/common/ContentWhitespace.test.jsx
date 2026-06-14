@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PostCard from './PostCard';
 import Comment from './Comment';
@@ -38,6 +38,7 @@ let scrollHeightSpy;
 let clientHeightSpy;
 let scrollWidthSpy;
 let clientWidthSpy;
+let getComputedStyleSpy;
 
 describe('content whitespace rendering', () => {
   beforeEach(() => {
@@ -45,6 +46,23 @@ describe('content whitespace rendering', () => {
     clientHeightSpy = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(100);
     scrollWidthSpy = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(100);
     clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    getComputedStyleSpy = vi.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
+      const styles = originalGetComputedStyle(element);
+      return new Proxy(styles, {
+        get(target, prop, receiver) {
+          if (prop === 'lineHeight') {
+            return '24px';
+          }
+
+          if (prop === 'fontSize') {
+            return '16px';
+          }
+
+          return Reflect.get(target, prop, receiver);
+        },
+      });
+    });
   });
 
   afterEach(() => {
@@ -53,6 +71,7 @@ describe('content whitespace rendering', () => {
     clientHeightSpy.mockRestore();
     scrollWidthSpy.mockRestore();
     clientWidthSpy.mockRestore();
+    getComputedStyleSpy.mockRestore();
   });
   it('preserves line breaks in PlainTextContent by default', () => {
     const { container } = render(
@@ -186,7 +205,7 @@ describe('content whitespace rendering', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it('expands and collapses long comments only when needed', () => {
+  it('expands and collapses long comments only when needed', async () => {
     scrollHeightSpy.mockReturnValue(220);
     clientHeightSpy.mockReturnValue(120);
 
@@ -207,9 +226,9 @@ describe('content whitespace rendering', () => {
       />,
     );
 
-    const toggle = screen.getByRole('button', { name: '展开' });
+    const toggle = await screen.findByRole('button', { name: '展开' });
     fireEvent.click(toggle);
-    expect(screen.getByRole('button', { name: '收起' })).toBeInTheDocument();
+    await screen.findByRole('button', { name: '收起' });
   });
 
   it('does not show expand control for short replies', () => {
@@ -237,7 +256,7 @@ describe('content whitespace rendering', () => {
     expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
   });
 
-  it('shows expand control for long plain text blocks', () => {
+  it('shows expand control for long plain text blocks', async () => {
     scrollHeightSpy.mockReturnValue(180);
     clientHeightSpy.mockReturnValue(60);
 
@@ -250,10 +269,12 @@ describe('content whitespace rendering', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: '展开' })).toBeInTheDocument();
+    await screen.findByRole('button', { name: '展开' });
   });
 
-  it('does not show expand control when long text does not actually overflow', () => {
+  it('does not show expand control when long text does not actually overflow', async () => {
+    scrollHeightSpy.mockReturnValue(70);
+
     render(
       <ExpandableText
         content={'第一行\n第二行\n第三行\n第四行\n第五行\n第六行'}
@@ -263,12 +284,13 @@ describe('content whitespace rendering', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
+    });
   });
 
-  it('uses pre-line when collapsed and pre-wrap after expanding', () => {
+  it('uses pre-line when collapsed and pre-wrap after expanding', async () => {
     scrollHeightSpy.mockReturnValue(180);
-    clientHeightSpy.mockReturnValue(60);
 
     const { container } = render(
       <ExpandableText
@@ -280,15 +302,18 @@ describe('content whitespace rendering', () => {
     );
 
     const textNode = container.querySelector('p');
-    expect(textNode.className).toContain('whitespace-pre-line');
+    await waitFor(() => {
+      expect(textNode.style.maxHeight).toBe('72px');
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: '展开' }));
-    expect(textNode.className).toContain('whitespace-pre-wrap');
+    fireEvent.click(await screen.findByRole('button', { name: '展开' }));
+    await waitFor(() => {
+      expect(textNode.style.maxHeight).toBe('');
+    });
   });
 
-  it('applies clamp class during overflow measurement for long content', () => {
+  it('applies max-height during overflow measurement for long content', async () => {
     scrollHeightSpy.mockReturnValue(180);
-    clientHeightSpy.mockReturnValue(60);
 
     const { container } = render(
       <ExpandableText
@@ -300,6 +325,8 @@ describe('content whitespace rendering', () => {
     );
 
     const textNode = container.querySelector('p');
-    expect(textNode.className).toContain('line-clamp-3');
+    await waitFor(() => {
+      expect(textNode.style.maxHeight).toBe('72px');
+    });
   });
 });
