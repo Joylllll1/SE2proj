@@ -156,6 +156,7 @@ export default function HomePage() {
                     key={postView.id}
                     post={postView}
                     onOpen={() => openPost(post)}
+                    previewMode
                     liked={postView.isLiked}
                     bookmarked={postView.isSaved}
                     onLike={() => toggleLike(post.id)}

@@ -7,7 +7,17 @@ import TimeAgo from './TimeAgo';
 import { getDisplayName, formatCount } from '../../utils';
 import { getImageGridLayout } from '../../utils/image';
 
-function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, onBookmark, onReport }) {
+function PostCard({
+  post,
+  onOpen,
+  compact = false,
+  liked,
+  bookmarked,
+  onLike,
+  onBookmark,
+  onReport,
+  previewMode = false,
+}) {
   const [showReportModal, setShowReportModal] = useState(false);
   const authorName = getDisplayName(post.ownerUserId, post.id);
   const tags = Array.isArray(post.tags) ? post.tags : [];
@@ -17,6 +27,9 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
       ? [post.image]
       : [];
   const imageLayout = getImageGridLayout(images.length);
+  const hasImages = images.length > 0;
+  const previewClampClass = hasImages ? 'line-clamp-4' : 'line-clamp-6';
+  const shouldShowPreviewLink = previewMode && typeof post.content === 'string' && post.content.trim().length > (hasImages ? 90 : 140);
 
   const handleReport = (targetId, reason) => {
     onReport(targetId, reason, 'post');
@@ -53,7 +66,24 @@ function PostCard({ post, onOpen, compact = false, liked, bookmarked, onLike, on
           </div>
           <h3 className={`m-0 mb-2 leading-snug tracking-tight ${compact ? 'text-[19px]' : 'text-xl max-sm:text-base'}`}>{post.title}</h3>
           {post.content && (
-            <PlainTextContent className="m-0 text-[15px] max-sm:text-[13px] leading-relaxed text-[#344054]" content={post.content} />
+            <div>
+              <PlainTextContent
+                className={`m-0 text-[15px] max-sm:text-[13px] leading-relaxed text-[#344054] ${previewMode ? previewClampClass : ''}`}
+                content={post.content}
+              />
+              {shouldShowPreviewLink && (
+                <button
+                  type="button"
+                  className="mt-2 inline-flex text-sm font-semibold text-blue hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen();
+                  }}
+                >
+                  查看全文
+                </button>
+              )}
+            </div>
           )}
           {images.length > 0 && (
             <div className={`post-images mt-3.5 grid gap-1.5 max-sm:grid-cols-1 ${imageLayout.gridClass}`}>

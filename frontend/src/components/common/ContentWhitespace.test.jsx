@@ -1,10 +1,11 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import PostCard from './PostCard';
 import Comment from './Comment';
 import { EventDetailModal } from './EventModals';
 import PlainTextContent from './PlainTextContent';
 import ReplyCard from './ReplyCard';
+import ExpandableText from './ExpandableText';
 
 vi.mock('./Icon', () => ({
   default: () => <span data-testid="icon" />,
@@ -136,5 +137,92 @@ describe('content whitespace rendering', () => {
     const eventDescription = container.querySelector('p.whitespace-pre-wrap');
     expect(eventDescription).not.toBeNull();
     expect(eventDescription.textContent).toContain('\n');
+  });
+
+  it('shows 查看全文 for long preview posts and opens detail on click', () => {
+    const onOpen = vi.fn();
+
+    render(
+      <PostCard
+        post={{
+          id: 'post-2',
+          ownerUserId: 'user-1',
+          title: 'Long Post title',
+          content: '很长的正文 '.repeat(40),
+          tags: [],
+          createdAt: new Date().toISOString(),
+        }}
+        onOpen={onOpen}
+        previewMode
+        liked={false}
+        bookmarked={false}
+        onLike={vi.fn()}
+        onBookmark={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '查看全文' }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('expands and collapses long comments only when needed', () => {
+    render(
+      <Comment
+        comment={{
+          id: 'comment-2',
+          ownerUserId: 'user-1',
+          content: '长评论内容\n'.repeat(12),
+          createdAt: new Date().toISOString(),
+          likes: 0,
+          isLiked: false,
+        }}
+        postId="post-1"
+        currentUserId="user-1"
+        onReply={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    const toggle = screen.getByRole('button', { name: '展开' });
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: '收起' })).toBeInTheDocument();
+  });
+
+  it('does not show expand control for short replies', () => {
+    render(
+      <ReplyCard
+        reply={{
+          id: 'reply-2',
+          parentId: 'comment-1',
+          ownerUserId: 'user-2',
+          parentAuthorId: 'user-1',
+          parentContent: '短引用',
+          content: '短回复',
+          createdAt: new Date().toISOString(),
+          parentTime: new Date().toISOString(),
+          likes: 0,
+          isLiked: false,
+        }}
+        postId="post-1"
+        currentUserId="user-2"
+        onReply={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '展开' })).not.toBeInTheDocument();
+  });
+
+  it('shows expand control for long plain text blocks', () => {
+    render(
+      <ExpandableText
+        content={'第一行\n第二行\n第三行\n第四行\n第五行\n第六行'}
+        lineThreshold={3}
+        charThreshold={10}
+        collapsedLinesClass="line-clamp-3"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '展开' })).toBeInTheDocument();
   });
 });
