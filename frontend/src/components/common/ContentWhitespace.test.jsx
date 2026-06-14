@@ -285,4 +285,21 @@ describe('content whitespace rendering', () => {
     fireEvent.click(screen.getByRole('button', { name: '展开' }));
     expect(textNode.className).toContain('whitespace-pre-wrap');
   });
+
+  it('applies clamp class during overflow measurement for long content', () => {
+    scrollHeightSpy.mockReturnValue(180);
+    clientHeightSpy.mockReturnValue(60);
+
+    const { container } = render(
+      <ExpandableText
+        content={'一\n二\n三\n四\n五\n六'}
+        lineThreshold={3}
+        charThreshold={10}
+        collapsedLinesClass="line-clamp-3"
+      />,
+    );
+
+    const textNode = container.querySelector('p');
+    expect(textNode.className).toContain('line-clamp-3');
+  });
 });

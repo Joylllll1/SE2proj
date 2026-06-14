@@ -27,6 +27,7 @@ function ExpandableText({
   const [expanded, setExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const [hasMeasuredOverflow, setHasMeasuredOverflow] = useState(false);
+  const [isMeasuring, setIsMeasuring] = useState(false);
   const contentRef = useRef(null);
   const heuristicCollapsible = shouldEnableCollapse(content, charThreshold, lineThreshold);
 
@@ -34,17 +35,20 @@ function ExpandableText({
     setExpanded(false);
     setHasOverflow(false);
     setHasMeasuredOverflow(false);
-  }, [content]);
+    setIsMeasuring(Boolean(heuristicCollapsible));
+  }, [content, heuristicCollapsible]);
 
   useEffect(() => {
     if (!heuristicCollapsible) {
       setHasOverflow(false);
+      setIsMeasuring(false);
       return;
     }
 
     const element = contentRef.current;
     if (!element) {
       setHasOverflow(false);
+      setIsMeasuring(false);
       return;
     }
 
@@ -56,6 +60,7 @@ function ExpandableText({
       if (nextOverflow) {
         setHasMeasuredOverflow(true);
       }
+      setIsMeasuring(false);
     };
 
     measureOverflow();
@@ -69,10 +74,11 @@ function ExpandableText({
   }, [heuristicCollapsible, content, collapsedLinesClass]);
 
   const isCollapsible = forceShowToggle ?? (heuristicCollapsible && (hasOverflow || (expanded && hasMeasuredOverflow)));
-  const textClassName = [className, isCollapsible && !expanded ? collapsedLinesClass : '']
+  const shouldClamp = !expanded && heuristicCollapsible && (isMeasuring || hasOverflow);
+  const textClassName = [className, shouldClamp ? collapsedLinesClass : '']
     .filter(Boolean)
     .join(' ');
-  const whitespaceClassName = isCollapsible && !expanded ? 'whitespace-pre-line' : 'whitespace-pre-wrap';
+  const whitespaceClassName = shouldClamp ? 'whitespace-pre-line' : 'whitespace-pre-wrap';
 
   return (
     <div>
