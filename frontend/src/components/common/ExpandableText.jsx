@@ -72,10 +72,17 @@ function ExpandableText({
   const textClassName = [className, isCollapsible && !expanded ? collapsedLinesClass : '']
     .filter(Boolean)
     .join(' ');
+  const whitespaceClassName = isCollapsible && !expanded ? 'whitespace-pre-line' : 'whitespace-pre-wrap';
 
   return (
     <div>
-      <PlainTextContent ref={contentRef} as={as} className={textClassName} content={content} />
+      <PlainTextContent
+        ref={contentRef}
+        as={as}
+        className={textClassName}
+        whitespaceClassName={whitespaceClassName}
+        content={content}
+      />
       {isCollapsible && (
         <button
           type="button"

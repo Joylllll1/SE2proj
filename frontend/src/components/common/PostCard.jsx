@@ -99,6 +99,7 @@ function PostCard({
               <PlainTextContent
                 ref={contentRef}
                 className={`m-0 text-[15px] max-sm:text-[13px] leading-relaxed text-[#344054] ${previewMode ? previewClampClass : ''}`}
+                whitespaceClassName={previewMode ? 'whitespace-pre-line' : 'whitespace-pre-wrap'}
                 content={post.content}
               />
               {shouldShowPreviewLink && (
