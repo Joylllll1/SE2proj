@@ -7,6 +7,8 @@ import usePostStore from '../../store/postStore';
 import useUiStore from '../../store/uiStore';
 import { hasSearchQuery, matchPostQuery } from '../../utils/search';
 
+const BOOKMARKS_PAGE_BATCH_SIZE = 20;
+
 const selectGetPostLikeView = (s) => s.getPostLikeView;
 const selectQuery = (s) => s.query;
 
@@ -31,6 +33,7 @@ function BookmarksPage({
   const [editingFolder, setEditingFolder] = useState(null);
   const [editFolderName, setEditFolderName] = useState('');
   const [savedPosts, setSavedPosts] = useState([]);
+  const [visiblePostCount, setVisiblePostCount] = useState(BOOKMARKS_PAGE_BATCH_SIZE);
   const menuRefs = useRef({});
   const getPostLikeView = usePostStore(selectGetPostLikeView);
   const query = useUiStore(selectQuery);
@@ -130,8 +133,13 @@ function BookmarksPage({
 
   const folderPosts = getBookmarksForFolder(activeFolder);
   const filteredFolderPosts = folderPosts.filter((post) => matchPostQuery(post, query));
+  const visibleFolderPosts = filteredFolderPosts.slice(0, visiblePostCount);
   const totalItems = filteredFolderPosts.length;
   const searching = hasSearchQuery(query);
+
+  useEffect(() => {
+    setVisiblePostCount(BOOKMARKS_PAGE_BATCH_SIZE);
+  }, [activeFolder, query, savedPosts, bookmarks]);
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
@@ -240,8 +248,9 @@ function BookmarksPage({
           description={searching ? '换个关键词试试。' : '浏览树洞时点击书签图标即可收藏。'}
         />
       ) : (
+        <>
           <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1] max-sm:[column-gap:12px]">
-            {filteredFolderPosts.map((post) => {
+            {visibleFolderPosts.map((post) => {
               const postView = getPostLikeView(post);
               return (
                 <div key={postView.id} className="inline-block w-full mb-[18px]">
@@ -260,6 +269,18 @@ function BookmarksPage({
               );
             })}
           </section>
+          {visibleFolderPosts.length < filteredFolderPosts.length && (
+            <div className="pt-2">
+              <button
+                type="button"
+                className="secondary-button w-full"
+                onClick={() => setVisiblePostCount((count) => count + BOOKMARKS_PAGE_BATCH_SIZE)}
+              >
+                加载更多
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* New Folder Modal */}
