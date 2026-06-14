@@ -1,5 +1,6 @@
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import { broadcastToUser } from './sseManager.js';
 
 const NOTIFICATION_LIMIT = 30;
 const TYPE_TO_PREFERENCE = {
@@ -21,6 +22,18 @@ async function shouldCreateNotification(recipient, type) {
   if (!user) return false;
 
   return user.notificationPreferences?.[preferenceKey] !== false;
+}
+
+function emitNotificationUpdated(recipient, notification) {
+  try {
+    broadcastToUser(recipient, 'notification-updated', {
+      notificationId: notification?._id?.toString?.() || null,
+      type: notification?.type || null,
+      createdAt: notification?.createdAt || new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('SSE broadcast failed after notification update:', error);
+  }
 }
 
 // ─── Notification Creation ───
@@ -45,6 +58,7 @@ export async function createNotification(data) {
 
   // Async cleanup: keep only latest 30 notifications
   cleanupOldNotifications(recipient).catch(() => {});
+  emitNotificationUpdated(recipient, notification);
 
   return notification;
 }
@@ -80,6 +94,9 @@ export async function createNotificationsForRecipients(recipients, data) {
   );
 
   Promise.allSettled(finalRecipients.map((recipient) => cleanupOldNotifications(recipient))).catch(() => {});
+  notifications.forEach((notification) => {
+    emitNotificationUpdated(notification.recipient, notification);
+  });
   return notifications;
 }
 

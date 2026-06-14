@@ -30,7 +30,7 @@ describe('apiClient auth retry flow', () => {
       configurable: true,
       value: {
         ...originalLocation,
-        pathname: '/',
+        pathname: '/detail/post-1',
         assign,
       },
     });
@@ -66,7 +66,7 @@ describe('apiClient auth retry flow', () => {
     expect(assign).not.toHaveBeenCalled();
   });
 
-  it('clears auth state and redirects to /login when refresh fails', async () => {
+  it('clears auth state and redirects to / when refresh fails', async () => {
     globalThis.fetch
       .mockResolvedValueOnce(jsonResponse({ error: 'Token 已过期' }, { status: 401 }))
       .mockResolvedValueOnce(jsonResponse({ error: '登录已过期，请重新登录' }, { status: 401 }));
@@ -77,7 +77,7 @@ describe('apiClient auth retry flow', () => {
 
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
-    expect(assign).toHaveBeenCalledWith('/login');
+    expect(assign).toHaveBeenCalledWith('/');
   });
 
   it('does not redirect in silent auth failure mode', async () => {

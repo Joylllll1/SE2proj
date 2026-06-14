@@ -17,7 +17,7 @@ function AdminSidebar({ activeTab, onTabChange }) {
   const navigate = useUiStore((s) => s.navigate);
 
   const handleLogout = () => {
-    logout().finally(() => navigate('login', undefined, { force: true }));
+    logout().finally(() => navigate('home', undefined, { force: true }));
   };
 
   return (

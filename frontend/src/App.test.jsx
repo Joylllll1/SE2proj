@@ -225,6 +225,8 @@ describe('App detail deletion flow', () => {
       deleteReply: vi.fn(),
     });
     useNotificationStore.setState({
+      fetchNotifications: vi.fn().mockResolvedValue([]),
+      fetchUnreadCount: vi.fn().mockResolvedValue(0),
       reset: vi.fn(),
     });
     usePostStore.setState({
@@ -455,6 +457,24 @@ describe('App detail deletion flow', () => {
 
     expect(MockEventSource.instances[0].close).toHaveBeenCalled();
     expect(MockEventSource.instances[1].url).toBe('/api/stream');
+  });
+
+  it('refreshes notifications when notification-updated SSE arrives', async () => {
+    render(<App />);
+
+    const es = MockEventSource.instances[0];
+    const fetchNotifications = useNotificationStore.getState().fetchNotifications;
+    const fetchUnreadCount = useNotificationStore.getState().fetchUnreadCount;
+
+    es.emit('notification-updated', {
+      notificationId: 'notif-1',
+      type: 'comment',
+    });
+
+    await waitFor(() => {
+      expect(fetchUnreadCount).toHaveBeenCalledTimes(1);
+    });
+    expect(fetchNotifications).toHaveBeenCalledTimes(1);
   });
 
   it('applies post stats updates from SSE without refetching', async () => {

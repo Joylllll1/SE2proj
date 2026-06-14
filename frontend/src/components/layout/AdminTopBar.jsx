@@ -14,7 +14,7 @@ function AdminTopBar() {
   const handleLogout = () => {
     if (!unsavedChangesHandler) {
       Promise.resolve(logout()).finally(() => {
-        navigate('login', undefined, { force: true });
+        navigate('home', undefined, { force: true });
       });
       return;
     }
@@ -24,7 +24,7 @@ function AdminTopBar() {
         mode: 'discard',
         action: async () => {
           await logout();
-          navigate('login', undefined, { force: true });
+          navigate('home', undefined, { force: true });
         },
       },
       dialog: {

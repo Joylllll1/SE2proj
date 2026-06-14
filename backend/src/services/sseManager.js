@@ -33,6 +33,25 @@ export function broadcast(event, data) {
   }
 }
 
+export function broadcastToUser(targetUserId, event, data) {
+  const userId = targetUserId?.toString();
+  if (!userId) return;
+
+  const userClients = clients.get(userId);
+  if (!userClients || userClients.size === 0) {
+    return;
+  }
+
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of userClients) {
+    try {
+      client.res.write(payload);
+    } catch {
+      removeClient(userId, client);
+    }
+  }
+}
+
 export function getConnectionCount() {
   let count = 0;
   for (const [, userClients] of clients) {

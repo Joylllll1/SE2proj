@@ -251,6 +251,13 @@ function App() {
         }
       });
 
+      eventSource.addEventListener('notification-updated', () => {
+        if (isAdmin) return;
+        const notificationStore = useNotificationStore.getState();
+        notificationStore.fetchUnreadCount();
+        notificationStore.fetchNotifications();
+      });
+
       eventSource.onerror = async () => {
         eventSource?.close();
         eventSource = null;
@@ -318,6 +325,7 @@ function App() {
   }, [
     activePage,
     applyRealtimePostStats,
+    isAdmin,
     removeComment,
     removeReply,
     refreshFeed,

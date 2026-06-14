@@ -25,7 +25,7 @@ function Sidebar({ activePage, onNavigate }) {
   const handleLogout = () => {
     if (!unsavedChangesHandler) {
       Promise.resolve(logout()).finally(() => {
-        onNavigate('login', undefined, { force: true });
+        onNavigate('home', undefined, { force: true });
       });
       return;
     }
@@ -35,7 +35,7 @@ function Sidebar({ activePage, onNavigate }) {
         mode: 'discard',
         action: async () => {
           await logout();
-          onNavigate('login', undefined, { force: true });
+          onNavigate('home', undefined, { force: true });
         },
       },
       dialog: {
