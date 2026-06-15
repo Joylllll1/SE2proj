@@ -30,8 +30,8 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-function buildCorsWhitelist() {
-  const devOrigins = process.env.NODE_ENV === 'production'
+function createCorsOptions() {
+  const defaultDevOrigins = process.env.NODE_ENV === 'production'
     ? []
     : [
         'http://localhost:5173',
@@ -40,53 +40,39 @@ function buildCorsWhitelist() {
         'http://127.0.0.1:4173',
       ];
 
-  return new Set(
+  const allowedOrigins = new Set(
     [
-      ...devOrigins,
+      ...defaultDevOrigins,
       ...(process.env.CORS_ALLOWED_ORIGINS || '').split(','),
       process.env.FRONTEND_ORIGIN || '',
     ]
-      .map((o) => o.trim())
+      .map((origin) => origin.trim())
       .filter(Boolean),
   );
-}
 
-const corsWhitelist = buildCorsWhitelist();
-function getRequestHost(req) {
-  return req.headers['x-forwarded-host'] || req.headers.host || '';
-}
+  return {
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
 
-function isAllowedCorsOrigin(req) {
-  const origin = req.headers.origin;
-  if (!origin) {
-    return true;
-  }
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
 
-  const host = getRequestHost(req);
-  if (origin === `http://${host}` || origin === `https://${host}`) {
-    return true;
-  }
-
-  return corsWhitelist.has(origin);
-}
-
-function corsOptionsDelegate(req, callback) {
-  if (!isAllowedCorsOrigin(req)) {
-    callback(new AppError('CORS origin not allowed', 403, 'CORS_ORIGIN_FORBIDDEN'));
-    return;
-  }
-
-  callback(null, {
-    origin: true,
+      callback(new AppError('CORS origin not allowed', 403, 'CORS_ORIGIN_FORBIDDEN'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-  });
+  };
 }
 
 // ─── Middleware ───
 app.use(securityHeaders);
-app.use(cors(corsOptionsDelegate));
+app.use(cors(createCorsOptions()));
 app.use(express.json({ limit: '15mb' }));
 
 // ─── Routes ───
