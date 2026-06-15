@@ -4,7 +4,6 @@ import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import * as sseManager from '../services/sseManager.js';
 import { extractAccessToken } from '../utils/authCookies.js';
-import { getClientIp } from '../utils/requestMeta.js';
 
 const router = Router();
 
@@ -37,13 +36,7 @@ router.get('/', async (req, res) => {
   });
 
   const userId = user._id.toString();
-  const clientIp = getClientIp(req);
-
-  if (!sseManager.canAcceptConnection(userId, clientIp)) {
-    throw new AppError('实时连接过多，请关闭多余页面后重试', 429, 'SSE_TOO_MANY_CONNECTIONS');
-  }
-
-  const client = sseManager.addClient(userId, clientIp, res);
+  const client = sseManager.addClient(userId, res);
 
   res.write(`event: connected\ndata: ${JSON.stringify({ userId })}\n\n`);
 

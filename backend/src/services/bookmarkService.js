@@ -3,7 +3,6 @@ import Post from '../models/Post.js';
 import AppError from '../utils/AppError.js';
 import mongoose from 'mongoose';
 import { broadcast } from './sseManager.js';
-import { normalizePlainText } from '../utils/text.js';
 
 const DEFAULT_FOLDER = { id: 'all', name: '全部', isDefault: true };
 
@@ -24,7 +23,7 @@ function createFolderId() {
 }
 
 function normalizeFolderName(name) {
-  return normalizePlainText(name, { maxLength: 30, preserveNewlines: false });
+  return typeof name === 'string' ? name.trim() : '';
 }
 
 function uniqueStrings(values = []) {

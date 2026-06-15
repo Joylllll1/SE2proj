@@ -2,19 +2,10 @@ import VerificationCode from '../models/VerificationCode.js';
 import User from '../models/User.js';
 import AppError from '../utils/AppError.js';
 import { sendVerificationCode } from '../services/emailService.js';
-import { createInMemoryRateLimiter } from '../utils/requestGuard.js';
-import { getClientIp } from '../utils/requestMeta.js';
-import { normalizeEmail } from '../utils/text.js';
 
 function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
-
-const verifyFailureLimiter = createInMemoryRateLimiter({
-  windowMs: 30 * 60 * 1000,
-  maxHits: 5,
-  blockMs: 30 * 60 * 1000,
-});
 
 function ensureAuthenticatedChangePasswordRequest(req, email) {
   if (!req.user) {
@@ -26,8 +17,7 @@ function ensureAuthenticatedChangePasswordRequest(req, email) {
 }
 
 export const sendCode = async (req, res) => {
-  const email = normalizeEmail(req.body?.email);
-  const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
+  const { email, type } = req.body;
 
   if (!email || !type) {
     throw new AppError('邮箱和验证类型不能为空', 400, 'MISSING_PARAMS');
@@ -68,9 +58,7 @@ export const sendCode = async (req, res) => {
 };
 
 export const checkCode = async (req, res) => {
-  const email = normalizeEmail(req.body?.email);
-  const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
-  const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
+  const { email, code, type } = req.body;
 
   if (!email || !code || !type) {
     throw new AppError('参数不完整', 400, 'MISSING_PARAMS');
@@ -80,12 +68,6 @@ export const checkCode = async (req, res) => {
     ensureAuthenticatedChangePasswordRequest(req, email);
   }
 
-  const verifyKey = `${getClientIp(req)}:${email}:${type}`;
-  const verifyStatus = verifyFailureLimiter.get(verifyKey);
-  if (verifyStatus.blocked) {
-    throw new AppError('验证码错误次数过多，请稍后再试', 429, 'VERIFY_ATTEMPTS_EXCEEDED');
-  }
-
   const record = await VerificationCode.findOne({ email, type, verified: false });
 
   if (!record) {
@@ -93,7 +75,6 @@ export const checkCode = async (req, res) => {
   }
 
   if (record.code !== code) {
-    verifyFailureLimiter.consume(verifyKey);
     throw new AppError('验证码错误', 400, 'CODE_MISMATCH');
   }
 
@@ -104,7 +85,6 @@ export const checkCode = async (req, res) => {
   // Mark as verified
   record.verified = true;
   await record.save();
-  verifyFailureLimiter.reset(verifyKey);
 
   res.json({ message: '验证通过' });
 };

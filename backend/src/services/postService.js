@@ -4,7 +4,6 @@ import { notifyLike } from './notificationService.js';
 import { broadcast } from './sseManager.js';
 import { getVisibleCommentCounts, getVisibleCommentCount } from './commentCountService.js';
 import { normalizeInlineImages } from '../utils/image.js';
-import { normalizePlainText } from '../utils/text.js';
 
 function escapeRegex(value = '') {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -62,17 +61,10 @@ export const createPost = async (userId, data) => {
       : [];
 
   const images = normalizeInlineImages(sourceImages, { label: '帖子图片' });
-  const title = normalizePlainText(data.title, {
-    maxLength: 120,
-    preserveNewlines: false,
-  });
-  const content = normalizePlainText(data.content, {
-    maxLength: 10000,
-  });
+  const title = typeof data.title === 'string' ? data.title.trim() : '';
+  const content = typeof data.content === 'string' ? data.content.trim() : '';
   const tags = Array.isArray(data.tags)
-    ? data.tags
-      .map((tag) => normalizePlainText(tag, { maxLength: 20, preserveNewlines: false }))
-      .filter(Boolean)
+    ? data.tags.map((tag) => tag?.trim()).filter(Boolean)
     : [];
 
   if (!content && images.length === 0) {
@@ -97,8 +89,8 @@ export const createPost = async (userId, data) => {
 
 export const getPosts = async ({ page = 1, limit = 20, query, sort = 'latest', userId } = {}) => {
   const filter = { isDeleted: false };
-  if (query) {
-    const pattern = new RegExp(escapeRegex(query), 'i');
+  if (query && query.trim()) {
+    const pattern = new RegExp(escapeRegex(query.trim()), 'i');
     filter.$or = [
       { title: pattern },
       { content: pattern },

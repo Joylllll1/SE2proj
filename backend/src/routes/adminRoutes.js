@@ -2,12 +2,11 @@ import { Router } from 'express';
 import auth from '../middlewares/auth.js';
 import isAdmin from '../middlewares/isAdmin.js';
 import * as adminController from '../controllers/adminController.js';
-import { adminLimiter } from '../middlewares/securityPresets.js';
 
 const router = Router();
 
 // All admin routes require auth + admin role
-router.use(auth, isAdmin, adminLimiter);
+router.use(auth, isAdmin);
 
 // Reports
 router.get('/reports', adminController.getReports);

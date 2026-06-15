@@ -1,10 +1,9 @@
 import User from '../models/User.js';
 import VerificationCode from '../models/VerificationCode.js';
 import AppError from '../utils/AppError.js';
-import { normalizeEmail } from '../utils/text.js';
 
 export const forgot = async (req, res) => {
-  const email = normalizeEmail(req.body?.email);
+  const { email } = req.body;
 
   if (!email) {
     throw new AppError('请输入邮箱地址', 400, 'MISSING_EMAIL');
@@ -22,8 +21,7 @@ export const forgot = async (req, res) => {
 };
 
 export const reset = async (req, res) => {
-  const email = normalizeEmail(req.body?.email);
-  const { code, password } = req.body;
+  const { email, code, password } = req.body;
 
   if (!email || !code || !password) {
     throw new AppError('参数不完整', 400, 'MISSING_PARAMS');
@@ -40,9 +38,6 @@ export const reset = async (req, res) => {
   }
 
   // Validate password strength
-  if (typeof password !== 'string' || password.length > 128) {
-    throw new AppError('密码格式无效', 400, 'INVALID_PASSWORD');
-  }
   if (password.length < 8) {
     throw new AppError('密码至少 8 位', 400, 'WEAK_PASSWORD');
   }

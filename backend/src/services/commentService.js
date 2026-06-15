@@ -5,7 +5,6 @@ import { notifyComment } from './notificationService.js';
 import { syncPostCommentCount } from './commentCountService.js';
 import { normalizeInlineImage } from '../utils/image.js';
 import { broadcast } from './sseManager.js';
-import { normalizePlainText } from '../utils/text.js';
 
 function broadcastPostCommentStats(postId, comments) {
   try {
@@ -21,7 +20,7 @@ function broadcastPostCommentStats(postId, comments) {
 export const createComment = async (userId, postId, content, image = '', official = false) => {
   const post = await Post.findById(postId);
   if (!post) throw new AppError('帖子不存在', 404, 'POST_NOT_FOUND');
-  const normalizedContent = normalizePlainText(content, { maxLength: 3000 });
+  const normalizedContent = typeof content === 'string' ? content.trim() : '';
   const normalizedImage = normalizeInlineImage(image, '评论图片');
 
   if (!normalizedContent && !normalizedImage) {
@@ -70,7 +69,7 @@ export const createComment = async (userId, postId, content, image = '', officia
 export const addReply = async (userId, commentId, content, image = '', official = false, replyToId = null) => {
   const comment = await Comment.findOne({ _id: commentId, isDeleted: false });
   if (!comment) throw new AppError('评论不存在', 404, 'COMMENT_NOT_FOUND');
-  const normalizedContent = normalizePlainText(content, { maxLength: 2000 });
+  const normalizedContent = typeof content === 'string' ? content.trim() : '';
   const normalizedImage = normalizeInlineImage(image, '回复图片');
 
   if (!normalizedContent && !normalizedImage) {
