@@ -208,6 +208,32 @@ describe('HomePage SSE updates', () => {
     });
   });
 
+  it('shows pending state on sort tabs until the new feed finishes loading', async () => {
+    let resolveFetch;
+    const fetchPosts = vi.fn().mockImplementation(() => new Promise((resolve) => {
+      resolveFetch = resolve;
+    }));
+    usePostStore.setState({
+      fetchPosts,
+      posts: existingPosts,
+      loading: false,
+    });
+
+    render(<HomePage />);
+
+    const hotButton = screen.getByRole('button', { name: '高赞共鸣' });
+    fireEvent.click(hotButton);
+
+    expect(screen.getByRole('button', { name: '高赞共鸣 · 加载中' })).toBeDisabled();
+    expect(screen.getByText('Existing post')).toBeInTheDocument();
+
+    resolveFetch?.();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '高赞共鸣' })).toBeInTheDocument();
+    });
+  });
+
   it('removes a deleted post when store removes it', async () => {
     render(<HomePage />);
 

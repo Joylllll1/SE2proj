@@ -29,6 +29,7 @@ const selectFeedScrollToken = (s) => s.feedScrollToken;
 
 export default function HomePage() {
   const [sort, setSort] = useState('latest');
+  const [requestedSort, setRequestedSort] = useState('latest');
   const feedHeadRef = useRef(null);
 
   // ── Stores ──
@@ -53,10 +54,25 @@ export default function HomePage() {
 
   const userId = user?._id || null;
   const deferredQuery = useDeferredValue(query);
+  const pendingSort = requestedSort !== sort ? requestedSort : null;
 
   useEffect(() => {
-    fetchPosts(1, deferredQuery, { sort });
-  }, [deferredQuery, fetchPosts, sort]);
+    let cancelled = false;
+    const targetSort = requestedSort;
+
+    const loadFeed = async () => {
+      await fetchPosts(1, deferredQuery, { sort: targetSort });
+      if (!cancelled && requestedSort === targetSort) {
+        setSort(targetSort);
+      }
+    };
+
+    loadFeed();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [deferredQuery, fetchPosts, requestedSort]);
 
   // Scroll to feed section when search confirms from TopBar (mobile only)
   useEffect(() => {
@@ -126,12 +142,16 @@ export default function HomePage() {
                   sort === key
                     ? 'bg-blue-soft text-blue border border-blue'
                     : 'bg-white text-text-2 border border-line hover:border-[#b0c4de] hover:text-blue'
-                } max-sm:flex-1`}
+                } ${pendingSort === key ? 'opacity-75 cursor-wait' : ''} max-sm:flex-1`}
                 key={key}
-                onClick={() => setSort(key)}
+                onClick={() => {
+                  if (pendingSort || sort === key) return;
+                  setRequestedSort(key);
+                }}
+                disabled={Boolean(pendingSort)}
                 type="button"
               >
-                {label}
+                {pendingSort === key ? `${label} · 加载中` : label}
               </button>
             ))}
           </div>
