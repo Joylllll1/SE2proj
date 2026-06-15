@@ -20,6 +20,8 @@ import aiRoutes from './routes/aiRoutes.js';
 import sseRoutes from './routes/sseRoutes.js';
 import bookmarkRoutes from './routes/bookmarkRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
+import securityHeaders from './middlewares/securityHeaders.js';
+import AppError from './utils/AppError.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,8 +30,49 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+function createCorsOptions() {
+  const defaultDevOrigins = process.env.NODE_ENV === 'production'
+    ? []
+    : [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:4173',
+        'http://127.0.0.1:4173',
+      ];
+
+  const allowedOrigins = new Set(
+    [
+      ...defaultDevOrigins,
+      ...(process.env.CORS_ALLOWED_ORIGINS || '').split(','),
+      process.env.FRONTEND_ORIGIN || '',
+    ]
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
+
+  return {
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new AppError('CORS origin not allowed', 403, 'CORS_ORIGIN_FORBIDDEN'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  };
+}
+
 // ─── Middleware ───
-app.use(cors({ origin: true, credentials: true }));
+app.use(securityHeaders);
+app.use(cors(createCorsOptions()));
 app.use(express.json({ limit: '15mb' }));
 
 // ─── Routes ───

@@ -1,9 +1,15 @@
 import * as adminService from '../services/adminService.js';
 import AppError from '../utils/AppError.js';
+import { normalizePlainText, requireEnum } from '../utils/text.js';
 
 export async function create(req, res) {
   const { id: targetId } = req.params;
-  const { reason, targetType = 'post' } = req.body;
+  const reason = normalizePlainText(req.body?.reason, { maxLength: 500 });
+  const targetType = requireEnum(req.body?.targetType, ['post', 'comment', 'reply'], {
+    fallback: 'post',
+    message: '举报类型无效',
+    errorCode: 'INVALID_REPORT_TARGET',
+  });
   const userId = req.user._id;
 
   if (!reason || !reason.trim()) {

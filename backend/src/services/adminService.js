@@ -9,6 +9,7 @@ import { sendBanNotification, sendUnbanNotification } from './emailService.js';
 import { notifyBanned, notifyUnbanned } from './notificationService.js';
 import { syncPostCommentCount } from './commentCountService.js';
 import { broadcast } from './sseManager.js';
+import { normalizePlainText } from '../utils/text.js';
 
 async function resolveAssociatedPostId(targetId, targetType) {
   if (targetType === 'post') {
@@ -151,6 +152,8 @@ export async function getPendingReports() {
 }
 
 export async function createReport(targetId, targetType, reason, reportedBy) {
+  const normalizedReason = normalizePlainText(reason, { maxLength: 500 });
+
   // 快速路径：同一用户已举报过该目标
   const existingReportByUser = await Report.findOne({
     targetId,
@@ -170,7 +173,7 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
 
   const update = {
     $inc: { reportCount: 1 },
-    $push: { reasons: { reason, reportedBy } },
+    $push: { reasons: { reason: normalizedReason, reportedBy } },
     $setOnInsert: {
       targetType,
       targetId,
@@ -212,7 +215,7 @@ export async function createReport(targetId, targetType, reason, reportedBy) {
     },
     {
       $inc: { reportCount: 1 },
-      $push: { reasons: { reason, reportedBy } },
+      $push: { reasons: { reason: normalizedReason, reportedBy } },
     },
     { new: true }
   );

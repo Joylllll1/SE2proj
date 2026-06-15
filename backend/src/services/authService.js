@@ -4,42 +4,56 @@ import Ban from '../models/Ban.js';
 import { sendUnbanNotification } from './emailService.js';
 import AppError from '../utils/AppError.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import { normalizeEmail } from '../utils/text.js';
 
 const ALLOWED_DOMAINS = ['@nju.edu.cn', '@smail.nju.edu.cn'];
 
+function normalizePassword(password) {
+  if (typeof password !== 'string') {
+    throw new AppError('密码格式无效', 400, 'INVALID_PASSWORD');
+  }
+  if (password.length > 128) {
+    throw new AppError('密码过长，请控制在 128 位以内', 400, 'PASSWORD_TOO_LONG');
+  }
+  return password;
+}
+
 export const register = async (email, password) => {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = normalizePassword(password);
+
   // Validate email domain
-  const domain = '@' + email.split('@')[1]?.toLowerCase();
+  const domain = '@' + normalizedEmail.split('@')[1]?.toLowerCase();
   if (!ALLOWED_DOMAINS.includes(domain)) {
     throw new AppError('仅支持 nju.edu.cn 和 smail.nju.edu.cn 邮箱', 400, 'INVALID_DOMAIN');
   }
 
   // Validate password strength
-  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+  if (!/[a-zA-Z]/.test(normalizedPassword) || !/[0-9]/.test(normalizedPassword)) {
     throw new AppError('密码至少 8 位，需包含字母和数字', 400, 'WEAK_PASSWORD');
   }
 
   // Check if email already exists
-  const existing = await User.findOne({ email });
+  const existing = await User.findOne({ email: normalizedEmail });
   if (existing) {
     throw new AppError('该邮箱已被注册', 409, 'EMAIL_EXISTS');
   }
 
   // Verify email code
-  const verifiedCode = await VerificationCode.findOne({ email, type: 'register', verified: true });
+  const verifiedCode = await VerificationCode.findOne({ email: normalizedEmail, type: 'register', verified: true });
   if (!verifiedCode) {
     throw new AppError('请先完成邮箱验证', 400, 'CODE_NOT_VERIFIED');
   }
   if (verifiedCode.expiresAt <= new Date()) {
-    await VerificationCode.deleteMany({ email, type: 'register' });
+    await VerificationCode.deleteMany({ email: normalizedEmail, type: 'register' });
     throw new AppError('验证码已过期，请重新验证', 400, 'CODE_EXPIRED');
   }
 
   // Create user
-  const user = await User.create({ email, password });
+  const user = await User.create({ email: normalizedEmail, password: normalizedPassword });
 
   // Clean up used verification code
-  await VerificationCode.deleteMany({ email, type: 'register' });
+  await VerificationCode.deleteMany({ email: normalizedEmail, type: 'register' });
 
   // Generate tokens
   const accessToken = signAccessToken(user.id);
@@ -53,14 +67,17 @@ export const register = async (email, password) => {
 };
 
 export const login = async (email, password) => {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = normalizePassword(password);
+
   // Find user with password field included
-  const user = await User.findOne({ email }).select('+password');
+  const user = await User.findOne({ email: normalizedEmail }).select('+password');
   if (!user) {
     throw new AppError('邮箱或密码错误', 401, 'INVALID_CREDENTIALS');
   }
 
   // Compare password
-  const isMatch = await user.comparePassword(password);
+  const isMatch = await user.comparePassword(normalizedPassword);
   if (!isMatch) {
     throw new AppError('邮箱或密码错误', 401, 'INVALID_CREDENTIALS');
   }
@@ -153,6 +170,8 @@ export const changePassword = async (userId, { code, newPassword }) => {
     throw new AppError('参数不完整', 400, 'MISSING_PARAMS');
   }
 
+  const normalizedPassword = normalizePassword(newPassword);
+
   const user = await User.findById(userId).select('+password');
   if (!user) {
     throw new AppError('用户不存在', 401, 'USER_NOT_FOUND');
@@ -176,14 +195,14 @@ export const changePassword = async (userId, { code, newPassword }) => {
   }
 
   // Validate password strength
-  if (newPassword.length < 8) {
+  if (normalizedPassword.length < 8) {
     throw new AppError('密码至少 8 位', 400, 'WEAK_PASSWORD');
   }
-  if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+  if (!/[a-zA-Z]/.test(normalizedPassword) || !/[0-9]/.test(normalizedPassword)) {
     throw new AppError('密码需包含字母和数字', 400, 'WEAK_PASSWORD');
   }
 
-  user.password = newPassword;
+  user.password = normalizedPassword;
   await user.save();
 
   await VerificationCode.deleteOne({ _id: record._id });

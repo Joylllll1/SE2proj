@@ -1,4 +1,6 @@
 import * as postService from '../services/postService.js';
+import { parsePositiveInt } from '../utils/requestMeta.js';
+import { normalizePlainText, requireEnum } from '../utils/text.js';
 
 export const create = async (req, res) => {
   const post = await postService.createPost(req.user._id.toString(), req.body);
@@ -6,9 +8,19 @@ export const create = async (req, res) => {
 };
 
 export const list = async (req, res) => {
-  const { page = 1, limit = 20, query, sort = 'latest' } = req.query;
+  const page = parsePositiveInt(req.query.page, 1, { min: 1, max: 5000 });
+  const limit = parsePositiveInt(req.query.limit, 20, { min: 1, max: 50 });
+  const sort = requireEnum(req.query.sort, ['latest', 'hot'], {
+    fallback: 'latest',
+    message: '排序参数无效',
+    errorCode: 'INVALID_SORT',
+  });
+  const query = normalizePlainText(req.query.query, {
+    maxLength: 100,
+    preserveNewlines: false,
+  });
   const userId = req.user?._id?.toString();
-  const result = await postService.getPosts({ page: +page, limit: +limit, query, sort, userId });
+  const result = await postService.getPosts({ page, limit, query, sort, userId });
   res.json(result);
 };
 
