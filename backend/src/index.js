@@ -21,7 +21,6 @@ import sseRoutes from './routes/sseRoutes.js';
 import bookmarkRoutes from './routes/bookmarkRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 import securityHeaders from './middlewares/securityHeaders.js';
-import AppError from './utils/AppError.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,23 +69,24 @@ function isAllowedCorsOrigin(req) {
   return corsWhitelist.has(origin);
 }
 
-function corsOptionsDelegate(req, callback) {
-  if (!isAllowedCorsOrigin(req)) {
-    callback(new AppError('CORS origin not allowed', 403, 'CORS_ORIGIN_FORBIDDEN'));
-    return;
-  }
-
-  callback(null, {
-    origin: true,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  });
-}
+const corsMiddleware = cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+});
 
 // ─── Middleware ───
 app.use(securityHeaders);
-app.use(cors(corsOptionsDelegate));
+app.use((req, res, next) => {
+  if (!isAllowedCorsOrigin(req)) {
+    return res.status(403).json({
+      error: 'CORS origin not allowed',
+      errorCode: 'CORS_ORIGIN_FORBIDDEN',
+    });
+  }
+  return corsMiddleware(req, res, next);
+});
 app.use(express.json({ limit: '15mb' }));
 
 // ─── Routes ───
