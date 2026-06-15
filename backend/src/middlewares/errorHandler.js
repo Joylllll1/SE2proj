@@ -1,12 +1,4 @@
-const errorHandler = (err, _req, res, next) => {
-  if (res.headersSent) {
-    console.error('Error after headers sent:', err);
-    if (!res.writableEnded) {
-      res.end();
-    }
-    return next(err);
-  }
-
+const errorHandler = (err, _req, res, _next) => {
   if (err.isOperational) {
     return res.status(err.statusCode).json({
       error: err.message,
