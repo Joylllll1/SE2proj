@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ClickableImage from './ClickableImage';
 import Icon from './Icon';
-import PlainTextContent from './PlainTextContent';
+import ExpandableText from './ExpandableText';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import ConfirmLeaveDialog from './ConfirmLeaveDialog';
@@ -72,7 +72,13 @@ function Comment({ comment, postId, currentUserId, onReply, onDelete, onReport }
             )}
           </div>
           {comment.content && (
-            <PlainTextContent className="my-[9px]" content={comment.content} />
+            <ExpandableText
+              className="my-[9px]"
+              content={comment.content}
+              collapsedLinesClass="line-clamp-8"
+              charThreshold={220}
+              lineThreshold={8}
+            />
           )}
           {comment.image && (
             <div className="comment-image-preview mt-2">

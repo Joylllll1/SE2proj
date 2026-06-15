@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ClickableImage from './ClickableImage';
 import Icon from './Icon';
-import PlainTextContent from './PlainTextContent';
+import ExpandableText from './ExpandableText';
 import ReportModal from '../features/ReportModal';
 import TimeAgo from './TimeAgo';
 import ConfirmLeaveDialog from './ConfirmLeaveDialog';
@@ -19,7 +19,6 @@ function normalizeOwnerId(ownerUserId) {
 function ReplyCard({ reply, postId, currentUserId, onReply, onDelete, onReport }) {
   const toggleReplyLike = useCommentStore(selectToggleReplyLike);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const replyInputRef = useRef(null);
@@ -51,12 +50,6 @@ function ReplyCard({ reply, postId, currentUserId, onReply, onDelete, onReport }
     setShowReplyInput(false);
   };
 
-  // 判断内容是否超过2行（简单判断：字符数超过60）
-  const isLongContent = (reply.parentContent || '').length > 60;
-  const displayContent = expanded || !isLongContent
-    ? reply.parentContent
-    : reply.parentContent.slice(0, 60) + '...';
-
   return (
     <>
       <article className="reply-card flex gap-[12px] max-sm:gap-2 relative">
@@ -71,20 +64,14 @@ function ReplyCard({ reply, postId, currentUserId, onReply, onDelete, onReport }
               <TimeAgo timeString={reply.parentTime} className="block mt-0.5 text-text-3 text-xs" />
             </div>
             <div className="mt-2">
-              <PlainTextContent
-                as="span"
-                className={isLongContent && !expanded ? 'line-clamp-2' : ''}
-                content={displayContent}
+              <ExpandableText
+                as="div"
+                className="text-sm"
+                content={reply.parentContent}
+                collapsedLinesClass="line-clamp-2"
+                charThreshold={60}
+                lineThreshold={3}
               />
-              {isLongContent && (
-                <button
-                  type="button"
-                  className="text-blue text-xs hover:underline ml-2"
-                  onClick={() => setExpanded(!expanded)}
-                >
-                  {expanded ? '[收起]' : '[展开]'}
-                </button>
-              )}
             </div>
           </div>
 
@@ -109,7 +96,13 @@ function ReplyCard({ reply, postId, currentUserId, onReply, onDelete, onReport }
             )}
           </div>
           {reply.content && (
-            <PlainTextContent className="my-[9px]" content={`回复 ${parentAuthorName}: ${reply.content}`} />
+            <ExpandableText
+              className="my-[9px]"
+              content={`回复 ${parentAuthorName}: ${reply.content}`}
+              collapsedLinesClass="line-clamp-5"
+              charThreshold={140}
+              lineThreshold={5}
+            />
           )}
           {reply.image && (
             <div className="comment-image-preview mt-2">

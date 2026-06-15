@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import PostCard from '../common/PostCard';
 import EmptyState from '../common/EmptyState';
 import Icon from '../common/Icon';
-import PlainTextContent from '../common/PlainTextContent';
+import ExpandableText from '../common/ExpandableText';
 import useUiStore from '../../store/uiStore';
 import usePostStore from '../../store/postStore';
 import useCommentStore from '../../store/commentStore';
 import { fetchLikes, fetchPostById } from '../../services/postService';
 import { hasSearchQuery, matchLikedCommentQuery, matchPostQuery } from '../../utils/search';
+
+const LIKES_PAGE_BATCH_SIZE = 20;
 
 const selectTogglePendingPostUnlike = (s) => s.togglePendingUnlike;
 const selectSubmitPendingPostUnlikes = (s) => s.submitPendingUnlikes;
@@ -25,6 +27,8 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
   const [likesData, setLikesData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [visiblePostCount, setVisiblePostCount] = useState(LIKES_PAGE_BATCH_SIZE);
+  const [visibleCommentCount, setVisibleCommentCount] = useState(LIKES_PAGE_BATCH_SIZE);
   const showToast = useUiStore((s) => s.showToast);
   const query = useUiStore(selectQuery);
   const pendingPostUnlikes = usePostStore(selectPendingPostUnlikes);
@@ -220,6 +224,16 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
   });
   const searching = hasSearchQuery(query);
   const resultCount = activeTab === 'posts' ? filteredPosts.length : filteredComments.length;
+  const visiblePosts = filteredPosts.slice(0, visiblePostCount);
+  const visibleComments = filteredComments.slice(0, visibleCommentCount);
+
+  useEffect(() => {
+    setVisiblePostCount(LIKES_PAGE_BATCH_SIZE);
+  }, [query, likesData?.posts, activeTab]);
+
+  useEffect(() => {
+    setVisibleCommentCount(LIKES_PAGE_BATCH_SIZE);
+  }, [query, likesData?.comments, activeTab]);
 
   return (
     <div className="collection-page max-w-[1180px] mx-auto">
@@ -270,68 +284,98 @@ function LikesPage({ compact, posts: allPosts, likedPosts: allLikedPosts, onOpen
         filteredPosts.length === 0 ? (
           <EmptyState title={searching ? '没有找到匹配的点赞帖子' : '还没有赞过的帖子'} />
         ) : (
-          <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1] max-sm:[column-gap:12px]">
-            {filteredPosts.map((post) => {
-              return (
-                <div key={post.id} className="inline-block w-full mb-[18px]">
-                  <PostCard
-                    compact
-                    post={post}
-                    onOpen={async () => {
-                      await flushAllPendingUnlikes();
-                      onOpenPost(post);
-                    }}
-                    liked={post.isLiked}
-                    onLike={() => handlePostUnlike(post.id)}
-                    onReport={onReport}
-                  />
-                </div>
-              );
-            })}
-          </section>
+          <>
+            <section className="masonry-grid [column-count:2] [column-gap:18px] max-sm:[column-count:1] max-sm:[column-gap:12px]">
+              {visiblePosts.map((post) => {
+                return (
+                  <div key={post.id} className="inline-block w-full mb-[18px]">
+                    <PostCard
+                      compact
+                      post={post}
+                      onOpen={async () => {
+                        await flushAllPendingUnlikes();
+                        onOpenPost(post);
+                      }}
+                      previewMode
+                      liked={post.isLiked}
+                      onLike={() => handlePostUnlike(post.id)}
+                      onReport={onReport}
+                    />
+                  </div>
+                );
+              })}
+            </section>
+            {visiblePosts.length < filteredPosts.length && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  className="secondary-button w-full"
+                  onClick={() => setVisiblePostCount((count) => count + LIKES_PAGE_BATCH_SIZE)}
+                >
+                  加载更多
+                </button>
+              </div>
+            )}
+          </>
         )
       ) : (
         filteredComments.length === 0 ? (
           <EmptyState title={searching ? '没有找到匹配的点赞评论' : '还没有赞过的评论'} />
         ) : (
-          <section className="space-y-4">
-            {filteredComments.map((comment, i) => {
-              const postId = comment.postId;
-              const post = postId ? allPosts.find((p) => p.id === postId) : null;
-              const isLiked = comment.item?.isLiked ?? false;
-              const postIsDeleted = comment.postIsDeleted || post?.isDeleted || false;
+          <>
+            <section className="space-y-4">
+              {visibleComments.map((comment, i) => {
+                const postId = comment.postId;
+                const post = postId ? allPosts.find((p) => p.id === postId) : null;
+                const isLiked = comment.item?.isLiked ?? false;
+                const postIsDeleted = comment.postIsDeleted || post?.isDeleted || false;
 
-              return (
-                <div
-                  key={comment.item?.id || `${comment.postId}-${comment.type}-${i}`}
-                  className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all"
+                return (
+                  <div
+                    key={comment.item?.id || `${comment.postId}-${comment.type}-${i}`}
+                    className="comment-card p-4 border border-line rounded-xl bg-white hover:shadow-sm transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span
+                        className={`text-xs font-medium cursor-pointer hover:text-blue ${postIsDeleted ? 'text-text-3 line-through' : 'text-text-3'}`}
+                        onClick={() => handleOpenCommentPost(comment)}
+                      >
+                        来自：{postIsDeleted ? '[已删除]' : (post?.title || comment.postTitle || '无标题')}
+                      </span>
+                    </div>
+                    <ExpandableText
+                      className="mb-2 text-sm text-text-2"
+                      content={`${comment.type === 'reply' ? '↳ ' : '💬 '}${comment.item?.content || ''}`}
+                      collapsedLinesClass={comment.type === 'reply' ? 'line-clamp-5' : 'line-clamp-8'}
+                      charThreshold={comment.type === 'reply' ? 140 : 220}
+                      lineThreshold={comment.type === 'reply' ? 5 : 8}
+                    />
+                    <div className="flex items-center gap-3 text-xs text-text-3">
+                      <button
+                        type="button"
+                        onClick={() => handleCommentUnlike(comment)}
+                        className={`inline-flex items-center gap-1 transition-colors duration-150 ${isLiked ? 'text-red' : 'hover:text-red'}`}
+                      >
+                        <Icon name={isLiked ? 'favorite' : 'favorite_border'} />
+                        {comment.item?.likes || 0}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+            {visibleComments.length < filteredComments.length && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  className="secondary-button w-full"
+                  onClick={() => setVisibleCommentCount((count) => count + LIKES_PAGE_BATCH_SIZE)}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <span
-                      className={`text-xs font-medium cursor-pointer hover:text-blue ${postIsDeleted ? 'text-text-3 line-through' : 'text-text-3'}`}
-                      onClick={() => handleOpenCommentPost(comment)}
-                    >
-                      来自：{postIsDeleted ? '[已删除]' : (post?.title || comment.postTitle || '无标题')}
-                    </span>
-                  </div>
-                  <PlainTextContent
-                    className="mb-2 text-sm text-text-2"
-                    content={`${comment.type === 'reply' ? '↳ ' : '💬 '}${comment.item?.content || ''}`}
-                  />
-                  <div className="flex items-center gap-3 text-xs text-text-3">
-                    <button
-                      type="button"
-                      onClick={() => handleCommentUnlike(comment)}
-                      className={`inline-flex items-center gap-1 transition-colors duration-150 ${isLiked ? 'text-red' : 'hover:text-red'}`}
-                    >
-                      <Icon name={isLiked ? 'favorite' : 'favorite_border'} />
-                      {comment.item?.likes || 0}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
+                  加载更多
+                </button>
+              </div>
+            )}
+          </>
         )
       )}
     </div>

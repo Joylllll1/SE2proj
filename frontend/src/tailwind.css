@@ -260,6 +260,43 @@ h1, h2, h3, p {
   @apply items-center mb-0 mt-0;
 }
 
+/* Clamp utilities used by discussion previews.
+   Define them explicitly so runtime behavior does not depend on utility generation. */
+.line-clamp-2,
+.line-clamp-3,
+.line-clamp-4,
+.line-clamp-5,
+.line-clamp-6,
+.line-clamp-8 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  -webkit-line-clamp: 3;
+}
+
+.line-clamp-4 {
+  -webkit-line-clamp: 4;
+}
+
+.line-clamp-5 {
+  -webkit-line-clamp: 5;
+}
+
+.line-clamp-6 {
+  -webkit-line-clamp: 6;
+}
+
+.line-clamp-8 {
+  -webkit-line-clamp: 8;
+}
+
 .section-head.large h1 {
   @apply m-0 text-[clamp(30px,4.2vw,44px)] leading-[1.1] tracking-tight;
 }
